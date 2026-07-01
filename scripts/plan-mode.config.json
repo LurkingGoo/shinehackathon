@@ -1,0 +1,12 @@
+{
+  "project": "shinehackathon",
+  "keyEnvVar": "DEEPSEEK_API_KEY",
+  "models": { "pro": "deepseek-v4-pro", "flash": "deepseek-v4-flash" },
+  "defaultMode": "plan",
+  "scope": [
+    "META-PLANNING ONLY.",
+    "No verdicts, no shipped code decisions of record. Drafting plans/task-breakdowns/docs only.",
+    "NEVER feed resident, health, incident, or PII data (eldercare data-residency) into this session. Never paste fixtures.ts, ResidentDetail, IncidentEvent payloads, or any real patient records.",
+    "No credentials/keys. No order/comms/broker path (there is none, and there never will be)."
+  ]
+}
