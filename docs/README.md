@@ -41,7 +41,9 @@ pass** is required whenever any of these change:
 1. **Scoring logic or a feature** → update [[feature-spec]] (bump its `spec_version`)
    and revisit the limitations in [[scoring-card]].
 2. **An endpoint or the data contract** → update the Reference tier; if a shape
-   changed, note the contract-parity impact on the seam.
+   changed, regenerate `scoring-service/contract.schema.json`
+   (`python -m app.contract`) and check the models↔`types.ts` parity test
+   ([[adr/0004-contract-parity-guard]]).
 3. **A dataset** (new source, new slice, changed provenance) → update the
    Datasheet section of [[scoring-card]].
 4. **A design decision** → add a new ADR in `docs/adr/` (never edit an accepted

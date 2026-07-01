@@ -9,3 +9,4 @@ pandas>=2.1
 # dev / test
 pytest>=8.0
 httpx>=0.27          # FastAPI TestClient
+jsonschema>=4.0      # validate live responses vs contract.schema.json

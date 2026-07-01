@@ -78,6 +78,16 @@ cd scoring-service
 pytest tests/test_contract.py    # each endpoint's JSON validates vs types.ts-derived schema
 ```
 
-Passing today: exact camelCase keys, separate risk/confidence axes, acute-first
-ordering, 404 on unknown resident, and the briefing-invents-no-numbers guardrail.
-As long as this passes, the backend is a drop-in swap for the mock seam.
+Passing today: live responses validate against the generated
+`contract.schema.json`; the committed schema is current with the models; and
+**`test_models_match_types_ts` asserts the models match `lib/types.ts` field-for-
+field** (the TS↔Python drift catcher — [[0004-contract-parity-guard]]). Plus
+separate risk/confidence axes, acute-first ordering, 404, briefing guardrail.
+
+Regenerate the schema artifact after any model change:
+
+```bash
+python -m app.contract      # rewrites contract.schema.json (a stale-artifact test enforces this)
+```
+
+As long as `pytest` passes, the backend is a drop-in swap for the mock seam.

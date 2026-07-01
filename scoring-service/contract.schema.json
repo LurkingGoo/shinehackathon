@@ -1,0 +1,451 @@
+{
+  "$comment": "GENERATED from app/models.py by `python -m app.contract`. Do not hand-edit. Mirrors triage-dashboard/lib/types.ts.",
+  "payloads": {
+    "RankedCaseload": {
+      "$defs": {
+        "CaseloadEntry": {
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "name": {
+              "title": "Name",
+              "type": "string"
+            },
+            "age": {
+              "title": "Age",
+              "type": "integer"
+            },
+            "unit": {
+              "title": "Unit",
+              "type": "string"
+            },
+            "score": {
+              "$ref": "#/$defs/RiskScore"
+            },
+            "rank": {
+              "title": "Rank",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "age",
+            "unit",
+            "score",
+            "rank"
+          ],
+          "title": "CaseloadEntry",
+          "type": "object"
+        },
+        "RiskScore": {
+          "properties": {
+            "track": {
+              "enum": [
+                "acute",
+                "chronic"
+              ],
+              "title": "Track",
+              "type": "string"
+            },
+            "risk": {
+              "title": "Risk",
+              "type": "number"
+            },
+            "confidence": {
+              "title": "Confidence",
+              "type": "number"
+            },
+            "updatedAt": {
+              "title": "Updatedat",
+              "type": "string"
+            },
+            "recency": {
+              "title": "Recency",
+              "type": "string"
+            },
+            "sensor": {
+              "title": "Sensor",
+              "type": "string"
+            },
+            "sensorClass": {
+              "title": "Sensorclass",
+              "type": "string"
+            },
+            "rationale": {
+              "title": "Rationale",
+              "type": "string"
+            }
+          },
+          "required": [
+            "track",
+            "risk",
+            "confidence",
+            "updatedAt",
+            "recency",
+            "sensor",
+            "sensorClass",
+            "rationale"
+          ],
+          "title": "RiskScore",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "generatedAt": {
+          "title": "Generatedat",
+          "type": "string"
+        },
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/CaseloadEntry"
+          },
+          "title": "Entries",
+          "type": "array"
+        }
+      },
+      "required": [
+        "generatedAt",
+        "entries"
+      ],
+      "title": "RankedCaseload",
+      "type": "object"
+    },
+    "ResidentDetail": {
+      "$defs": {
+        "RiskFeature": {
+          "properties": {
+            "label": {
+              "title": "Label",
+              "type": "string"
+            },
+            "value": {
+              "title": "Value",
+              "type": "string"
+            },
+            "weight": {
+              "title": "Weight",
+              "type": "number"
+            },
+            "baseline": {
+              "default": "",
+              "title": "Baseline",
+              "type": "string"
+            }
+          },
+          "required": [
+            "label",
+            "value",
+            "weight"
+          ],
+          "title": "RiskFeature",
+          "type": "object"
+        },
+        "RiskScore": {
+          "properties": {
+            "track": {
+              "enum": [
+                "acute",
+                "chronic"
+              ],
+              "title": "Track",
+              "type": "string"
+            },
+            "risk": {
+              "title": "Risk",
+              "type": "number"
+            },
+            "confidence": {
+              "title": "Confidence",
+              "type": "number"
+            },
+            "updatedAt": {
+              "title": "Updatedat",
+              "type": "string"
+            },
+            "recency": {
+              "title": "Recency",
+              "type": "string"
+            },
+            "sensor": {
+              "title": "Sensor",
+              "type": "string"
+            },
+            "sensorClass": {
+              "title": "Sensorclass",
+              "type": "string"
+            },
+            "rationale": {
+              "title": "Rationale",
+              "type": "string"
+            }
+          },
+          "required": [
+            "track",
+            "risk",
+            "confidence",
+            "updatedAt",
+            "recency",
+            "sensor",
+            "sensorClass",
+            "rationale"
+          ],
+          "title": "RiskScore",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "age": {
+          "title": "Age",
+          "type": "integer"
+        },
+        "unit": {
+          "title": "Unit",
+          "type": "string"
+        },
+        "score": {
+          "$ref": "#/$defs/RiskScore"
+        },
+        "features": {
+          "items": {
+            "$ref": "#/$defs/RiskFeature"
+          },
+          "title": "Features",
+          "type": "array"
+        },
+        "recommendedAction": {
+          "title": "Recommendedaction",
+          "type": "string"
+        },
+        "briefing": {
+          "title": "Briefing",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "age",
+        "unit",
+        "score",
+        "features",
+        "recommendedAction",
+        "briefing"
+      ],
+      "title": "ResidentDetail",
+      "type": "object"
+    },
+    "IncidentEvent": {
+      "$defs": {
+        "CaseloadEntry": {
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "name": {
+              "title": "Name",
+              "type": "string"
+            },
+            "age": {
+              "title": "Age",
+              "type": "integer"
+            },
+            "unit": {
+              "title": "Unit",
+              "type": "string"
+            },
+            "score": {
+              "$ref": "#/$defs/RiskScore"
+            },
+            "rank": {
+              "title": "Rank",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "age",
+            "unit",
+            "score",
+            "rank"
+          ],
+          "title": "CaseloadEntry",
+          "type": "object"
+        },
+        "ResidentDetail": {
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "name": {
+              "title": "Name",
+              "type": "string"
+            },
+            "age": {
+              "title": "Age",
+              "type": "integer"
+            },
+            "unit": {
+              "title": "Unit",
+              "type": "string"
+            },
+            "score": {
+              "$ref": "#/$defs/RiskScore"
+            },
+            "features": {
+              "items": {
+                "$ref": "#/$defs/RiskFeature"
+              },
+              "title": "Features",
+              "type": "array"
+            },
+            "recommendedAction": {
+              "title": "Recommendedaction",
+              "type": "string"
+            },
+            "briefing": {
+              "title": "Briefing",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "age",
+            "unit",
+            "score",
+            "features",
+            "recommendedAction",
+            "briefing"
+          ],
+          "title": "ResidentDetail",
+          "type": "object"
+        },
+        "RiskFeature": {
+          "properties": {
+            "label": {
+              "title": "Label",
+              "type": "string"
+            },
+            "value": {
+              "title": "Value",
+              "type": "string"
+            },
+            "weight": {
+              "title": "Weight",
+              "type": "number"
+            },
+            "baseline": {
+              "default": "",
+              "title": "Baseline",
+              "type": "string"
+            }
+          },
+          "required": [
+            "label",
+            "value",
+            "weight"
+          ],
+          "title": "RiskFeature",
+          "type": "object"
+        },
+        "RiskScore": {
+          "properties": {
+            "track": {
+              "enum": [
+                "acute",
+                "chronic"
+              ],
+              "title": "Track",
+              "type": "string"
+            },
+            "risk": {
+              "title": "Risk",
+              "type": "number"
+            },
+            "confidence": {
+              "title": "Confidence",
+              "type": "number"
+            },
+            "updatedAt": {
+              "title": "Updatedat",
+              "type": "string"
+            },
+            "recency": {
+              "title": "Recency",
+              "type": "string"
+            },
+            "sensor": {
+              "title": "Sensor",
+              "type": "string"
+            },
+            "sensorClass": {
+              "title": "Sensorclass",
+              "type": "string"
+            },
+            "rationale": {
+              "title": "Rationale",
+              "type": "string"
+            }
+          },
+          "required": [
+            "track",
+            "risk",
+            "confidence",
+            "updatedAt",
+            "recency",
+            "sensor",
+            "sensorClass",
+            "rationale"
+          ],
+          "title": "RiskScore",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "type": {
+          "const": "incident",
+          "default": "incident",
+          "title": "Type",
+          "type": "string"
+        },
+        "event": {
+          "const": "acute-detected",
+          "default": "acute-detected",
+          "title": "Event",
+          "type": "string"
+        },
+        "emittedAt": {
+          "title": "Emittedat",
+          "type": "string"
+        },
+        "entry": {
+          "$ref": "#/$defs/CaseloadEntry"
+        },
+        "detail": {
+          "$ref": "#/$defs/ResidentDetail"
+        }
+      },
+      "required": [
+        "emittedAt",
+        "entry",
+        "detail"
+      ],
+      "title": "IncidentEvent",
+      "type": "object"
+    }
+  }
+}
