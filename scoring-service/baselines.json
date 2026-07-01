@@ -1,0 +1,23 @@
+{
+  "_note": "Sample per-resident self-baselines (docs/feature-spec.md §2). Real values are precomputed from each resident's own CASAS history; these mirror the fixture residents so the chronic scorer can be demoed end-to-end. mean/std are in the feature's natural unit.",
+  "r-rajoo": {
+    "days_of_history": 21,
+    "features": {
+      "kitchen_gap_hours": {"mean": 3.5, "std": 1.2, "typical_display": "typ. < 4h"},
+      "first_door_open_hour": {"mean": 8.17, "std": 0.4, "typical_display": "typ. 08:10"}
+    }
+  },
+  "r-wong": {
+    "days_of_history": 30,
+    "features": {
+      "bedroom_exit_hour": {"mean": 7.5, "std": 0.5, "typical_display": "typ. 07:30"},
+      "bathroom_visits_by_10": {"mean": 2.0, "std": 0.7, "typical_display": "typ. 2 by 10:00"}
+    }
+  },
+  "r-lim": {
+    "days_of_history": 14,
+    "features": {
+      "nocturnal_trips": {"mean": 2.0, "std": 0.8, "typical_display": "typ. 2"}
+    }
+  }
+}

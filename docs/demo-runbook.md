@@ -10,8 +10,9 @@ tags: [howto, demo, runbook]
 # Demo Runbook
 
 > **How-to tier.** Run the system and drive the demo's key beat: a fall firing
-> mid-shift and re-ranking the caseload live. Backend (`scoring-service/`) is not
-> yet scaffolded — steps marked *(planned)* land with it.
+> mid-shift and re-ranking the caseload live. Backend (`scoring-service/`) is
+> **scaffolded and fixture-backed** — endpoints + SSE work and are tested. Steps
+> marked *(planned)* are the remaining real-dataset wiring.
 
 ## Run the frontend (works today, mock-backed)
 
@@ -26,17 +27,23 @@ Click a resident → drill-down. Press **Simulate incident** → the canned fall
 through the in-process pub/sub and the list re-ranks (this is the mock the backend
 replaces).
 
-## Run the scoring service *(planned)*
+## Run the scoring service (works now, fixture-backed)
 
 ```bash
 cd scoring-service
 python -m venv .venv && . .venv/Scripts/activate   # Windows
 pip install -r requirements.txt
-python -m app.replay.baselines                     # precompute baselines.json
-uvicorn app.main:app --port 8000
+uvicorn app.main:app --reload --port 8000
+pytest -q                                          # 14 tests: contract + scoring + stream
 ```
 
-Then point Next's `/api/*` at it (proxy) and start the frontend as above.
+Endpoints: `GET /caseload`, `GET /residents/{id}`, `GET /incidents/stream` (SSE),
+`POST /incidents/simulate`, `GET /health`. Then point Next's `/api/*` at it
+(proxy) *(planned)* and start the frontend as above.
+
+Verified end-to-end (2026-07-01): open the stream, `POST /incidents/simulate`,
+and the acute row (Tan Ah Moi, 0.94) arrives over SSE — the re-rank beat works at
+the backend layer before any frontend wiring.
 
 ## Drive the demo *(planned)*
 
@@ -56,11 +63,13 @@ Prove the streaming path end-to-end with a **fake** event every ~5 s
 (`IncidentEvent` shape only) → confirm the UI re-ranks. The replayer/SSE plumbing
 is the demo's biggest risk, not the scoring ([[backend-architecture]] §6).
 
-## Contract test *(planned)*
+## Contract test (works now)
 
 ```bash
 cd scoring-service
 pytest tests/test_contract.py    # each endpoint's JSON validates vs types.ts-derived schema
 ```
 
-If this passes, the backend is a drop-in swap for the mock seam.
+Passing today: exact camelCase keys, separate risk/confidence axes, acute-first
+ordering, 404 on unknown resident, and the briefing-invents-no-numbers guardrail.
+As long as this passes, the backend is a drop-in swap for the mock seam.
