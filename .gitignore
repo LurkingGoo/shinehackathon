@@ -1,0 +1,20 @@
+# AI instructions — vault file, not source code
+CLAUDE.md
+
+# AI volatile state — never commit
+state.md
+handoff.md
+session-log.md
+active/
+
+# Vault records — source of truth is Obsidian, not git
+intel.md
+decisions.md
+
+# Local navigation indexes — generated, never commit
+_codebase-index.md
+_manifest.md
+_index.md
+
+# Claude Code local config
+.claude/
