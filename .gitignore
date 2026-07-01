@@ -18,3 +18,21 @@ _index.md
 
 # Claude Code local config
 .claude/
+
+# ── Mandatory vault baseline (retrofit 2026-07-01) ──
+.env*
+*.pem
+*.key
+.obsidian/
+*.canvas
+*.base
+node_modules/
+.next/
+dist/
+build/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.log
+.DS_Store
+Thumbs.db
