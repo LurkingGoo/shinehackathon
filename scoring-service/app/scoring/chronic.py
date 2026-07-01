@@ -30,11 +30,21 @@ def gap_ratio_anomaly(observed_gap: float, typical_gap: float) -> float:
 
 
 def aggregate_risk(weighted: list[tuple[float, float]]) -> float:
-    """weighted = [(weight, anomaly), ...] → risk in 0..1 (weighted mean)."""
+    """weighted = [(weight, anomaly), ...] → risk in 0..1 (weighted MEAN).
+    Use when weights are relative importances that should renormalize."""
     wsum = sum(w for w, _ in weighted)
     if wsum <= 0:
         return 0.0
     return float(np.clip(sum(w * a for w, a in weighted) / wsum, 0.0, 1.0))
+
+
+def contribution_risk(weighted: list[tuple[float, float]]) -> float:
+    """weighted = [(weight, anomaly), ...] → risk in 0..1 as the SUM of absolute
+    contributions. Weights are pre-calibrated importances that sum to <= 1, so a
+    resident with one dominant feature does NOT get that feature renormalized to
+    100% of their score — this keeps risk comparable ACROSS residents (the
+    ranking axis). This is the aggregation the caseload uses."""
+    return float(np.clip(sum(w * a for w, a in weighted), 0.0, 1.0))
 
 
 def baseline_maturity(days_of_history: float, target_days: float = 14.0) -> float:

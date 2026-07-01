@@ -3,7 +3,7 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.0.0
+spec_version: 1.1.0
 last_updated: 2026-07-01
 tags: [features, scoring, reference]
 ---
@@ -21,7 +21,9 @@ tags: [features, scoring, reference]
 - **`RiskFeature`** = `{ label, value, weight, baseline }` (display strings +
   `weight` 0..1). The set of features for a resident is the *entire* explanation
   of their score — nothing enters `risk`/`rationale` that isn't a feature.
-- **risk** (0..1) = normalized weighted aggregate of feature contributions.
+- **risk** (0..1) = sum of absolute weighted feature contributions
+  (`Σ wᵢ·aᵢ`, clipped) — comparable across residents (§2,
+  [[0003-absolute-weight-risk-aggregation]]).
 - **confidence** (0..1) = data quality axis (completeness · sensor health ·
   baseline maturity). **Never** mixed into risk.
 - **rationale** = deterministic template filled from the top feature(s).
@@ -55,6 +57,12 @@ severity (long-lie) but is not required to fire.
 | Free-fall duration | dip window (ms) | `min(1, dip_ms/300)` | 0.2–0.3 | `typ. 0 ms` | Very short dips (stumble) → lower weight, may route to chronic frailty |
 | Post-impact inactivity | SMV variance after impact | inactivity seconds → `min(1, s/120)` | 0.1–0.2, **severity escalator** | `typ. resumes < 20 s` | If the person rises quickly, weight→low; still logged |
 
+**risk (acute)** — a *detected* fall is definitionally top-priority (it preempts
+the ranking), so risk floors high and scales with impact severity:
+`risk = clamp(0.9 + 0.1·severity, 0, 1)`, `severity = (peak − 2.7)/(6 − 2.7)`.
+It is **not** a chronic weighted sum. Undetected → a low residual (`0.2·severity`)
+so a non-event can never outrank genuine chronic concern.
+
 **confidence (acute)** = `f(signal continuity, sensor sample-rate health)`. A gap
 in accelerometer stream during the event lowers confidence but the event still
 fires (safety-biased).
@@ -84,8 +92,14 @@ the resident is their own control; nothing US-specific transfers.
 with `Z_CAP = 4` *(tune)*. Gap-type features use a ratio
 `observed_gap / typical_gap` instead of z where a distribution is thin.
 
-**Aggregate:** `risk = clamp(Σ(weightᵢ · aᵢ) / Σ weightᵢ , 0, 1)`; weights are the
-per-feature importances below, renormalized over the features actually present.
+**Aggregate:** `risk = clamp(Σ(weightᵢ · aᵢ), 0, 1)` — the **sum of absolute
+weighted contributions**, NOT a per-resident weighted mean. Weights are
+pre-calibrated importances that sum to ≤ 1, so a resident with one dominant
+feature does not have that feature renormalized to 100 % of their score. This
+keeps `risk` **comparable across residents** — the property the ranking depends
+on. Implemented as `chronic.contribution_risk`; see
+[[0003-absolute-weight-risk-aggregation]]. (`chronic.aggregate_risk`, the
+weighted *mean*, remains for relative-weight uses.)
 
 ### Chronic features (aligned to current fixtures)
 

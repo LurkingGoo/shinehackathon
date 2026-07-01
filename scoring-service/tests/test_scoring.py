@@ -65,5 +65,14 @@ def test_aggregate_risk_is_weighted_mean():
     assert chronic.aggregate_risk([]) == 0.0
 
 
+def test_contribution_risk_keeps_residents_comparable():
+    # Absolute weights: a lone dominant feature does NOT renormalize to 100%.
+    assert chronic.contribution_risk([(0.31, 1.0), (0.09, 0.6), (0.04, 0.1)]) == 0.368
+    # All-zero-weight (a "normal" resident) → zero risk.
+    assert chronic.contribution_risk([(0.0, 0.0)]) == 0.0
+    # Sum is clipped into 0..1.
+    assert chronic.contribution_risk([(0.8, 1.0), (0.8, 1.0)]) == 1.0
+
+
 def test_baseline_maturity_penalises_new_residents():
     assert chronic.baseline_maturity(2) < chronic.baseline_maturity(14) == 1.0

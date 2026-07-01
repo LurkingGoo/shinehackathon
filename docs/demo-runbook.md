@@ -42,8 +42,16 @@ Endpoints: `GET /caseload`, `GET /residents/{id}`, `GET /incidents/stream` (SSE)
 (proxy) *(planned)* and start the frontend as above.
 
 Verified end-to-end (2026-07-01): open the stream, `POST /incidents/simulate`,
-and the acute row (Tan Ah Moi, 0.94) arrives over SSE — the re-rank beat works at
-the backend layer before any frontend wiring.
+and the acute row arrives over SSE — the re-rank beat works at the backend layer
+before any frontend wiring.
+
+Scores are **computed**, not hardcoded: `app/scoring/pipeline.py` turns raw
+signals into `RiskScore` + features (chronic anomaly aggregation via
+`contribution_risk`; acute via `detect_fall` over the accelerometer trace).
+Computed caseload today — Rajoo 0.652 · Wong 0.504 · Lim 0.368 · Devi/Goh 0.0;
+acute Tan Ah Moi 0.97 (5.0 g impact, 40 s stillness). Values differ from the old
+hand-set demo numbers by design ([[scoring-card]]); real inputs arrive via
+`app/data/loaders.py`.
 
 ## Drive the demo *(planned)*
 
