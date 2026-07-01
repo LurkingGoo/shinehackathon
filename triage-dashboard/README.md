@@ -71,3 +71,20 @@ seam the backend replaces — keep it the single crossing point.
   backend build. (Provisional brief allowed a simpler path; this is it.)
 - The app lives in a subfolder because the parent `shinehackathon/` folder is an
   Obsidian vault whose root `CLAUDE.md` is immutable. This app is self-contained.
+
+## Backend & scoring documentation
+
+The engineering docs the backend needs live in [`../docs/`](../docs/) (tracked in
+this repo; authored in Obsidian, so internal links are WikiLinks). Start with
+[`../docs/README.md`](../docs/README.md) — the index and the documentation
+standard. Key entries:
+
+- [`../docs/backend-architecture.md`](../docs/backend-architecture.md) — the
+  system design behind the `lib/data/client.ts` seam (arc42-lite).
+- [`../docs/feature-spec.md`](../docs/feature-spec.md) — every `RiskFeature`
+  concretely: inputs, formula, thresholds, weights, rationale templates.
+- [`../docs/scoring-card.md`](../docs/scoring-card.md) — what the scoring does, on
+  what data (SisFall/CASAS), with what limits & ethics.
+- [`../docs/demo-runbook.md`](../docs/demo-runbook.md) — run it and drive the live
+  re-rank demo.
+- [`../docs/adr/`](../docs/adr/) — Architecture Decision Records (MADR).
