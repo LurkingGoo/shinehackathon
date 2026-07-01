@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One Care Triage — Gov / Enterprise</title>
+<style>
+  :root{
+    --bg:#f2f4f7; --panel:#ffffff; --ink:#101828; --muted:#5a6472;
+    --line:#d6dbe3; --line2:#e6e9ef; --blue:#12467b; --blue2:#1b6fc0; --blue-soft:#eaf1f9;
+    --amber:#9a5b00; --amber-soft:#fdf2e2; --red:#a11414; --red-soft:#fbeaea;
+    --green:#1c6b3f; --green-soft:#e8f3ec; --radius:8px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Segoe UI",-apple-system,Roboto,Arial,sans-serif;line-height:1.45;font-size:15px}
+  a:focus,button:focus,[tabindex]:focus{outline:3px solid #1b6fc0;outline-offset:2px}
+  .gov-strip{height:5px;background:linear-gradient(90deg,var(--blue),var(--blue2))}
+  .masthead{background:var(--panel);border-bottom:1px solid var(--line);padding:14px 28px;
+    display:flex;justify-content:space-between;align-items:center}
+  .mh-l{display:flex;align-items:center;gap:14px}
+  .crest{width:38px;height:38px;border-radius:7px;background:var(--blue);color:#fff;
+    display:grid;place-items:center;font-weight:700}
+  .mh-l h1{margin:0;font-size:17px;font-weight:700}
+  .mh-l p{margin:0;font-size:12.5px;color:var(--muted)}
+  .mh-r{font-size:13px;color:var(--muted);text-align:right}
+  .mh-r b{color:var(--ink)}
+  .app{max-width:1240px;margin:0 auto;padding:22px 28px 60px}
+  .statusbar{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:12px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+  .metrics{display:flex;gap:26px}
+  .metrics .m .n{font-size:20px;font-weight:700;line-height:1}
+  .metrics .m .k{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .metrics .m.crit .n{color:var(--red)}
+  .metrics .m.warn .n{color:var(--amber)}
+  .controls{display:flex;gap:10px;align-items:center}
+  .live{font-size:12.5px;color:var(--green);font-weight:600;display:inline-flex;gap:7px;align-items:center}
+  .live .pulse{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.6s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(28,107,63,.5)}70%{box-shadow:0 0 0 8px rgba(28,107,63,0)}100%{box-shadow:0 0 0 0 rgba(28,107,63,0)}}
+  .btn{border:1px solid var(--blue);background:var(--blue);color:#fff;font:inherit;font-weight:600;
+    font-size:13.5px;padding:9px 16px;border-radius:var(--radius);cursor:pointer}
+  .btn:hover{background:#0e3a66}
+  .grid{display:grid;grid-template-columns:1fr 372px;gap:22px;align-items:start}
+  .tablecard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .tcap{padding:12px 16px;border-bottom:2px solid var(--line);font-size:12px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:flex;justify-content:space-between}
+  table{width:100%;border-collapse:collapse}
+  thead th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+    text-align:left;padding:9px 14px;border-bottom:1px solid var(--line2);font-weight:700;background:#fafbfc}
+  thead th.num{text-align:center}
+  tbody tr{border-bottom:1px solid var(--line2);cursor:pointer}
+  tbody tr:hover{background:var(--blue-soft)}
+  tbody tr.sel{background:var(--blue-soft);box-shadow:inset 4px 0 0 var(--blue2)}
+  tbody tr.acute{background:var(--red-soft)}
+  tbody tr.acute:hover{background:#f7dcdc}
+  tbody tr.acute.sel{box-shadow:inset 4px 0 0 var(--red)}
+  td{padding:11px 14px;vertical-align:top}
+  .rk{width:42px;text-align:center}
+  .rk .badge{display:inline-block;min-width:38px;padding:5px 0;border-radius:6px;color:#fff;font-weight:700;font-size:15px}
+  .nm{font-weight:650}
+  .nm .a{color:var(--muted);font-weight:500}
+  .sub{font-size:12.5px;color:var(--muted)}
+  .track{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;
+    padding:2px 7px;border-radius:5px;text-transform:uppercase}
+  .track.acute{background:var(--red);color:#fff}
+  .track.chronic{background:var(--amber-soft);color:var(--amber);border:1px solid #e6cfa5}
+  .why{font-size:13.5px;margin-top:5px;max-width:44ch}
+  .conf-cell{text-align:center;font-variant-numeric:tabular-nums;font-weight:600}
+  .sensor-cell{font-size:12.5px;color:var(--muted)}
+  .foot{font-size:12px;color:var(--muted);padding:10px 16px;border-top:1px solid var(--line2);background:#fafbfc}
+  /* panel */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    position:sticky;top:18px;overflow:hidden}
+  .panel .head{padding:16px 18px;border-bottom:2px solid var(--line);background:#fafbfc}
+  .panel .head h3{margin:0;font-size:17px}
+  .panel .head .sub{font-size:12.5px}
+  .panel .bd{padding:18px}
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line2);border-radius:6px;overflow:hidden;margin-bottom:18px}
+  .kpis .k{padding:10px;text-align:center;border-right:1px solid var(--line2)}
+  .kpis .k:last-child{border-right:0}
+  .kpis .k .v{font-size:19px;font-weight:700}.kpis .k .l{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  h4.sec{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px;border-bottom:1px solid var(--line2);padding-bottom:6px}
+  .feat{margin-bottom:12px}
+  .feat .t{display:flex;justify-content:space-between;font-size:13.5px}
+  .feat .t b{font-weight:650;font-variant-numeric:tabular-nums}
+  .feat .base{font-size:12px;color:var(--muted)}
+  .bar{height:7px;background:#eef1f5;border-radius:3px;margin-top:5px;overflow:hidden}
+  .bar>i{display:block;height:100%;background:var(--amber);border-radius:3px}
+  .acute .bar>i{background:var(--red)}
+  .action{background:var(--blue-soft);border-left:3px solid var(--blue2);padding:12px 14px;font-size:13.5px;margin:16px 0}
+  .action .k{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--blue);margin-bottom:4px}
+  .brief{border-top:1px solid var(--line2);padding-top:14px}
+  .brief .k{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px}
+  .brief p{margin:0;font-size:13.5px}
+  .empty{padding:34px 18px;text-align:center;color:var(--muted);font-size:13.5px}
+</style>
+</head>
+<body>
+<div class="gov-strip"></div>
+<div class="masthead">
+  <div class="mh-l">
+    <div class="crest">OC</div>
+    <div><h1>One Care · Community Triage System</h1><p>Active Ageing programme · caseworker console</p></div>
+  </div>
+  <div class="mh-r"><div>Officer: <b>S. Rahman</b> (SCW-2213)</div><div>Ang Mo Kio · 01 Jul 2026 08:00 SGT</div></div>
+</div>
+
+<div class="app">
+  <div class="statusbar">
+    <div class="metrics">
+      <div class="m"><div class="n" id="count">6</div><div class="k">Monitored</div></div>
+      <div class="m crit"><div class="n" id="acuteN">0</div><div class="k">Acute</div></div>
+      <div class="m warn"><div class="n" id="warnN">2</div><div class="k">Elevated</div></div>
+      <div class="m"><div class="n">4</div><div class="k">Sensor types</div></div>
+    </div>
+    <div class="controls">
+      <span class="live"><span class="pulse"></span>Live feed · replay</span>
+      <button class="btn" id="sim">Simulate incident</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="tablecard">
+      <div class="tcap"><span>Ranked caseload</span><span>Acute events preempt · then chronic by risk</span></div>
+      <table>
+        <thead><tr>
+          <th class="num">Risk</th><th>Resident</th><th>Assessment &amp; rationale</th>
+          <th class="num">Conf.</th><th>Source</th><th>Updated</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="foot">Rationale is deterministically templated from sensor features. Language model smooths phrasing only; it does not determine ranking.</div>
+    </div>
+    <aside>
+      <div class="panel" id="panel"><div class="empty">Select a row to view the assessment detail, contributing features, and recommended action.</div></div>
+    </aside>
+  </div>
+</div>
+
+<script src="_data.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+let data=JSON.parse(JSON.stringify(window.CASELOAD));let selected=null;
+function color(r,t){return t==='acute'?'var(--red)':r>=0.55?'var(--amber)':r>=0.35?'#b06a00':'var(--green)'}
+function rows(){
+  const acute=data.filter(r=>r.track==='acute');
+  const chronic=data.filter(r=>r.track!=='acute').sort((a,b)=>b.risk-a.risk);
+  return [...acute,...chronic];
+}
+function render(){
+  $('#tbody').innerHTML=rows().map(r=>{
+    const acute=r.track==='acute';
+    return `<tr class="${acute?'acute':''} ${selected===r.id?'sel':''}" data-id="${r.id}" tabindex="0">
+      <td class="rk"><span class="badge" style="background:${color(r.risk,r.track)}">${Math.round(r.risk*100)}</span></td>
+      <td><div class="nm">${r.name} <span class="a">· ${r.age}</span></div><div class="sub">${r.unit}</div></td>
+      <td><span class="track ${acute?'acute':'chronic'}">${acute?'Acute':'Chronic'}</span><div class="why">${r.rationale}</div></td>
+      <td class="conf-cell">${Math.round(r.confidence*100)}%</td>
+      <td class="sensor-cell">${r.sensor}<br><span style="font-size:11px">${r.sensorClass}</span></td>
+      <td class="sub">${r.recency}</td>
+    </tr>`;
+  }).join('');
+  $('#count').textContent=data.length;
+  $('#acuteN').textContent=data.filter(r=>r.track==='acute').length;
+  $('#warnN').textContent=data.filter(r=>r.track!=='acute'&&r.risk>=0.55).length;
+  document.querySelectorAll('tbody tr').forEach(el=>{el.onclick=()=>select(el.dataset.id);el.onkeydown=e=>{if(e.key==='Enter')select(el.dataset.id)}});
+}
+function briefing(r){const top=r.features[0];
+  if(r.track==='acute')return `Priority: possible fall for <b>${r.name}</b> (${r.age}). ${top.value} impact followed by ${r.features[1].value} without movement, ${r.recency}. Confidence ${Math.round(r.confidence*100)}%.`;
+  return `<b>${r.name}</b> (${r.age}) is elevated primarily on <b>${top.label.toLowerCase()}</b> — ${top.value} (${top.baseline}). Confidence ${Math.round(r.confidence*100)}%. Non-urgent welfare follow-up.`;}
+function select(id){selected=id;const r=data.find(x=>x.id===id);const acute=r.track==='acute';
+  $('#panel').innerHTML=`
+    <div class="head"><h3>${r.name}, ${r.age}</h3><div class="sub">${r.unit} · updated ${r.recency}</div></div>
+    <div class="bd">
+      <div class="kpis">
+        <div class="k"><div class="v" style="color:${color(r.risk,r.track)}">${Math.round(r.risk*100)}</div><div class="l">${acute?'Acute':'Chronic'} risk</div></div>
+        <div class="k"><div class="v">${Math.round(r.confidence*100)}%</div><div class="l">Confidence</div></div>
+        <div class="k"><div class="v" style="font-size:13px;padding-top:3px">${r.sensor}</div><div class="l">Source</div></div>
+      </div>
+      <h4 class="sec">Contributing features</h4>
+      <div class="${acute?'acute':''}">
+      ${r.features.map(f=>`<div class="feat"><div class="t"><span>${f.label}</span><b>${f.value}</b></div>${f.baseline?`<div class="base">${f.baseline}</div>`:''}<div class="bar"><i style="width:${Math.round(f.weight*100)}%"></i></div></div>`).join('')}
+      </div>
+      <div class="action"><div class="k">Recommended action</div>${r.action}</div>
+      <div class="brief"><div class="k">Shift briefing · LLM-smoothed, facts fixed</div><p>${briefing(r)}</p></div>
+    </div>`;
+  render();
+}
+$('#sim').onclick=()=>{if(data.some(r=>r.track==='acute'))return;
+  data.unshift(JSON.parse(JSON.stringify(window.INCIDENT)));render();
+  const el=document.querySelector('tr.acute');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+  select(window.INCIDENT.id);};
+render();
+</script>
+</body>
+</html>

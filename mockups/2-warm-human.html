@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One Care Triage — Warm Human</title>
+<style>
+  :root{
+    --bg:#fbf7f2; --panel:#fffdfb; --ink:#33291f; --muted:#8a7c6d;
+    --line:#efe6da; --brand:#c65d3b; --brand-soft:#fbeee7;
+    --sage:#6f8f6a; --sage-soft:#eef3ec; --sun:#c9962b; --sun-soft:#f8efd8;
+    --red:#c0392b; --red-soft:#fbe9e6; --radius:20px;
+    --shadow:0 2px 4px rgba(90,60,30,.05),0 10px 28px rgba(90,60,30,.07);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 500px at 80% -10%,#fdeee4,transparent),var(--bg);
+    color:var(--ink);font-family:"Segoe UI",-apple-system,Roboto,Helvetica,Arial,sans-serif;line-height:1.5}
+  .app{max-width:1200px;margin:0 auto;padding:26px 26px 70px}
+  header.top{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:18px}
+  .brand h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.4px}
+  .brand p{margin:3px 0 0;color:var(--muted);font-size:14px}
+  .greet{text-align:right}
+  .greet .hi{font-size:15px;font-weight:650}
+  .greet .sm{font-size:13px;color:var(--muted)}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 20px;box-shadow:var(--shadow);margin-bottom:22px}
+  .toolbar .msg{font-size:14.5px}
+  .toolbar .msg b{color:var(--brand)}
+  .live{display:inline-flex;gap:8px;align-items:center;font-size:13px;color:var(--sage);font-weight:600}
+  .live .pulse{width:8px;height:8px;border-radius:50%;background:var(--sage);animation:pulse 1.6s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(111,143,106,.5)}70%{box-shadow:0 0 0 8px rgba(111,143,106,0)}100%{box-shadow:0 0 0 0 rgba(111,143,106,0)}}
+  .btn{border:0;cursor:pointer;font:inherit;font-weight:650;font-size:14px;
+    padding:11px 18px;border-radius:14px;background:var(--brand);color:#fff;
+    box-shadow:0 4px 12px rgba(198,93,59,.28);transition:.15s}
+  .btn:hover{transform:translateY(-1px)}
+  .grid{display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start}
+  .band{font-size:13px;font-weight:700;color:var(--muted);margin:6px 4px 12px;
+    display:flex;align-items:center;gap:8px}
+  .band.acute{color:var(--red)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:18px 20px;margin-bottom:16px;cursor:pointer;
+    display:flex;gap:16px;align-items:center;transition:.18s;position:relative}
+  .card:hover{transform:translateY(-2px);box-shadow:0 4px 8px rgba(90,60,30,.06),0 16px 34px rgba(90,60,30,.10)}
+  .card.sel{outline:2px solid var(--brand);outline-offset:2px}
+  .avatar{width:56px;height:56px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;
+    font-weight:700;font-size:20px;color:#fff;box-shadow:inset 0 -3px 8px rgba(0,0,0,.12)}
+  .body{flex:1;min-width:0}
+  .body .nm{font-size:17px;font-weight:700;letter-spacing:-.2px}
+  .body .nm span{color:var(--muted);font-weight:500;font-size:14px}
+  .body .meta{font-size:13px;color:var(--muted);margin:1px 0 8px}
+  .why{font-size:14.5px;color:#4a3d2f;background:var(--sun-soft);border-radius:12px;
+    padding:9px 13px;display:inline-block}
+  .card.acute .why{background:var(--red-soft);color:#7a241b;font-weight:600}
+  .card.low .why{background:var(--sage-soft)}
+  .stat{flex:0 0 auto;text-align:right;min-width:110px}
+  .ring{width:58px;height:58px;margin-left:auto;position:relative}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .num{position:absolute;inset:0;display:grid;place-items:center;font-weight:750;font-size:17px}
+  .stat .conf{font-size:12.5px;color:var(--muted);margin-top:6px}
+  .stat .conf b{color:var(--ink)}
+  .stat .sens{font-size:12px;color:var(--muted);margin-top:2px}
+  .card.acute{border-color:var(--red);background:linear-gradient(180deg,#fff,var(--red-soft))}
+  .card.acute.flash{animation:pop 1s ease}
+  @keyframes pop{0%{transform:scale(1.02);box-shadow:0 0 0 8px rgba(192,57,43,.25)}100%{transform:scale(1);box-shadow:var(--shadow)}}
+  .badge{position:absolute;top:-9px;left:20px;background:var(--red);color:#fff;font-size:11px;
+    font-weight:700;padding:3px 11px;border-radius:20px;letter-spacing:.03em}
+  /* panel */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:22px;position:sticky;top:20px}
+  .panel .ph{display:flex;gap:14px;align-items:center;margin-bottom:16px}
+  .panel .ph .avatar{width:48px;height:48px;font-size:17px}
+  .panel h3{margin:0;font-size:18px}
+  .panel .sub{font-size:13px;color:var(--muted)}
+  .kpis{display:flex;gap:10px;margin-bottom:18px}
+  .kpi{flex:1;background:#faf5ee;border-radius:14px;padding:12px;text-align:center}
+  .kpi .v{font-size:20px;font-weight:750}.kpi .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  h4.sec{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 10px}
+  .feat-row{margin-bottom:12px}
+  .feat-row .t{display:flex;justify-content:space-between;font-size:14px}
+  .feat-row .t b{font-weight:650}
+  .feat-row .base{font-size:12px;color:var(--muted)}
+  .bar{height:8px;background:#f0e8dd;border-radius:8px;margin-top:6px;overflow:hidden}
+  .bar>i{display:block;height:100%;background:var(--sun);border-radius:8px}
+  .acute .bar>i{background:var(--red)}
+  .action{background:var(--brand-soft);border-radius:14px;padding:14px;font-size:14px;margin:16px 0}
+  .action .k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--brand);margin-bottom:5px}
+  .brief{border-top:1px solid var(--line);padding-top:16px}
+  .brief .k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--sage);margin-bottom:6px}
+  .brief p{margin:0;font-size:14px;color:#4a3d2f}
+  .empty{text-align:center;color:var(--muted);font-size:14px;padding:36px 12px}
+  .empty .em{font-size:34px;display:block;margin-bottom:10px}
+  .foot{text-align:center;font-size:12.5px;color:var(--muted);margin-top:18px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1>Good morning, Siti 🌤</h1>
+      <p>Here's your caseload for today — the people who may need you first are at the top.</p>
+    </div>
+    <div class="greet">
+      <div class="hi">Ang Mo Kio cluster</div>
+      <div class="sm">Wed 1 Jul · 08:00</div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="msg"><b id="attn">3</b> of <b id="count">6</b> residents could use a check today.</div>
+    <div style="display:flex;gap:16px;align-items:center">
+      <span class="live"><span class="pulse"></span>Live · replaying data</span>
+      <button class="btn" id="sim">Simulate incident</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="band acute" id="acuteBand" style="display:none">🚨 Someone needs help right now</div>
+      <div id="acuteList"></div>
+      <div class="band">Today's caseload · most concern first</div>
+      <div id="list"></div>
+      <div class="foot">Every reason shown is drawn straight from the sensors — plain words, no guesswork.</div>
+    </div>
+    <aside>
+      <div class="panel" id="panel">
+        <div class="empty"><span class="em">👋</span>Tap a resident to see how they're doing and what to do next.</div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script src="_data.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+let data=JSON.parse(JSON.stringify(window.CASELOAD));
+let selected=null;
+const AV=['#c65d3b','#6f8f6a','#c9962b','#8a6fa0','#4a90a4','#b0714a'];
+function initials(n){return n.split(' ').map(w=>w[0]).slice(0,2).join('')}
+function color(r,t){return t==='acute'?'#c0392b':r>=0.55?'#c9962b':r>=0.35?'#c98a2b':'#6f8f6a'}
+function avColor(id){let h=0;for(const c of id)h=(h*31+c.charCodeAt(0))%AV.length;return AV[h]}
+
+function ring(r,t){
+  const col=color(r,t), c=2*Math.PI*24, off=c*(1-r);
+  return `<div class="ring"><svg width="58" height="58"><circle cx="29" cy="29" r="24" stroke="#eee5da" stroke-width="6" fill="none"/><circle cx="29" cy="29" r="24" stroke="${col}" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg><div class="num" style="color:${col}">${Math.round(r*100)}</div></div>`;
+}
+function cardHTML(r){
+  const acute=r.track==='acute', cls=acute?'acute':(r.risk<0.35?'low':'');
+  return `<div class="card ${cls} ${selected===r.id?'sel':''}" data-id="${r.id}">
+    ${acute?'<span class="badge">FALL DETECTED</span>':''}
+    <div class="avatar" style="background:${acute?'#c0392b':avColor(r.id)}">${initials(r.name)}</div>
+    <div class="body">
+      <div class="nm">${r.name} <span>· ${r.age}</span></div>
+      <div class="meta">${r.unit} · ${r.recency} · ${r.sensor}</div>
+      <div class="why">${r.rationale}</div>
+    </div>
+    <div class="stat">${ring(r.risk,r.track)}<div class="conf">confidence <b>${Math.round(r.confidence*100)}%</b></div><div class="sens">${r.sensorClass}</div></div>
+  </div>`;
+}
+function render(){
+  const acute=data.filter(r=>r.track==='acute');
+  const chronic=data.filter(r=>r.track!=='acute').sort((a,b)=>b.risk-a.risk);
+  $('#acuteList').innerHTML=acute.map(cardHTML).join('');
+  $('#acuteBand').style.display=acute.length?'flex':'none';
+  $('#list').innerHTML=chronic.map(cardHTML).join('');
+  $('#count').textContent=data.length;
+  $('#attn').textContent=data.filter(r=>r.track==='acute'||r.risk>=0.55).length;
+  document.querySelectorAll('.card').forEach(el=>el.onclick=()=>select(el.dataset.id));
+}
+function briefing(r){
+  const top=r.features[0];
+  if(r.track==='acute') return `<b>${r.name}</b> may have fallen — a ${top.value} impact then ${r.features[1].value} of no movement on the bedroom floor, ${r.recency}. Please reach her first.`;
+  return `<b>${r.name}</b> is on this list mostly because of <b>${top.label.toLowerCase()}</b> (${top.value}, ${top.baseline}). Worth a check this week — not urgent.`;
+}
+function select(id){
+  selected=id;const r=data.find(x=>x.id===id);const acute=r.track==='acute';
+  $('#panel').innerHTML=`
+    <div class="ph"><div class="avatar" style="background:${acute?'#c0392b':avColor(r.id)}">${initials(r.name)}</div>
+      <div><h3>${r.name}, ${r.age}</h3><div class="sub">${r.unit} · ${r.recency}</div></div></div>
+    <div class="kpis">
+      <div class="kpi"><div class="v" style="color:${color(r.risk,r.track)}">${Math.round(r.risk*100)}</div><div class="l">${acute?'Acute':'Chronic'} risk</div></div>
+      <div class="kpi"><div class="v">${Math.round(r.confidence*100)}%</div><div class="l">Confidence</div></div>
+      <div class="kpi"><div class="v" style="font-size:14px;padding-top:4px">${r.sensor}</div><div class="l">Source</div></div>
+    </div>
+    <h4 class="sec">Why she's ranked here</h4>
+    <div class="${acute?'acute':''}">
+    ${r.features.map(f=>`<div class="feat-row"><div class="t"><span>${f.label}</span><b>${f.value}</b></div>${f.baseline?`<div class="base">${f.baseline}</div>`:''}<div class="bar"><i style="width:${Math.round(f.weight*100)}%"></i></div></div>`).join('')}
+    </div>
+    <div class="action"><div class="k">What to do next</div>${r.action}</div>
+    <div class="brief"><div class="k">✎ Briefing (LLM wording · facts fixed)</div><p>${briefing(r)}</p></div>`;
+  render();
+}
+$('#sim').onclick=()=>{
+  if(data.some(r=>r.track==='acute'))return;
+  data.unshift(JSON.parse(JSON.stringify(window.INCIDENT)));render();
+  const el=document.querySelector('.card.acute');
+  if(el){el.classList.add('flash');el.scrollIntoView({behavior:'smooth',block:'center'})}
+  select(window.INCIDENT.id);
+};
+render();
+</script>
+</body>
+</html>

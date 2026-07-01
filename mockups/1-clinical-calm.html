@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One Care Triage — Clinical Calm</title>
+<style>
+  :root{
+    --bg:#f4f6f6; --panel:#ffffff; --ink:#1f2a2e; --muted:#65787d;
+    --line:#e2e8e9; --teal:#2f6f6b; --teal-soft:#e7f1f0;
+    --amber:#b7791f; --amber-soft:#fbf1dd; --red:#b23b3b; --red-soft:#fbe9e9;
+    --green:#3f7d5a; --radius:14px;
+    --shadow:0 1px 2px rgba(31,42,46,.04),0 6px 20px rgba(31,42,46,.06);
+    font-synthesis:none;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.45}
+  .app{max-width:1180px;margin:0 auto;padding:22px 24px 60px}
+  /* header */
+  header.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .dot{width:34px;height:34px;border-radius:10px;background:var(--teal);
+    display:grid;place-items:center;color:#fff;font-weight:700;font-size:15px}
+  .brand h1{font-size:17px;margin:0;font-weight:650;letter-spacing:-.2px}
+  .brand p{margin:0;font-size:12.5px;color:var(--muted)}
+  .who{text-align:right;font-size:12.5px;color:var(--muted)}
+  .who b{color:var(--ink);font-weight:600}
+  .subbar{display:flex;align-items:center;justify-content:space-between;
+    margin:14px 0 18px;padding:12px 16px;background:var(--panel);
+    border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .subbar .lead{font-size:13.5px;color:var(--muted)}
+  .subbar .lead b{color:var(--ink)}
+  .live{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--teal);
+    font-weight:600;background:var(--teal-soft);padding:5px 10px;border-radius:20px}
+  .live .pulse{width:7px;height:7px;border-radius:50%;background:var(--teal);
+    animation:pulse 1.6s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(47,111,107,.5)}70%{box-shadow:0 0 0 7px rgba(47,111,107,0)}100%{box-shadow:0 0 0 0 rgba(47,111,107,0)}}
+  .btn{border:0;cursor:pointer;font:inherit;font-size:13px;font-weight:600;
+    padding:9px 15px;border-radius:10px;background:var(--teal);color:#fff;transition:.15s}
+  .btn:hover{filter:brightness(1.06)}
+  .btn.ghost{background:#fff;color:var(--teal);border:1px solid var(--teal)}
+  /* layout */
+  .grid{display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start}
+  .section-label{font-size:11.5px;text-transform:uppercase;letter-spacing:.09em;
+    color:var(--muted);font-weight:700;margin:2px 4px 10px}
+  /* rows */
+  .row{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:15px 16px;margin-bottom:12px;cursor:pointer;
+    display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:center;
+    transition:.15s;position:relative;overflow:hidden}
+  .row:hover{transform:translateY(-1px);box-shadow:0 2px 4px rgba(31,42,46,.05),0 10px 26px rgba(31,42,46,.09)}
+  .row.sel{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal),var(--shadow)}
+  .row .rail{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .score{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;
+    font-weight:700;font-size:15px;color:#fff}
+  .who-cell .nm{font-weight:650;font-size:15px;letter-spacing:-.2px}
+  .who-cell .meta{font-size:12.5px;color:var(--muted);margin-top:1px}
+  .rationale{font-size:13.5px;color:#33474c;margin-top:7px;display:flex;gap:7px;align-items:baseline}
+  .rationale .tag{flex:0 0 auto;font-size:10.5px;font-weight:700;letter-spacing:.04em;
+    text-transform:uppercase;padding:2px 7px;border-radius:6px}
+  .right-cell{text-align:right;min-width:120px}
+  .conf{font-size:12px;color:var(--muted)}
+  .conf b{color:var(--ink);font-weight:600}
+  .sensor{font-size:11.5px;color:var(--muted);margin-top:3px;display:inline-flex;
+    align-items:center;gap:5px}
+  .chip{display:inline-block;width:6px;height:6px;border-radius:50%}
+  /* acute treatment */
+  .row.acute{border-color:var(--red);background:linear-gradient(0deg,#fff,#fff),var(--red-soft);
+    box-shadow:0 0 0 1px rgba(178,59,59,.25),0 8px 26px rgba(178,59,59,.12)}
+  .row.acute .rail{background:var(--red)}
+  .row.acute .score{background:var(--red)}
+  .row.acute .rationale .tag{background:var(--red);color:#fff}
+  .row.acute.flash{animation:flash 1.1s ease}
+  @keyframes flash{0%{box-shadow:0 0 0 6px rgba(178,59,59,.35)}100%{box-shadow:0 0 0 1px rgba(178,59,59,.25),0 8px 26px rgba(178,59,59,.12)}}
+  .row.chronic .rail{background:var(--amber)}
+  .row.chronic.low .rail{background:var(--green)}
+  /* drill-down */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:18px;position:sticky;top:18px}
+  .panel h3{margin:0;font-size:16px;letter-spacing:-.2px}
+  .panel .sub{font-size:12.5px;color:var(--muted);margin:2px 0 14px}
+  .d-score{display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;
+    background:var(--teal-soft);margin-bottom:14px}
+  .d-score .big{font-size:26px;font-weight:750;line-height:1}
+  .d-score .lbl{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .feat{margin:14px 0}
+  .feat h4{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px}
+  .feat-row{margin-bottom:10px}
+  .feat-row .fr-top{display:flex;justify-content:space-between;font-size:13px}
+  .feat-row .fr-top b{font-weight:600}
+  .feat-row .fr-base{font-size:11.5px;color:var(--muted)}
+  .bar{height:6px;background:#eef2f2;border-radius:6px;margin-top:5px;overflow:hidden}
+  .bar > i{display:block;height:100%;background:var(--amber);border-radius:6px}
+  .acute .bar > i{background:var(--red)}
+  .action{background:#f7faf9;border:1px dashed var(--line);border-radius:10px;
+    padding:12px;font-size:13px;margin-top:6px}
+  .action .k{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;margin-bottom:4px}
+  .briefing{margin-top:14px;border-top:1px solid var(--line);padding-top:14px}
+  .briefing .k{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--teal);font-weight:700;display:flex;align-items:center;gap:6px;margin-bottom:6px}
+  .briefing p{font-size:13px;color:#33474c;margin:0}
+  .empty{color:var(--muted);font-size:13.5px;text-align:center;padding:30px 10px}
+  .footnote{font-size:11.5px;color:var(--muted);margin-top:16px;text-align:center}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="dot">◎</div>
+      <div>
+        <h1>One Care — Morning Triage</h1>
+        <p>Sensor-agnostic caseload ranking · Ang Mo Kio cluster</p>
+      </div>
+    </div>
+    <div class="who">
+      <div><b>Siti Rahman</b>, Senior Caseworker</div>
+      <div>Wed 1 Jul · shift 08:00–16:00</div>
+    </div>
+  </header>
+
+  <div class="subbar">
+    <div class="lead"><b id="count">6</b> residents monitored · <b id="attn">3</b> need attention today · sorted by priority</div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span class="live"><span class="pulse"></span>Live · replaying</span>
+      <button class="btn" id="sim">⚡ Simulate incident</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="section-label" id="acuteLabel" style="display:none;color:var(--red)">⚠ Needs immediate response</div>
+      <div id="acuteList"></div>
+      <div class="section-label">Caseload · ranked by concern</div>
+      <div id="list"></div>
+      <div class="footnote">Rationale is generated from the actual sensor features that drove each score — not written by an AI.</div>
+    </div>
+    <aside>
+      <div class="panel" id="panel">
+        <div class="empty">Select a resident to see the drill-down, the features behind the score, and the recommended next step.</div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script src="_data.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+let data = JSON.parse(JSON.stringify(window.CASELOAD));
+let selected = null;
+
+function scoreColor(r){ return r>=0.85?'var(--red)': r>=0.55?'var(--amber)': r>=0.35?'#c98a2b':'var(--green)'; }
+function tag(track){ return track==='acute'?'ACUTE':'CHRONIC'; }
+
+function rowHTML(r){
+  const cls = r.track==='acute' ? 'acute' : (r.risk<0.35?'chronic low':'chronic');
+  const sc = r.track==='acute' ? 'var(--red)' : scoreColor(r.risk);
+  return `<div class="row ${cls} ${selected===r.id?'sel':''}" data-id="${r.id}">
+    <span class="rail"></span>
+    <div class="score" style="background:${sc}">${Math.round(r.risk*100)}</div>
+    <div class="who-cell">
+      <div class="nm">${r.name} <span style="color:var(--muted);font-weight:500;font-size:13px">· ${r.age}</span></div>
+      <div class="meta">${r.unit} · ${r.recency}</div>
+      <div class="rationale"><span class="tag">${tag(r.track)}</span><span>${r.rationale}</span></div>
+    </div>
+    <div class="right-cell">
+      <div class="conf">confidence <b>${Math.round(r.confidence*100)}%</b></div>
+      <div class="sensor"><span class="chip" style="background:${sc}"></span>${r.sensor} · ${r.sensorClass}</div>
+    </div>
+  </div>`;
+}
+
+function render(){
+  const acute = data.filter(r=>r.track==='acute');
+  const chronic = data.filter(r=>r.track!=='acute').sort((a,b)=>b.risk-a.risk);
+  $('#acuteList').innerHTML = acute.map(rowHTML).join('');
+  $('#acuteLabel').style.display = acute.length? 'block':'none';
+  $('#list').innerHTML = chronic.map(rowHTML).join('');
+  $('#count').textContent = data.length;
+  $('#attn').textContent = data.filter(r=>r.track==='acute'||r.risk>=0.55).length;
+  document.querySelectorAll('.row').forEach(el=>el.onclick=()=>select(el.dataset.id));
+}
+
+function briefing(r){
+  // deterministic template; an LLM would only smooth wording
+  const top = r.features[0];
+  if(r.track==='acute')
+    return `Possible fall for <b>${r.name}</b> (${r.age}) — ${top.value} impact with ${r.features[1].value} of stillness on the bedroom floor ${r.recency}. Confidence ${Math.round(r.confidence*100)}%. This preempts the rest of the caseload.`;
+  return `<b>${r.name}</b> (${r.age}) ranks here mainly on <b>${top.label.toLowerCase()}</b> (${top.value}, ${top.baseline}). Confidence ${Math.round(r.confidence*100)}%. A concern to check this week, not an emergency.`;
+}
+
+function select(id){
+  selected = id;
+  const r = data.find(x=>x.id===id);
+  const acute = r.track==='acute';
+  $('#panel').innerHTML = `
+    <h3>${r.name}, ${r.age}</h3>
+    <div class="sub">${r.unit} · last signal ${r.recency}</div>
+    <div class="d-score" style="background:${acute?'var(--red-soft)':'var(--teal-soft)'}">
+      <div>
+        <div class="big" style="color:${acute?'var(--red)':'var(--teal)'}">${Math.round(r.risk*100)}</div>
+        <div class="lbl">${acute?'Acute risk':'Chronic risk'}</div>
+      </div>
+      <div style="border-left:1px solid var(--line);padding-left:12px">
+        <div class="big" style="font-size:20px">${Math.round(r.confidence*100)}%</div>
+        <div class="lbl">Confidence</div>
+      </div>
+      <div style="border-left:1px solid var(--line);padding-left:12px">
+        <div style="font-size:13px;font-weight:600">${r.sensor}</div>
+        <div class="lbl">${r.sensorClass}</div>
+      </div>
+    </div>
+    <div class="feat ${acute?'acute':''}">
+      <h4>What drove the score</h4>
+      ${r.features.map(f=>`<div class="feat-row">
+        <div class="fr-top"><span>${f.label}</span><b>${f.value}</b></div>
+        ${f.baseline?`<div class="fr-base">${f.baseline}</div>`:''}
+        <div class="bar"><i style="width:${Math.round(f.weight*100)}%"></i></div>
+      </div>`).join('')}
+    </div>
+    <div class="action">
+      <div class="k">Recommended next step</div>${r.action}
+    </div>
+    <div class="briefing">
+      <div class="k">✎ Shift briefing <span style="color:var(--muted);font-weight:500;text-transform:none;letter-spacing:0">· LLM-smoothed, facts fixed</span></div>
+      <p>${briefing(r)}</p>
+    </div>`;
+  render();
+}
+
+$('#sim').onclick = ()=>{
+  if(data.some(r=>r.track==='acute')) return;
+  data.unshift(JSON.parse(JSON.stringify(window.INCIDENT)));
+  render();
+  const el = document.querySelector('.row.acute');
+  if(el){ el.classList.add('flash'); el.scrollIntoView({behavior:'smooth',block:'center'}); }
+  select(window.INCIDENT.id);
+};
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JSGP Eldercare Triage — Mockup Gallery</title>
+<style>
+  :root{--bg:#f6f7f8;--ink:#1c2226;--muted:#66727a;--line:#e4e8ea;--accent:#2f6f6b}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.5}
+  .wrap{max-width:1280px;margin:0 auto;padding:34px 26px 70px}
+  h1{font-size:24px;margin:0 0 4px;letter-spacing:-.3px}
+  .sub{color:var(--muted);font-size:14.5px;margin:0 0 6px;max-width:80ch}
+  .rule{color:var(--muted);font-size:13.5px;background:#fff;border:1px solid var(--line);
+    border-left:3px solid var(--accent);border-radius:8px;padding:11px 14px;margin:16px 0 30px;max-width:90ch}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    box-shadow:0 2px 4px rgba(20,30,35,.04),0 10px 26px rgba(20,30,35,.06);display:flex;flex-direction:column}
+  .frame{height:300px;border:0;width:200%;height:600px;transform:scale(.5);transform-origin:top left;pointer-events:none}
+  .frame-wrap{height:300px;overflow:hidden;border-bottom:1px solid var(--line);background:#fafafa}
+  .card .bd{padding:16px 18px}
+  .card h3{margin:0 0 3px;font-size:17px}
+  .card .tag{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);font-weight:700}
+  .card p{margin:8px 0 0;font-size:13.5px;color:var(--muted)}
+  .card .best{font-size:12.5px;color:var(--ink);margin-top:8px}
+  .card .best b{color:var(--accent)}
+  .card a{display:inline-block;margin-top:14px;font-size:13.5px;font-weight:600;color:#fff;
+    background:var(--accent);text-decoration:none;padding:9px 16px;border-radius:9px}
+  .card a:hover{filter:brightness(1.06)}
+  .note{margin-top:34px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:18px}
+  .note b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>JSGP Eldercare Triage — single-screen mockups</h1>
+  <p class="sub">Five visual directions for the same MVP: a ranked caseload a One Care caseworker opens at shift start. Each is a working mockup — click a resident to drill down, and press <b>Simulate incident</b> to fire a live fall and watch the list re-rank.</p>
+  <div class="rule"><b>Shared design rule across all five:</b> acute events (a fall) always preempt at the top and look unmistakably different; chronic anomaly scores rank the calm caseload beneath. Every rationale is templated from the actual sensor features — the wording may be LLM-smoothed, the "why" never is.</div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="frame-wrap"><iframe class="frame" src="1-clinical-calm.html"></iframe></div>
+      <div class="bd"><span class="tag">Direction 1</span><h3>Clinical Calm</h3>
+        <p>Soft neutrals, muted teal/slate, generous whitespace. Reads like a trusted care tool, not an alarm panel.</p>
+        <div class="best">Best when: <b>you want low-anxiety and it must age well on stage.</b></div>
+        <a href="1-clinical-calm.html" target="_blank">Open full screen →</a></div>
+    </div>
+    <div class="card">
+      <div class="frame-wrap"><iframe class="frame" src="2-warm-human.html"></iframe></div>
+      <div class="bd"><span class="tag">Direction 2</span><h3>Warm Human</h3>
+        <p>Warm palette, avatars, rounded cards, second-person copy. Leads hardest on "welcoming" and approachable.</p>
+        <div class="best">Best when: <b>the judges should feel the human, not the system.</b></div>
+        <a href="2-warm-human.html" target="_blank">Open full screen →</a></div>
+    </div>
+    <div class="card">
+      <div class="frame-wrap"><iframe class="frame" src="3-gov-enterprise.html"></iframe></div>
+      <div class="bd"><span class="tag">Direction 3</span><h3>Gov / Enterprise</h3>
+        <p>Restrained GovTech-adjacent table, neutral blues, strong hierarchy, keyboard-navigable, WCAG-forward.</p>
+        <div class="best">Best when: <b>you're signalling real fit with One Care / public sector.</b></div>
+        <a href="3-gov-enterprise.html" target="_blank">Open full screen →</a></div>
+    </div>
+    <div class="card">
+      <div class="frame-wrap"><iframe class="frame" src="4-ops-command.html"></iframe></div>
+      <div class="bd"><span class="tag">Direction 4</span><h3>Ops Command</h3>
+        <p>Dark triage console, high-contrast status, monospace accents, feed latency. Command-center urgency.</p>
+        <div class="best">Best when: <b>you want the demo to feel like live infrastructure.</b></div>
+        <a href="4-ops-command.html" target="_blank">Open full screen →</a></div>
+    </div>
+    <div class="card">
+      <div class="frame-wrap"><iframe class="frame" src="5-focus-minimal.html"></iframe></div>
+      <div class="bd"><span class="tag">Direction 5</span><h3>Focus Minimal</h3>
+        <p>One person at a time. A serif hero for the top priority, a whitespace-quiet list beneath, inline expand.</p>
+        <div class="best">Best when: <b>the story is "shrink the caseworker's decision to one glance."</b></div>
+        <a href="5-focus-minimal.html" target="_blank">Open full screen →</a></div>
+    </div>
+    <div class="card" style="justify-content:center;align-items:center;text-align:center;background:linear-gradient(160deg,#eef5f4,#fff)">
+      <div class="bd">
+        <span class="tag">Next</span><h3>Pick a lane</h3>
+        <p>Tell me which direction (or which pieces of each) to take forward. I'll refine that one screen, then we wire it to the replayer.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="note"><b>All five share one mock caseload</b> (<code>_data.js</code>): five chronic residents on CASAS-shaped PIR/door signals, plus one SisFall-shaped fall trace injected on "Simulate incident." Swap the data source later without touching the UI — the screen is deliberately sensor-agnostic.</div>
+</div>
+</body>
+</html>

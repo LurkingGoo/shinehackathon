@@ -1,0 +1,63 @@
+/* ============================================================================
+ * WARM HUMAN — design tokens (the approved theme).
+ * The palette, radii and shadows below are the concrete design system. Every
+ * component pulls from these variables; don't hard-code hexes in components.
+ * ==========================================================================*/
+:root {
+  /* surfaces */
+  --bg: #fbf7f2;
+  --panel: #fffdfb;
+  --panel-soft: #faf5ee;
+
+  /* ink */
+  --ink: #33291f;
+  --muted: #8a7c6d;
+  --line: #efe6da;
+
+  /* brand (terracotta) */
+  --brand: #c65d3b;
+  --brand-soft: #fbeee7;
+
+  /* status: sage (ok) / sun (chronic elevated) / red (acute) */
+  --sage: #6f8f6a;
+  --sage-soft: #eef3ec;
+  --sun: #c9962b;
+  --sun-soft: #f8efd8;
+  --red: #c0392b;
+  --red-soft: #fbe9e6;
+
+  /* shape */
+  --radius: 20px;
+  --radius-sm: 14px;
+  --shadow: 0 2px 4px rgba(90, 60, 30, 0.05), 0 10px 28px rgba(90, 60, 30, 0.07);
+  --shadow-lg: 0 4px 8px rgba(90, 60, 30, 0.06), 0 16px 34px rgba(90, 60, 30, 0.1);
+
+  /* avatar rotation (assigned by hash in code) */
+  --av-0: #c65d3b;
+  --av-1: #6f8f6a;
+  --av-2: #c9962b;
+  --av-3: #8a6fa0;
+  --av-4: #4a90a4;
+  --av-5: #b0714a;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: radial-gradient(1200px 500px at 80% -10%, #fdeee4, transparent), var(--bg);
+  color: var(--ink);
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: inherit; }
+
+/* keyboard focus — accessibility, not color-only */
+:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One Care Triage — Focus Minimal</title>
+<style>
+  :root{
+    --bg:#fcfcfb; --ink:#1a1a19; --muted:#8f8f8a; --faint:#b8b8b3;
+    --line:#ececea; --accent:#3a6b5f; --amber:#a9791f; --red:#b23a30;
+    --green:#4b7a5c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Iowan Old Style",Georgia,"Times New Roman",serif;line-height:1.5;font-size:16px}
+  .ui{font-family:-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:720px;margin:0 auto;padding:40px 24px 80px}
+  header{display:flex;justify-content:space-between;align-items:baseline;
+    padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:34px}
+  header h1{margin:0;font-size:21px;font-weight:600;letter-spacing:-.2px}
+  header .r{font-family:-apple-system,"Segoe UI",sans-serif;font-size:12.5px;color:var(--muted);text-align:right}
+  .live{display:inline-flex;gap:6px;align-items:center;color:var(--accent);font-weight:500}
+  .live .pulse{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1.8s infinite;display:inline-block}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(58,107,95,.5)}70%{box-shadow:0 0 0 7px rgba(58,107,95,0)}100%{box-shadow:0 0 0 0 rgba(58,107,95,0)}}
+  .lede{font-size:15px;color:var(--muted);font-family:-apple-system,"Segoe UI",sans-serif;margin:-16px 0 30px}
+  /* focus hero — the single most important thing */
+  .focus{border:1px solid var(--line);border-radius:2px;padding:26px 26px 24px;margin-bottom:16px;
+    position:relative;transition:.2s;cursor:pointer;background:#fff}
+  .focus:hover{border-color:var(--faint)}
+  .focus .eyebrow{font-family:-apple-system,"Segoe UI",sans-serif;font-size:11px;text-transform:uppercase;
+    letter-spacing:.13em;color:var(--muted);margin-bottom:14px;display:flex;justify-content:space-between}
+  .focus .nm{font-size:27px;font-weight:600;letter-spacing:-.5px;line-height:1.1}
+  .focus .nm small{font-size:16px;color:var(--muted);font-weight:400}
+  .focus .why{font-size:18px;margin:12px 0 18px;color:#2c2c2a}
+  .focus .facts{display:flex;gap:26px;font-family:-apple-system,"Segoe UI",sans-serif;font-size:13px;color:var(--muted)}
+  .focus .facts b{color:var(--ink);font-weight:600;font-family:-apple-system,sans-serif}
+  .focus.acute{border-color:var(--red);border-left:3px solid var(--red)}
+  .focus.acute .eyebrow{color:var(--red)}
+  .focus.acute .why{color:#7a241b}
+  .focus.acute.flash{animation:fl 1.1s ease}
+  @keyframes fl{0%{box-shadow:0 0 0 5px rgba(178,58,48,.25)}100%{box-shadow:none}}
+  .focus.chronic{border-left:3px solid var(--amber)}
+  .accentbar{position:absolute;left:0;top:0;bottom:0;width:0}
+  /* quiet list */
+  .rest-label{font-family:-apple-system,"Segoe UI",sans-serif;font-size:11px;text-transform:uppercase;
+    letter-spacing:.13em;color:var(--faint);margin:34px 0 6px}
+  .item{display:flex;align-items:baseline;gap:16px;padding:15px 4px;border-bottom:1px solid var(--line);cursor:pointer;transition:.15s}
+  .item:hover{padding-left:10px}
+  .item .dotrisk{width:9px;height:9px;border-radius:50%;flex:0 0 auto;position:relative;top:6px}
+  .item .mid{flex:1;min-width:0}
+  .item .nm{font-size:17px;font-weight:500}
+  .item .nm small{font-size:13px;color:var(--muted);font-weight:400}
+  .item .why{font-family:-apple-system,"Segoe UI",sans-serif;font-size:13.5px;color:var(--muted);margin-top:2px}
+  .item .risk{font-family:-apple-system,"Segoe UI",sans-serif;font-size:15px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+  /* expand detail */
+  .detail{overflow:hidden;max-height:0;transition:max-height .3s ease;
+    font-family:-apple-system,"Segoe UI",sans-serif}
+  .detail.open{max-height:600px}
+  .detail .inner{padding:18px 2px 6px;border-top:1px dashed var(--line);margin-top:18px}
+  .feat{margin-bottom:12px}
+  .feat .t{display:flex;justify-content:space-between;font-size:13.5px}
+  .feat .t b{font-weight:600}
+  .feat .base{font-size:12px;color:var(--muted)}
+  .bar{height:4px;background:#f0efec;border-radius:4px;margin-top:5px;overflow:hidden}
+  .bar>i{display:block;height:100%;background:var(--amber)}
+  .acute .bar>i{background:var(--red)}
+  .action{font-size:14px;margin:16px 0 4px;padding-left:14px;border-left:2px solid var(--accent)}
+  .action .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:3px;font-weight:700}
+  .brief{font-size:13.5px;color:#555;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+  .brief .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin-bottom:5px}
+  .simrow{margin-top:40px;text-align:center}
+  .btn{font-family:-apple-system,"Segoe UI",sans-serif;border:1px solid var(--line);background:#fff;
+    color:var(--ink);font-size:13px;padding:10px 20px;border-radius:30px;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .foot{font-family:-apple-system,"Segoe UI",sans-serif;font-size:12px;color:var(--faint);text-align:center;margin-top:22px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Morning triage</h1>
+    <div class="r"><div class="live"><span class="pulse"></span>Live · replaying</div><div>Siti · 1 Jul, 08:00</div></div>
+  </header>
+  <p class="lede" id="lede">One person needs you most right now. The rest of the caseload is quiet below.</p>
+
+  <div id="focusSlot"></div>
+
+  <div class="rest-label">The rest of the caseload</div>
+  <div id="list"></div>
+
+  <div class="simrow"><button class="btn" id="sim">Simulate incident</button></div>
+  <div class="foot">Every reason is drawn directly from the sensor data. Nothing here is invented.</div>
+</div>
+
+<script src="_data.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+let data=JSON.parse(JSON.stringify(window.CASELOAD));let open=null;
+function color(r,t){return t==='acute'?'var(--red)':r>=0.55?'var(--amber)':r>=0.35?'#a9791f':'var(--green)'}
+function ordered(){const a=data.filter(r=>r.track==='acute');const c=data.filter(r=>r.track!=='acute').sort((x,y)=>y.risk-x.risk);return[...a,...c];}
+function detailHTML(r){const acute=r.track==='acute';
+  return `<div class="detail ${open===r.id?'open':''}" id="d-${r.id}"><div class="inner ${acute?'acute':''}">
+    ${r.features.map(f=>`<div class="feat"><div class="t"><span>${f.label}</span><b>${f.value}</b></div>${f.baseline?`<div class="base">${f.baseline}</div>`:''}<div class="bar"><i style="width:${Math.round(f.weight*100)}%"></i></div></div>`).join('')}
+    <div class="action"><div class="k">Next step</div>${r.action}</div>
+    <div class="brief"><div class="k">Briefing · wording smoothed, facts fixed</div>${briefing(r)}</div>
+  </div></div>`;}
+function briefing(r){const top=r.features[0];
+  if(r.track==='acute')return `<b>${r.name}</b> may have fallen — ${top.value} impact then ${r.features[1].value} of stillness on the bedroom floor, ${r.recency}. Reach her first.`;
+  return `<b>${r.name}</b> ranks here mainly on ${top.label.toLowerCase()} — ${top.value} (${top.baseline}). A this-week concern, not urgent.`;}
+function render(){
+  const list=ordered();const top=list[0];const rest=list.slice(1);
+  const acute=top.track==='acute';
+  $('#focusSlot').innerHTML=`<div class="focus ${acute?'acute':'chronic'}" data-id="${top.id}">
+    <div class="eyebrow"><span>${acute?'⚠ Needs immediate response':'Top priority today'}</span><span>risk ${Math.round(top.risk*100)} · conf ${Math.round(top.confidence*100)}%</span></div>
+    <div class="nm">${top.name} <small>· ${top.age} · ${top.unit}</small></div>
+    <div class="why">${top.rationale}</div>
+    <div class="facts"><span>Source&nbsp; <b>${top.sensor}</b></span><span>Updated&nbsp; <b>${top.recency}</b></span><span>Track&nbsp; <b>${acute?'Acute':'Chronic'}</b></span></div>
+    ${detailHTML(top)}
+  </div>`;
+  $('#list').innerHTML=rest.map(r=>`<div class="item" data-id="${r.id}">
+    <span class="dotrisk" style="background:${color(r.risk,r.track)}"></span>
+    <div class="mid"><div class="nm">${r.name} <small>· ${r.age}</small></div><div class="why">${r.rationale}</div>${detailHTML(r)}</div>
+    <div class="risk">${Math.round(r.risk*100)}</div>
+  </div>`).join('');
+  $('#lede').textContent=acute?'A fall has been detected. That person is pinned at the top — the rest of the caseload waits below.':'One person needs you most right now. The rest of the caseload is quiet below.';
+  document.querySelectorAll('[data-id]').forEach(el=>el.onclick=e=>{e.stopPropagation();toggle(el.dataset.id)});
+}
+function toggle(id){open=open===id?null:id;render();}
+$('#sim').onclick=()=>{if(data.some(r=>r.track==='acute'))return;
+  data.unshift(JSON.parse(JSON.stringify(window.INCIDENT)));open=window.INCIDENT.id;render();
+  const el=$('#focusSlot .focus');if(el){el.classList.add('flash');el.scrollIntoView({behavior:'smooth',block:'center'})}};
+render();
+</script>
+</body>
+</html>

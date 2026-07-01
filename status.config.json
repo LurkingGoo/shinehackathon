@@ -6,9 +6,9 @@
   "checksum_file": "CLAUDE.md.sha256",
   "tests_dir": "tests",
   "output": "active/status.md",
-  "top_action": "Define first-dev-session scope + tech stack (see state.md Next Steps).",
+  "top_action": "Frontend done + committed. Next: backend — two GET endpoints + acute/chronic scoring + SSE live channel behind the lib/data/client.ts seam.",
   "rows": [
-    {"label": "Phase", "type": "operator", "status": "🟡", "detail": "Scaffolded 2026-07-01 — awaiting scope/tech-stack. No source code yet."},
+    {"label": "Phase", "type": "operator", "status": "🟢", "detail": "Frontend built (triage-dashboard, Next.js 14, Warm Human theme) — mock-backed. Backend next."},
     {"label": "Retrieval engine", "type": "operator", "status": "🟢", "detail": "Indexed root of _tools/vault-search; query via scripts/search.ps1."},
     {"label": "Constitution integrity", "type": "derived", "check": "constitution_checksum"},
     {"label": "Tests", "type": "derived", "check": "test_count"},
