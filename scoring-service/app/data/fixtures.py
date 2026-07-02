@@ -12,8 +12,10 @@ from the old hand-set demo numbers — by design (docs/scoring-card.md).
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import numpy as np
 
@@ -99,6 +101,55 @@ CHRONIC: list[ChronicResident] = [
         inputs=[CFI("Activity pattern", "Nominal", 0.0, anomaly=0.0)],
     ),
 ]
+
+
+def _try_real_resident() -> None:
+    """Back r-rajoo with the REAL CASAS resident when the offline artifact
+    exists (scripts/build_baselines.py --demo-day). One caseload row then
+    carries genuinely observed numbers scored by the same pipeline; without
+    the artifact the synthetic inputs stand and nothing breaks."""
+    path = Path(__file__).resolve().parents[2] / "data" / "casas" / "real_resident.json"
+    if not path.exists():
+        return
+    art = json.loads(path.read_text())
+    b, o = art["baselines"], art["observations"]
+    inputs: list[CFI] = []
+
+    if "kitchen_gap_h" in o and "kitchen_gap_h" in b:
+        kb = b["kitchen_gap_h"]
+        inputs.append(CFI(
+            "Kitchen inactivity", f"{o['kitchen_gap_h']:.1f}h gap", 0.52,
+            f"typ. {kb['mean']:.1f}h",
+            observed=o["kitchen_gap_h"], mean=kb["mean"], std=kb["std"]))
+    if "door_first_open_h" in b:
+        db = b["door_first_open_h"]
+        if "door_first_open_h" in o:
+            h = o["door_first_open_h"]
+            inputs.append(CFI(
+                "Front door", f"first opened {int(h):02d}:{int(h % 1 * 60):02d}",
+                0.15, f"typ. {int(db['mean']):02d}:{int(db['mean'] % 1 * 60):02d}",
+                observed=h, mean=db["mean"], std=db["std"]))
+        else:
+            inputs.append(CFI("Front door", "Not opened today", 0.15,
+                              f"typ. {int(db['mean']):02d}:{int(db['mean'] % 1 * 60):02d}",
+                              anomaly=0.7))
+    if "night_bathroom_trips" in o and "night_bathroom_trips" in b:
+        nb = b["night_bathroom_trips"]
+        inputs.append(CFI(
+            "Night bathroom trips", f"{o['night_bathroom_trips']:.0f} / night", 0.20,
+            f"typ. {nb['mean']:.0f}",
+            observed=o["night_bathroom_trips"], mean=nb["mean"], std=nb["std"]))
+    if not inputs:
+        return
+
+    r = CHRONIC[0]  # r-rajoo — the elevated-concern demo row
+    r.inputs = inputs
+    r.days_of_history = int(art.get("days_of_history", r.days_of_history))
+    r.sensor = "PIR + door"
+    r.sensor_class = "CASAS ambient (real stream)"
+
+
+_try_real_resident()
 
 
 # ------------------------------ acute trace ------------------------------- #
