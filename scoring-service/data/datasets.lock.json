@@ -1,0 +1,18 @@
+{
+  "sisfall": {
+    "source_url": "https://github.com/BIng2325/SisFall/releases/download/dataset/SisFall.zip",
+    "sha256": "8a11930f6f0533a6ecda31f35a90d23de674686b7d6e5bc5deba8132e3817b04",
+    "bytes": 213584954,
+    "fetched": "2026-07-02",
+    "citation": "Sucerquia, Lopez, Vargas-Bonilla \u2014 SisFall: A Fall and Movement Dataset. Sensors 17(1):198, 2017. Mirror of the original Universidad de Antioquia release (official host down).",
+    "target": "sisfall"
+  },
+  "casas-aruba": {
+    "source_url": "https://raw.githubusercontent.com/vladbucur-8/casas-datascience/main/datasets/aruba/data",
+    "sha256": "43871190130761c580fe6bb8edea8b8f95c44761f8ec410b8202e0605498b812",
+    "bytes": 61119932,
+    "fetched": "2026-07-02",
+    "citation": "Cook et al. \u2014 CASAS Aruba testbed (WSU), single resident, 2010-11-04..2011-06-11. Mirror; official distribution moved into the 2.7 GB Zenodo all-homes bundle (record 15708568).",
+    "target": "casas/aruba.txt"
+  }
+}

@@ -8,7 +8,8 @@ the live pipeline scores today's observations against these via z-score.
 Features (aligned to feature-spec §2):
   kitchen_gap_h        max gap (hours) between kitchen motion events, per day
   door_first_open_h    hour of the day's first front-door event
-  night_bathroom_trips bathroom motion-ON count in the sleep window, per night
+  night_bathroom_trips bathroom visits in the sleep window, per night (motion-ON
+                       events clustered into visits: >= TRIP_GAP_MIN apart = new trip)
   daily_activity       all motion-ON events, per day
 """
 from __future__ import annotations
@@ -24,12 +25,25 @@ from app.data.loaders import CasasEvent
 
 SLEEP_START_H = 22  # sleep window: 22:00 -> 07:00 (tunable per home)
 SLEEP_END_H = 7
+TRIP_GAP_MIN = 10  # bathroom ONs closer than this are the same visit
 MIN_STD = {  # floor the spread so one metronomic week can't make z explode
     "kitchen_gap_h": 0.25,
     "door_first_open_h": 0.25,
     "night_bathroom_trips": 0.5,
     "daily_activity": 5.0,
 }
+
+
+def _count_trips(timestamps: list) -> int:
+    """Cluster sensor ONs into visits: a PIR refires many times per visit, so
+    fires < TRIP_GAP_MIN apart are one trip."""
+    trips = 0
+    last = None
+    for ts in sorted(timestamps):
+        if last is None or (ts - last).total_seconds() >= TRIP_GAP_MIN * 60:
+            trips += 1
+        last = ts
+    return trips
 
 
 def _stats(values: list[float], feature: str) -> dict | None:
@@ -51,7 +65,7 @@ def compute_baselines(events: list[CasasEvent], area_map: dict[str, str]) -> dic
     """
     kitchen_by_day: dict[date, list] = defaultdict(list)
     door_first: dict[date, float] = {}
-    night_trips: dict[date, int] = defaultdict(int)
+    night_bathroom: dict[date, list] = defaultdict(list)
     activity: dict[date, int] = defaultdict(int)
 
     for e in events:
@@ -67,9 +81,9 @@ def compute_baselines(events: list[CasasEvent], area_map: dict[str, str]) -> dic
         if area == "bathroom" and is_motion_on:
             # a night belongs to the evening it started
             if e.ts.hour >= SLEEP_START_H:
-                night_trips[d] += 1
+                night_bathroom[d].append(e.ts)
             elif e.ts.hour < SLEEP_END_H:
-                night_trips[d - timedelta(days=1)] += 1
+                night_bathroom[d - timedelta(days=1)].append(e.ts)
 
     kitchen_gaps = [
         max((b - a).total_seconds() / 3600.0 for a, b in zip(ts, ts[1:]))
@@ -78,7 +92,8 @@ def compute_baselines(events: list[CasasEvent], area_map: dict[str, str]) -> dic
     features = {
         "kitchen_gap_h": _stats(kitchen_gaps, "kitchen_gap_h"),
         "door_first_open_h": _stats(list(door_first.values()), "door_first_open_h"),
-        "night_bathroom_trips": _stats([float(v) for v in night_trips.values()],
+        "night_bathroom_trips": _stats([float(_count_trips(v))
+                                        for v in night_bathroom.values()],
                                        "night_bathroom_trips"),
         "daily_activity": _stats([float(v) for v in activity.values()],
                                  "daily_activity"),
@@ -111,13 +126,13 @@ def observations_for_day(events: list[CasasEvent], area_map: dict[str, str],
     if doors:
         obs["door_first_open_h"] = min(doors)
 
-    trips = [e for e in day_events
+    fires = [e.ts for e in day_events
              if area_map.get(e.sensor) == "bathroom" and e.sensor.startswith("M")
              and e.state.upper() == "ON" and e.ts.hour >= SLEEP_START_H]
-    trips += [e for e in night_next
+    fires += [e.ts for e in night_next
               if area_map.get(e.sensor) == "bathroom" and e.sensor.startswith("M")
               and e.state.upper() == "ON"]
-    obs["night_bathroom_trips"] = float(len(trips))
+    obs["night_bathroom_trips"] = float(_count_trips(fires))
 
     obs["daily_activity"] = float(sum(
         1 for e in day_events

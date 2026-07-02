@@ -50,12 +50,21 @@ Datasheet for provenance):
   `F*.txt`, ADLs `D*.txt`). `POST /incidents/simulate` automatically injects the
   first real fall on disk (override with `SISFALL_TRACE=<path>`); with no files
   it falls back to the synthetic trace, so the demo never breaks.
-- **CASAS** → any event file + a per-home sensor→area map, then:
+- **CASAS** → any event file + a per-home sensor→area map (derive it from the
+  dataset's own annotations — labels build the layout artifact, never score):
 
 ```bash
 cd scoring-service
-python scripts/build_baselines.py data/casas/events.txt data/casas/area_map.json -o baselines.json
+python scripts/derive_area_map.py data/casas/aruba.txt -o data/casas/area_map.json
+python scripts/build_baselines.py data/casas/aruba.txt data/casas/area_map.json \
+       -o data/casas/baselines.json --demo-day auto
 ```
+
+`--demo-day auto` picks the real resident's most kitchen-anomalous day and
+writes `data/casas/real_resident.json`. When that artifact exists, the service
+backs **r-rajoo** with the real resident's observed numbers (same z-score
+pipeline; the row shows `CASAS ambient (real stream)`). Without it the
+synthetic inputs stand — the demo never depends on the download.
 
 ### Calibrate acute thresholds (fills the scoring-card metrics)
 

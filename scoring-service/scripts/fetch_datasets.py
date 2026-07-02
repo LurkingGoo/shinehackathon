@@ -110,6 +110,13 @@ def main() -> int:
                     print(f"  extracting -> {out}")
                     with zipfile.ZipFile(raw) as z:
                         z.extractall(out)
+                    # the mirror wraps the real dataset in a nested zip —
+                    # unwrap so loaders' rglob("F*.txt") finds the traces
+                    for nested in out.rglob("*.zip"):
+                        print(f"  extracting nested {nested.name}")
+                        with zipfile.ZipFile(nested) as z:
+                            z.extractall(out)
+                        nested.unlink()
             else:
                 out = DATA / src["target"]
                 if not out.exists():
