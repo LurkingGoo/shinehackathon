@@ -117,9 +117,18 @@ regenerated shots regenerate the chips). Regenerate with both servers up:
 | Caseload screenshot (calm) | `assets/caseload-calm.png` | **done** (2026-07-02) |
 | Incident screenshot pair (pin + drill-down) | `assets/caseload-incident-pin.png`, `assets/caseload-incident-drilldown.png` | **done** (2026-07-02) |
 | 6 walkthrough chips (see table above) | `assets/chip-*.png` | **done** (2026-07-02) |
-| 3-layer architecture diagram | `docs/slides/diagrams/architecture.mmd` (from [[solution-overview]]) | to write |
-| Calibration table graphic | scoring-card §Metrics numbers, styled by theme | to write |
-| Warm Human Marp theme | `docs/slides/warm-human.css` | to write |
+| 3-layer architecture diagram | `diagrams/architecture.mmd` → `assets/architecture.svg` via `render-diagrams.mjs` (mermaid, pure-SVG labels — htmlLabels break in `<img>`) | **done** (2026-07-02) |
+| Calibration stats graphic | `.stat` cards on deck slide 8 (numbers from [[scoring-card]]) | **done** (2026-07-02) |
+| Warm Human Marp theme | `docs/slides/warm-human.css` (tokens mirrored from `app/globals.css`) | **done** (2026-07-02) |
+| The deck itself | `docs/slides/deck.md` → `deck.html` / `deck.pdf` | **done** (2026-07-02) — 12 slides, every one visually verified |
+
+Build commands (from `triage-dashboard/`, servers not required):
+
+```bash
+npx -y @marp-team/marp-cli --no-stdin ../docs/slides/deck.md --theme ../docs/slides/warm-human.css --html -o ../docs/slides/deck.html
+# PDF: set CHROME_PATH to the Playwright chromium exe, add --allow-local-files, -o deck.pdf
+node ../docs/slides/render-diagrams.mjs   # regenerate diagram SVGs after editing .mmd sources
+```
 
 ## Process guardrails
 

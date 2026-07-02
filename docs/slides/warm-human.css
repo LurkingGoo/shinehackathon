@@ -1,0 +1,217 @@
+/* ============================================================================
+ * WARM HUMAN — Marp theme.
+ * @theme warm-human
+ *
+ * Derived 1:1 from the product's design tokens (triage-dashboard/
+ * app/globals.css). The deck frames the product; it never recolors it.
+ * Layout is flow-based by design — content that doesn't fit is a visible
+ * overflow you fix by cutting words, not by nudging boxes.
+ * ==========================================================================*/
+
+@import "default";
+
+:root {
+  /* surfaces */
+  --bg: #fbf7f2;
+  --panel: #fffdfb;
+  --panel-soft: #faf5ee;
+  /* ink */
+  --ink: #33291f;
+  --muted: #8a7c6d;
+  --line: #efe6da;
+  /* brand (terracotta) */
+  --brand: #c65d3b;
+  --brand-soft: #fbeee7;
+  /* status */
+  --sage: #6f8f6a;
+  --sage-soft: #eef3ec;
+  --sun: #c9962b;
+  --sun-soft: #f8efd8;
+  --red: #c0392b;
+  --red-soft: #fbe9e6;
+  /* shape */
+  --radius: 20px;
+  --radius-sm: 14px;
+  --shadow: 0 2px 4px rgba(90, 60, 30, 0.05), 0 10px 28px rgba(90, 60, 30, 0.07);
+  --shadow-lg: 0 4px 8px rgba(90, 60, 30, 0.06), 0 16px 34px rgba(90, 60, 30, 0.1);
+}
+
+section {
+  background: radial-gradient(900px 380px at 80% -10%, #fdeee4, transparent), var(--bg);
+  color: var(--ink);
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica,
+    Arial, sans-serif;
+  font-size: 26px;
+  line-height: 1.5;
+  padding: 64px 76px;
+}
+
+/* ------------------------------ typography ------------------------------- */
+h1 {
+  color: var(--ink);
+  font-size: 1.7em;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.35em;
+}
+h1 strong,
+h2 strong {
+  color: var(--brand);
+  font-weight: 700;
+}
+h2 {
+  color: var(--ink);
+  font-size: 1.25em;
+  font-weight: 700;
+}
+h6 {
+  /* kicker — small terracotta overline above the slide title */
+  color: var(--brand);
+  font-size: 0.62em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 0 0 0.6em;
+}
+a { color: var(--brand); }
+strong { color: var(--brand); font-weight: 700; }
+em { color: var(--muted); font-style: normal; }
+blockquote {
+  border-left: 5px solid var(--brand);
+  background: var(--brand-soft);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 0.55em 0.9em;
+  color: var(--ink);
+  margin: 0.6em 0;
+}
+ul, ol { margin: 0.4em 0; }
+li { margin: 0.24em 0; }
+li::marker { color: var(--brand); }
+
+/* --------------------------------- images -------------------------------- */
+/* every product shot/chip reads as a card: rounded, warm shadow, hairline */
+img {
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+img[alt~="bare"] {
+  /* diagrams/SVGs: no card chrome */
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  border-radius: 0;
+}
+
+/* --------------------------------- tables -------------------------------- */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.82em;
+  box-shadow: var(--shadow);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin: 0.6em auto;
+}
+th {
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.78em;
+  letter-spacing: 0.06em;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line);
+}
+td {
+  background: var(--panel);
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line);
+}
+tr:last-child td { border-bottom: none; }
+
+/* ------------------------------ page footer ------------------------------ */
+footer {
+  color: var(--muted);
+  font-size: 0.55em;
+  left: 76px;
+  bottom: 28px;
+}
+section::after {
+  /* page number */
+  color: var(--muted);
+  font-size: 0.55em;
+  right: 76px;
+  bottom: 28px;
+}
+
+/* ------------------------------ title slide ------------------------------ */
+section.title {
+  text-align: center;
+  justify-content: center;
+}
+section.title h1 { font-size: 2.5em; margin-bottom: 0.15em; }
+section.title p { color: var(--muted); font-size: 1.05em; }
+section.title footer, section.title::after { display: none; }
+
+/* ---------------------------- statement slide ----------------------------- */
+/* one big centered thought (problem / insight beats) */
+section.statement {
+  justify-content: center;
+}
+section.statement h1 { font-size: 1.9em; max-width: 24ch; }
+section.statement p { color: var(--muted); font-size: 1.0em; }
+
+/* ------------------------------ chip layouts ----------------------------- */
+/* establish → chip: caption sits under each crop, muted, one line */
+.cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 34px;
+  align-items: center;
+}
+.cols3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+figure {
+  margin: 0;
+  text-align: center;
+}
+figure img { width: 100%; }
+figcaption {
+  color: var(--muted);
+  font-size: 0.72em;
+  margin-top: 10px;
+  line-height: 1.35;
+}
+
+/* highlight numbers (the "It's real" slide) */
+.stat {
+  display: inline-block;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px 22px;
+  margin: 4px 8px 4px 0;
+  text-align: center;
+}
+.stat b {
+  display: block;
+  color: var(--brand);
+  font-size: 1.45em;
+  line-height: 1.1;
+}
+.stat span {
+  color: var(--muted);
+  font-size: 0.58em;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.stat.red b { color: var(--red); }
+.stat.sage b { color: var(--sage); }
+.stat.sun b { color: var(--sun); }

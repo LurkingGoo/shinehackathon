@@ -1,0 +1,19 @@
+%% 3-layer architecture — sense → score → decide.
+%% Source of truth: docs/solution-overview.md §How it works.
+%% Rendered to assets/architecture.svg by render-diagrams.mjs (Warm Human theme).
+flowchart LR
+    subgraph HOME["Resident's home"]
+        PIR["PIR motion + door sensors<br/>(presence-only, no camera)"]
+        W["Wearable accelerometer<br/>(optional)"]
+    end
+    subgraph SCORE["Scoring service"]
+        A["Acute track<br/>fall physics: free-fall → impact → stillness"]
+        C["Chronic track<br/>self-baselining: today vs THIS resident's normal"]
+    end
+    subgraph DECIDE["Caseworker dashboard"]
+        R["Ranked caseload +<br/>plain-language rationale"]
+    end
+    W --> A
+    PIR --> C
+    A -- "incident, seconds" --> R
+    C -- "daily score" --> R
