@@ -65,6 +65,9 @@ elderly-typical movements — walking slowly, slow sits, lying down, stooping,
 even **stumbling without falling** — trigger at 0–5%. Daily alarm load on a
 monitored elderly resident is therefore far below the headline ADL rate.
 
+- Demo incident trace (pinned): SisFall `F11_SA16_R03` — **11.2 g** peak
+  impact, **12 s** post-impact stillness. This is the fall replayed by
+  `POST /incidents/simulate` and the numbers shown on the acute card.
 - Chronic: real-resident validation via CASAS Aruba (220 days) — the
   self-baselined features recover a genuine routine (typ. kitchen gap 4.2 h,
   first door-open 09:35, 3.8 night bathroom trips) and `--demo-day auto`

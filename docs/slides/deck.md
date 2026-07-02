@@ -211,6 +211,25 @@ checksums in a committed lock file, and every number reproduces from one script.
 
 ###### Backup · for Q&A
 
+# From a fall to the **dashboard**
+
+The path is the same in the demo and in deployment. Only the source of
+the signal changes.
+
+1. The bangle streams accelerometer readings to the scoring service.
+2. The detector watches every reading for the ordered fall signature —
+   dip, spike, stillness.
+3. A detection pushes an incident event down a live stream the dashboard
+   is always listening to. The resident pins to the top in seconds.
+
+*Step 1 is the one link we simulate — there is no wristband in the room.
+The Simulate button feeds a real recorded SisFall trace straight into step 2,
+and everything after — detection, push, re-rank — is the production path.*
+
+---
+
+###### Backup · for Q&A
+
 # What a flat **needs**
 
 - Motion sensors in the rooms that carry routine — kitchen, bedroom, bathroom, living room.
