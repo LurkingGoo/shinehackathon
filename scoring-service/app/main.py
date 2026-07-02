@@ -58,6 +58,7 @@ def simulate() -> IncidentEvent:
     trace = loaders.default_sisfall_trace()
     if trace is not None:
         fixtures.set_acute_trace(loaders.sisfall_smv(trace), loaders.SISFALL_FS)
+    fixtures.mark_incident()  # /caseload now carries the acute row (refresh-proof)
     event = fixtures.build_incident_event()
     hub.publish(event)
     return event

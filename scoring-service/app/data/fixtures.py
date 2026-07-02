@@ -71,7 +71,7 @@ CHRONIC: list[ChronicResident] = [
         "r-wong", "Wong Lai Keng", 85, "Blk 108 #11-330", "Door + PIR",
         "CASAS ambient", 60, "1h ago", days_of_history=30, data_quality=0.77,
         inputs=[
-            CFI("Bedroom exit", "None by 10:00", 0.44, "typ. 07:30", anomaly=0.72),
+            CFI("Bedroom exit", "not seen by 10:00", 0.44, "typ. 07:30", anomaly=0.72),
             CFI("Bathroom visits", "0 today", 0.22, "typ. 2 by 10:00", anomaly=0.55),
             CFI("Motion variance", "3.1σ low", 0.11, anomaly=0.6),
         ],
@@ -128,7 +128,8 @@ def _try_real_resident() -> None:
             inputs.append(CFI(
                 "Front door", f"first opened {int(h):02d}:{int(h % 1 * 60):02d}",
                 0.15, f"typ. {int(db['mean']):02d}:{int(db['mean'] % 1 * 60):02d}",
-                observed=h, mean=db["mean"], std=db["std"]))
+                observed=h, mean=db["mean"], std=db["std"],
+                side="both"))  # departure from the door routine either way
         else:
             inputs.append(CFI("Front door", "Not opened today", 0.15,
                               f"typ. {int(db['mean']):02d}:{int(db['mean'] % 1 * 60):02d}",
@@ -138,7 +139,15 @@ def _try_real_resident() -> None:
         inputs.append(CFI(
             "Night bathroom trips", f"{o['night_bathroom_trips']:.0f} / night", 0.20,
             f"typ. {nb['mean']:.0f}",
-            observed=o["night_bathroom_trips"], mean=nb["mean"], std=nb["std"]))
+            observed=o["night_bathroom_trips"], mean=nb["mean"], std=nb["std"],
+            side="both"))  # more = UTI/decline; fewer corroborates inactivity
+    if "daily_activity" in o and "daily_activity" in b:
+        ab = b["daily_activity"]
+        inputs.append(CFI(
+            "Activity volume", f"{o['daily_activity']:.0f} events today", 0.13,
+            f"typ. {ab['mean']:.0f}/day",
+            observed=o["daily_activity"], mean=ab["mean"], std=ab["std"],
+            side="low"))  # whole-day low volume corroborates inactivity
     if not inputs:
         return
 
@@ -247,10 +256,36 @@ def _acute_detail() -> ResidentDetail:
     return d.model_copy(update={"briefing": deterministic_briefing(d)})
 
 
+# An injected incident persists here so /caseload agrees with the SSE event
+# (a page refresh mid-demo must not erase the fall — demo-runbook fix #4).
+INCIDENT_TTL_S = 30 * 60
+_incident_at: datetime | None = None
+
+
+def mark_incident() -> None:
+    global _incident_at
+    _incident_at = datetime.now(timezone.utc)
+
+
+def clear_incident() -> None:
+    global _incident_at
+    _incident_at = None
+
+
+def incident_active() -> bool:
+    return (_incident_at is not None
+            and (datetime.now(timezone.utc) - _incident_at).total_seconds()
+            < INCIDENT_TTL_S)
+
+
 def build_ranked_caseload() -> RankedCaseload:
-    """Order: acute first, then chronic by COMPUTED risk desc (the ranking rule)."""
+    """Order: acute first (while an incident is active), then chronic by
+    COMPUTED risk desc (the ranking rule)."""
     ranked = sorted(CHRONIC, key=lambda r: _chronic_score(r)[0].risk, reverse=True)
-    entries = [_chronic_entry(r, i + 1) for i, r in enumerate(ranked)]
+    offset = 1 if incident_active() else 0
+    entries = [_chronic_entry(r, i + 1 + offset) for i, r in enumerate(ranked)]
+    if offset:
+        entries.insert(0, _acute_entry(1))
     return RankedCaseload(generated_at=_iso_min_ago(0), entries=entries)
 
 

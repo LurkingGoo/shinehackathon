@@ -16,9 +16,19 @@ def zscore(observed: float, mean: float, std: float) -> float:
     return (observed - mean) / max(std, EPS)
 
 
-def anomaly(observed: float, mean: float, std: float) -> float:
-    """Squashed one-sided anomaly in 0..1 (higher = further above baseline)."""
+def anomaly(observed: float, mean: float, std: float, side: str = "high") -> float:
+    """Squashed anomaly in 0..1 with per-feature directionality
+    (docs/feature-spec.md §2):
+      side="high" — only above baseline is concerning (e.g. kitchen gap)
+      side="low"  — only below baseline is concerning (e.g. activity volume)
+      side="both" — any departure from routine is signal (e.g. night trips:
+                    more suggests UTI/decline, fewer corroborates inactivity)
+    """
     z = zscore(observed, mean, std)
+    if side == "low":
+        z = -z
+    elif side == "both":
+        z = abs(z)
     return float(np.clip(z / Z_CAP, 0.0, 1.0))
 
 

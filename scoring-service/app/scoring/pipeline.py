@@ -35,13 +35,14 @@ class ChronicFeatureInput:
     mean: float | None = None
     std: float | None = None
     anomaly: float | None = None
+    side: str = "high"  # directionality: "high" | "low" | "both" (feature-spec §2)
 
 
 def _anomaly_of(fi: ChronicFeatureInput) -> float:
     if fi.anomaly is not None:
         return float(np.clip(fi.anomaly, 0.0, 1.0))
     if None not in (fi.observed, fi.mean, fi.std):
-        return _chronic.anomaly(fi.observed, fi.mean, fi.std)  # z-score path
+        return _chronic.anomaly(fi.observed, fi.mean, fi.std, fi.side)  # z-score path
     return 0.0
 
 

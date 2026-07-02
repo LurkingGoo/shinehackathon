@@ -3,7 +3,7 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.2.0
+spec_version: 1.3.0
 last_updated: 2026-07-02
 tags: [features, scoring, reference]
 ---
@@ -88,9 +88,19 @@ typical value + spread, stored in `baselines.json`:
 the resident is their own control; nothing US-specific transfers.
 
 **Live anomaly score** per feature:
-`z = (observed − mean) / max(std, ε)`, then squash `a = clamp(z / Z_CAP, 0, 1)`
-with `Z_CAP = 4` *(tune)*. Gap-type features use a ratio
-`observed_gap / typical_gap` instead of z where a distribution is thin.
+`z = (observed − mean) / max(std, ε)`, directed by the feature's **side**, then
+squash `a = clamp(z' / Z_CAP, 0, 1)` with `Z_CAP = 4` *(tune)*. Gap-type
+features use a ratio `observed_gap / typical_gap` instead of z where a
+distribution is thin.
+
+**Directionality (`side`, spec 1.3.0).** Each feature declares which departure
+from baseline is concerning: `high` (`z' = z`, e.g. kitchen gap), `low`
+(`z' = −z`, e.g. activity volume), or `both` (`z' = |z|`, e.g. night trips —
+more suggests UTI/decline, fewer corroborates inactivity; door timing — any
+break in the routine is signal). Motivated by the real CASAS resident's broken
+day (2011-02-19): two of three signals broke *downward* and scored 0 under
+one-sided scoring, dropping the genuinely anomalous resident to rank 2.
+Implemented as `chronic.anomaly(..., side)` / `ChronicFeatureInput.side`.
 
 **Aggregate:** `risk = clamp(Σ(weightᵢ · aᵢ), 0, 1)` — the **sum of absolute
 weighted contributions**, NOT a per-resident weighted mean. Weights are
@@ -103,14 +113,14 @@ weighted *mean*, remains for relative-weight uses.)
 
 ### Chronic features (aligned to current fixtures)
 
-| `label` | Inputs (sensors → area) | Computation | `weight` | `baseline` display | Edge / failure |
-|---------|-------------------------|-------------|----------|--------------------|----------------|
-| Kitchen inactivity | kitchen PIR gap since last fire | hours since last kitchen motion → z vs baseline gap | 0.45–0.55 | `typ. < 4h` | Resident out (door opened + gone) → suppress, don't score as anomaly |
-| Front door not opened | front-door sensor, first-open time | today's first open vs typical first-open hour | 0.10–0.20 | `typ. 08:10` | Weekend/routine variance → wide std absorbs it |
-| Last confirmed motion | any PIR, most recent | recency string + area; low weight, context | 0.10–0.20 | `""` | Sensor fault looks like inactivity → cross-check sensor-health feature |
-| Night activity (bathroom trips) | bathroom PIR during sleep window | PIR fires clustered into **visits** (fires ≥ 10 min *(tune)* apart = new trip) vs baseline nightly trips | 0.15–0.25 | `typ. 3–4` | UTI/decline signal; abnormal count ⇒ elevated. Raw fires overcount ~17× (a PIR refires per visit — measured on CASAS Aruba) |
-| Activity volume | all PIR fires / hour, rolling | today's daily total vs baseline daily total | 0.10–0.20 | `typ. N fires/day` | Whole-day low volume corroborates inactivity |
-| Sensor-health / data gap | per-sensor last-seen | stale sensor → flags **confidence**, not risk | (feeds confidence) | `all reporting` | Prevents a dead sensor from reading as "resident inactive" |
+| `label` | Inputs (sensors → area) | Computation | `side` | `weight` | `baseline` display | Edge / failure |
+|---------|-------------------------|-------------|--------|----------|--------------------|----------------|
+| Kitchen inactivity | kitchen PIR gap since last fire | hours since last kitchen motion → z vs baseline gap | high | 0.45–0.55 | `typ. < 4h` | Resident out (door opened + gone) → suppress, don't score as anomaly |
+| Front door timing | front-door sensor, first-open time | today's first open vs typical first-open hour | both | 0.10–0.20 | `typ. 08:10` | Weekend/routine variance → wide std absorbs it |
+| Last confirmed motion | any PIR, most recent | recency string + area; low weight, context | high | 0.10–0.20 | `""` | Sensor fault looks like inactivity → cross-check sensor-health feature |
+| Night activity (bathroom trips) | bathroom PIR during sleep window | PIR fires clustered into **visits** (fires ≥ 10 min *(tune)* apart = new trip) vs baseline nightly trips | both | 0.15–0.25 | `typ. 3–4` | UTI/decline signal; abnormal count either way ⇒ elevated. Raw fires overcount ~17× (a PIR refires per visit — measured on CASAS Aruba) |
+| Activity volume | all PIR fires / hour, rolling | today's daily total vs baseline daily total | low | 0.10–0.20 | `typ. N fires/day` | Whole-day low volume corroborates inactivity |
+| Sensor-health / data gap | per-sensor last-seen | stale sensor → flags **confidence**, not risk | — | (feeds confidence) | `all reporting` | Prevents a dead sensor from reading as "resident inactive" |
 
 **confidence (chronic)** = `min(data_completeness, sensor_health, baseline_maturity)`
 where `baseline_maturity = min(1, days_of_history / 14)`. A resident onboarded 2

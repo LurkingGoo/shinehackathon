@@ -26,10 +26,10 @@ served pre-real-data fixtures and "verified" fine. Never trust a running server.
 
 | # | Finding | Fix | Status |
 |---|---------|-----|--------|
-| 1 | Real r-rajoo ranks **2nd** (0.411) under synthetic r-wong — his real broken day breaks *downward* (2 night trips vs typ 3.8; door early) and one-sided z-scores score below-baseline as 0 | Two-sided anomaly featurization ([[feature-spec]] §2/§4 debt) — **promoted from stretch to demo-critical** | open |
-| 2 | First-on-disk fall (F01) is barely over threshold: "2.4 g, 7 s, 71%" — weak on stage | Scan falls once, pin a dramatic real trace via `SISFALL_TRACE` | open |
-| 3 | Top caseload row reads "Bedroom exit — None by 10:00" — looks like a null leak | Rephrase fixture copy: "No bedroom exit by 10:00" | open |
-| 4 | Page refresh after Simulate erases the incident; `/caseload` disagrees with the SSE event's `rank: 1` | Keep incident in service memory (TTL) and merge into `/caseload` | open |
+| 1 | Real r-rajoo ranks **2nd** (0.411) under synthetic r-wong — his real broken day breaks *downward* (2 night trips vs typ 3.8; door early) and one-sided z-scores score below-baseline as 0 | Per-feature directionality (`side`: high/low/both, spec 1.3.0) + Activity-volume feature added to the real-resident row — **r-rajoo now rank 1 at 0.549** | **fixed 2026-07-02** |
+| 2 | First-on-disk fall (F01) is barely over threshold: "2.4 g, 7 s, 71%" — weak on stage | `scripts/pick_demo_trace.py` scans all falls, pins the most legible detected one to `data/sisfall/demo_trace.json` (picked: F11_SA16_R03 — **11.2 g, 12 s stillness**); `SISFALL_TRACE` still overrides | **fixed 2026-07-02** |
+| 3 | Top caseload row reads "Bedroom exit — None by 10:00" — looks like a null leak | Copy now "not seen by 10:00" | **fixed 2026-07-02** |
+| 4 | Page refresh after Simulate erases the incident; `/caseload` disagrees with the SSE event's `rank: 1` | Incident kept in service memory (30-min TTL) and merged into `/caseload` at rank 1; covered by `test_incident_persists_into_caseload` | **fixed 2026-07-02** |
 | 5 | Stale-server hazard (above) | Pre-flight checklist; consider a `buildInfo` field in `/health` | mitigated |
 | 6 | No SSE heartbeat/reconnect — a dropped stream means Simulate silently goes nowhere | Heartbeat + client reconnect (stretch) | open |
 | 7 | Pin/flash/auto-open animation never visually verified (data layer is; pixels aren't) | Browser rehearsal once Chrome extension is connected; capture screenshots for the deck | open |

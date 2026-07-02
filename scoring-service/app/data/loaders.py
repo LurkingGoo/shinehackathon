@@ -62,13 +62,22 @@ def sisfall_smv(path: str | Path) -> np.ndarray:
 def default_sisfall_trace() -> Path | None:
     """The trace `POST /incidents/simulate` injects, if a real one is on disk.
 
-    Resolution order: $SISFALL_TRACE env var, else the first .txt under
-    data/sisfall/ (fall files are named F*.txt). None -> caller falls back to
-    the synthetic trace, so the demo never breaks on a missing dataset.
+    Resolution order: $SISFALL_TRACE env var, else the curated demo trace
+    pinned by scripts/pick_demo_trace.py (data/sisfall/demo_trace.json), else
+    the first .txt under data/sisfall/ (fall files are named F*.txt). None ->
+    caller falls back to the synthetic trace, so the demo never breaks.
     """
     env = os.environ.get("SISFALL_TRACE")
     if env and Path(env).is_file():
         return Path(env)
+    pin = SISFALL_DIR / "demo_trace.json"
+    if pin.is_file():
+        import json
+        picked = Path(json.loads(pin.read_text())["path"])
+        if not picked.is_absolute():
+            picked = SISFALL_DIR / picked
+        if picked.is_file():
+            return picked
     if SISFALL_DIR.is_dir():
         # rglob: the SisFall zip extracts into per-subject folders (SA01/, ...)
         falls = sorted(SISFALL_DIR.rglob("F*.txt")) or sorted(SISFALL_DIR.rglob("*.txt"))

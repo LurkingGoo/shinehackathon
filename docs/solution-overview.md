@@ -132,13 +132,10 @@ Full model card & datasheet: [[scoring-card]].
 
 ## Beyond the PoC
 
-1. **Two-sided anomaly** — "less than usual" (fewer night trips, door never
-   opened) scores as strongly as "more than usual". *(In progress — the real
-   resident's data made this the top scoring priority.)*
-2. **Escalation integrations** — welfare-call automation (Twilio), MOH/AIC
+1. **Escalation integrations** — welfare-call automation (Twilio), MOH/AIC
    line handoff on unacknowledged acute events.
-3. **Caseworker briefing** — a short LLM-drafted morning brief per flagged
+2. **Caseworker briefing** — a short LLM-drafted morning brief per flagged
    resident, grounded strictly in the deterministic features (guardrailed —
    generation never changes a score).
-4. **Pilot** — one One Care cluster, N units, measure time-to-detection and
+3. **Pilot** — one One Care cluster, N units, measure time-to-detection and
    caseworker minutes saved per shift.

@@ -7,6 +7,7 @@ self-baselining anomaly behaves monotonically.
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from app.scoring import acute, chronic
 
@@ -58,6 +59,21 @@ def test_chronic_anomaly_monotonic_and_bounded():
     late = chronic.anomaly(16.0, baseline_mean, baseline_std)
     assert 0.0 <= on_time < late <= 1.0
     assert late == 1.0  # 12σ over → capped at 1
+
+
+def test_two_sided_anomaly_directionality():
+    """feature-spec §2: side='low' flags below-baseline, side='both' flags any
+    departure — the fix for real below-baseline signals scoring 0 (fix #1)."""
+    mean, std = 3.8, 1.6  # real resident's night bathroom trips
+    # 'high' (default) is blind to a drop — the old behavior, preserved
+    assert chronic.anomaly(2.0, mean, std) == 0.0
+    # 'low' sees the drop; 'both' sees departures in either direction equally
+    low = chronic.anomaly(2.0, mean, std, side="low")
+    assert 0.0 < low <= 1.0
+    assert chronic.anomaly(2.0, mean, std, side="both") == low
+    assert chronic.anomaly(5.6, mean, std, side="both") == pytest.approx(low)
+    # 'low' is blind to a rise
+    assert chronic.anomaly(9.0, mean, std, side="low") == 0.0
 
 
 def test_aggregate_risk_is_weighted_mean():

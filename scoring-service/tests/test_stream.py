@@ -31,3 +31,28 @@ def test_hub_delivers_event_to_subscriber():
 def test_no_subscribers_is_safe():
     hub = IncidentHub()
     assert hub.publish(build_incident_event()) == 0
+
+
+def test_incident_persists_into_caseload():
+    """A simulated incident must survive a page refresh: after simulate,
+    /caseload itself carries the acute row at rank 1 (demo-runbook fix #4)."""
+    from fastapi.testclient import TestClient
+
+    from app.data import fixtures
+    from app.main import app
+
+    client = TestClient(app)
+    fixtures.clear_incident()
+    try:
+        before = client.get("/caseload").json()
+        assert all(e["score"]["track"] == "chronic" for e in before["entries"])
+
+        event = client.post("/incidents/simulate").json()
+        after = client.get("/caseload").json()
+        top = after["entries"][0]
+        assert top["score"]["track"] == "acute"
+        assert top["rank"] == 1 and top["id"] == event["entry"]["id"]
+        # chronic rows follow, re-ranked from 2 with no gaps
+        assert [e["rank"] for e in after["entries"]] == list(range(1, len(after["entries"]) + 1))
+    finally:
+        fixtures.clear_incident()  # don't leak state into other tests
