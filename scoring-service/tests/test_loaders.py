@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 
 from app.data import loaders
 from app.main import app
-from app.scoring.acute import detect_fall, smv
+from app.scoring.acute import FREEFALL_MIN_S, detect_fall, smv
 
 FS = loaders.SISFALL_FS
 G_PER_BIT = (2 * 16.0) / (2 ** 13)
@@ -72,7 +72,8 @@ def test_fall_file_detects_end_to_end(tmp_path):
     res = detect_fall(s, FS)
     assert res.detected
     assert res.peak_g == pytest.approx(5.0, abs=0.1)
-    assert res.freefall_ms >= 80
+    # detect_fall reports the dip length at the trigger point — the calibrated min
+    assert res.freefall_ms >= FREEFALL_MIN_S * 1000
 
 
 def test_adl_file_does_not_detect(tmp_path):

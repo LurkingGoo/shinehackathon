@@ -3,8 +3,8 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.1.0
-last_updated: 2026-07-01
+spec_version: 1.2.0
+last_updated: 2026-07-02
 tags: [features, scoring, reference]
 ---
 
@@ -108,7 +108,7 @@ weighted *mean*, remains for relative-weight uses.)
 | Kitchen inactivity | kitchen PIR gap since last fire | hours since last kitchen motion → z vs baseline gap | 0.45–0.55 | `typ. < 4h` | Resident out (door opened + gone) → suppress, don't score as anomaly |
 | Front door not opened | front-door sensor, first-open time | today's first open vs typical first-open hour | 0.10–0.20 | `typ. 08:10` | Weekend/routine variance → wide std absorbs it |
 | Last confirmed motion | any PIR, most recent | recency string + area; low weight, context | 0.10–0.20 | `""` | Sensor fault looks like inactivity → cross-check sensor-health feature |
-| Night activity (bathroom trips) | bathroom PIR during sleep window | count vs baseline nightly count | 0.15–0.25 | `typ. 0–1` | UTI/decline signal; high count ⇒ elevated |
+| Night activity (bathroom trips) | bathroom PIR during sleep window | PIR fires clustered into **visits** (fires ≥ 10 min *(tune)* apart = new trip) vs baseline nightly trips | 0.15–0.25 | `typ. 3–4` | UTI/decline signal; abnormal count ⇒ elevated. Raw fires overcount ~17× (a PIR refires per visit — measured on CASAS Aruba) |
 | Activity volume | all PIR fires / hour, rolling | today's daily total vs baseline daily total | 0.10–0.20 | `typ. N fires/day` | Whole-day low volume corroborates inactivity |
 | Sensor-health / data gap | per-sensor last-seen | stale sensor → flags **confidence**, not risk | (feeds confidence) | `all reporting` | Prevents a dead sensor from reading as "resident inactive" |
 

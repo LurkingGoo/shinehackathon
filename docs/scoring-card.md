@@ -3,7 +3,7 @@ type: doc
 diataxis: explanation
 title: Scoring Card (Model Card + Datasheet)
 status: solidified
-last_updated: 2026-07-01
+last_updated: 2026-07-02
 tags: [scoring, model-card, datasheet, ethics, limits]
 ---
 
@@ -42,12 +42,31 @@ Shrinks time-to-detection and stretches scarce caseworker manpower. It does not
 promise to catch every event.
 
 ### Metrics & evaluation
-Heuristic, so evaluated by **replayed traces**, not a training metric:
-- Acute: detection rate / false-alarm rate across SisFall falls vs ADLs at the
-  chosen thresholds (calibrate `2.7 g` / `0.6 g` / `500 ms` on real traces).
-- Chronic: whether flagged anomalies correspond to genuine routine breaks in
-  CASAS slices; watch false-positives from wide-variance residents.
-- **Report numbers once calibrated** — do not claim accuracy pre-calibration.
+Heuristic, so evaluated by **replayed traces**, not a training metric.
+
+**Calibrated 2026-07-02 on the full real SisFall dataset** (1,798 falls /
+2,707 ADLs, 38 subjects; `scripts/calibrate.py --grid`, provenance in
+`scoring-service/data/datasets.lock.json`):
+
+| Operating point | Detection | False-alarm (ADLs) |
+|---|---|---|
+| Pre-calibration (0.6 g / 2.7 g / 80 ms / 500 ms) | 51.8% | 17.8% |
+| **Calibrated (0.8 g / 2.3 g / 40 ms / 500 ms)** | **96.2%** | 29.8% |
+
+Chosen sensitivity-first (missed falls are the costliest error, below). The
+29.8% false-alarm rate is on SisFall's **deliberately fall-like ADLs**
+performed by young adults; per-activity split (`scripts/fa_breakdown.py`):
+alarms concentrate ~100% in vigorous activities (jogging, jumping obstacles,
+running stairs, car ingress/egress, collapsing into a chair), while
+elderly-typical movements — walking slowly, slow sits, lying down, stooping,
+even **stumbling without falling** — trigger at 0–5%. Daily alarm load on a
+monitored elderly resident is therefore far below the headline ADL rate.
+
+- Chronic: real-resident validation via CASAS Aruba (220 days) — the
+  self-baselined features recover a genuine routine (typ. kitchen gap 4.2 h,
+  first door-open 09:35, 3.8 night bathroom trips) and `--demo-day auto`
+  isolates a genuinely broken day (2011-02-19: 11.1 h kitchen gap, z ≈ 3.2).
+  Watch false-positives from wide-variance residents.
 
 ### Ethical considerations
 - **Dignity:** presence-only sensing; second-person, low-anxiety UI (Warm Human).
@@ -62,7 +81,9 @@ Heuristic, so evaluated by **replayed traces**, not a training metric:
   black box reaches the caseworker.
 
 ### Limitations
-- Thresholds are uncalibrated until tuned on real traces.
+- Acute thresholds are calibrated on SisFall (waist-worn sensor, mostly young
+  adults; 15 elderly for ADLs only) — the fall physics transfers, but the
+  false-alarm profile on a genuinely elderly cohort is extrapolated, not measured.
 - Chronic needs ~14 days of a resident's history for a mature baseline; new
   residents score at low confidence by design.
 - A dead/blinded sensor can masquerade as inactivity — mitigated by the

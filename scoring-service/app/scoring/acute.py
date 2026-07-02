@@ -11,10 +11,14 @@ from dataclasses import dataclass
 
 import numpy as np
 
-# Tunable thresholds — calibrate on SisFall (docs/feature-spec.md §1).
-FREEFALL_G = 0.6        # SMV below this = free fall
-IMPACT_G = 2.7          # SMV above this = impact
-FREEFALL_MIN_S = 0.08   # dip must be sustained at least this long
+# Tunable thresholds — CALIBRATED on the full real SisFall dataset 2026-07-02
+# (scripts/calibrate.py --grid, 1798 falls / 2707 ADLs): detection 96.2%,
+# false-alarm 29.8% on SisFall's deliberately fall-like ADLs (see
+# scripts/fa_breakdown.py for the per-activity split). The pre-calibration
+# values (0.6g / 2.7g / 80ms / 500ms) detected only 51.8%.
+FREEFALL_G = 0.8        # SMV below this = free fall
+IMPACT_G = 2.3          # SMV above this = impact
+FREEFALL_MIN_S = 0.04   # dip must be sustained at least this long
 IMPACT_WINDOW_S = 0.5   # impact must follow the dip within this window
 
 
