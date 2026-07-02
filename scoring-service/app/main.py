@@ -17,7 +17,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 
-from app.data import fixtures
+from app.data import fixtures, loaders
 from app.models import IncidentEvent, RankedCaseload, ResidentDetail
 from app.replay.engine import hub
 
@@ -52,8 +52,12 @@ def resident(rid: str) -> ResidentDetail:
 
 @app.post("/incidents/simulate", response_model=IncidentEvent)
 def simulate() -> IncidentEvent:
-    """Inject the canned SisFall fall — replaces the frontend mock's
-    simulateIncident. The real replayer will publish on genuine detection."""
+    """Inject a fall: a REAL SisFall trace when one is on disk (data/sisfall/
+    or $SISFALL_TRACE), else the synthetic trace so the demo never breaks.
+    The trace runs through the same acute pipeline as any detection."""
+    trace = loaders.default_sisfall_trace()
+    if trace is not None:
+        fixtures.set_acute_trace(loaders.sisfall_smv(trace), loaders.SISFALL_FS)
     event = fixtures.build_incident_event()
     hub.publish(event)
     return event

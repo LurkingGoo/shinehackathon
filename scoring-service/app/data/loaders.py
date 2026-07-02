@@ -1,26 +1,79 @@
 """Dataset loaders — SisFall (acute) + CASAS (chronic).
 
-STUB. This is where the real datasets replace the fixtures behind the same
-contract. See docs/scoring-card.md (Datasheet) and docs/feature-spec.md.
+Real parsers for the public datasets (docs/scoring-card.md Datasheet). The
+loaders replace the synthetic fixtures behind the same contract: they produce
+raw signals, the pipeline computes the scores.
 
-Planned:
-- load_sisfall_trace(path) -> np.ndarray of (ax, ay, az) at ~200 Hz, in g.
-  Feed to app.scoring.acute.smv() → detect_fall().
-- load_casas_events(path) -> DataFrame[timestamp, sensor, state]; map sensors to
-  areas via a per-home layout file; feed app.replay.baselines to precompute
-  per-resident baselines.json, then app.scoring.chronic.anomaly() live.
+SisFall file format (Sucerquia et al., 2017 — SisFall: A Fall and Movement
+Dataset): plain text, one sample per line at 200 Hz, 9 comma-separated integer
+ADC readings terminated by ';':
 
-Kept as a stub so the service runs on fixtures today; wiring these in is the
-next backend step (state.md / docs/demo-runbook.md).
+    ADXL345_x, ADXL345_y, ADXL345_z, ITG3200_x, ITG3200_y, ITG3200_z,
+    MMA8451Q_x, MMA8451Q_y, MMA8451Q_z;
+
+Conversion to physical units: value * (2*Range / 2^Resolution).
+We use the ADXL345 (13-bit, ±16 g) — the sensor the SisFall thresholds were
+published against.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
+import numpy as np
 
-def load_sisfall_trace(path: str | Path):  # pragma: no cover - stub
-    raise NotImplementedError("Wire SisFall accelerometer parsing here.")
+SISFALL_FS = 200.0  # Hz
+_ADXL345_G_PER_BIT = (2 * 16.0) / (2 ** 13)  # 13-bit ADC over ±16 g
+
+# Where real dataset files live (git-ignored; see docs/demo-runbook.md).
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+SISFALL_DIR = DATA_DIR / "sisfall"
+
+
+def load_sisfall_trace(path: str | Path) -> np.ndarray:
+    """Parse one SisFall file -> (N, 3) float array of ADXL345 acceleration in g.
+
+    Tolerates blank lines, trailing ';' and whitespace. Raises ValueError on a
+    line that isn't 9 integer fields (a truncated download, not a format drift).
+    """
+    rows: list[list[float]] = []
+    text = Path(path).read_text()
+    for ln, line in enumerate(text.splitlines(), start=1):
+        line = line.strip().rstrip(";").strip()
+        if not line:
+            continue
+        parts = [p for p in (s.strip() for s in line.split(",")) if p]
+        if len(parts) != 9:
+            raise ValueError(f"{path}:{ln}: expected 9 fields, got {len(parts)}")
+        rows.append([float(parts[0]), float(parts[1]), float(parts[2])])
+    if not rows:
+        raise ValueError(f"{path}: no samples")
+    return np.asarray(rows) * _ADXL345_G_PER_BIT
+
+
+def sisfall_smv(path: str | Path) -> np.ndarray:
+    """One SisFall file -> signal-magnitude vector in g (feed detect_fall)."""
+    trace = load_sisfall_trace(path)
+    return np.sqrt((trace ** 2).sum(axis=1))
+
+
+def default_sisfall_trace() -> Path | None:
+    """The trace `POST /incidents/simulate` injects, if a real one is on disk.
+
+    Resolution order: $SISFALL_TRACE env var, else the first .txt under
+    data/sisfall/ (fall files are named F*.txt). None -> caller falls back to
+    the synthetic trace, so the demo never breaks on a missing dataset.
+    """
+    env = os.environ.get("SISFALL_TRACE")
+    if env and Path(env).is_file():
+        return Path(env)
+    if SISFALL_DIR.is_dir():
+        falls = sorted(SISFALL_DIR.glob("F*.txt")) or sorted(SISFALL_DIR.glob("*.txt"))
+        if falls:
+            return falls[0]
+    return None
 
 
 def load_casas_events(path: str | Path):  # pragma: no cover - stub
+    """CASAS ambient events -> [(timestamp, sensor, state)]. Next backend step."""
     raise NotImplementedError("Wire CASAS ambient event parsing here.")

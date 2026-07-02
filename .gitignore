@@ -36,3 +36,6 @@ __pycache__/
 *.log
 .DS_Store
 Thumbs.db
+
+# real dataset files (large, licensed) - keep out of the vault repo
+scoring-service/data/

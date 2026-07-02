@@ -115,6 +115,18 @@ def _fall_smv() -> np.ndarray:
 
 _ACUTE_SMV = _fall_smv()
 
+# The trace behind r-tan's acute score. Injection (a real SisFall trace via
+# POST /incidents/simulate) replaces it so the drilldown fetched later matches
+# the numbers the IncidentEvent carried.
+_current_acute_smv: np.ndarray = _ACUTE_SMV
+_current_acute_fs: float = FS
+
+
+def set_acute_trace(smv: np.ndarray, fs: float = FS) -> None:
+    global _current_acute_smv, _current_acute_fs
+    _current_acute_smv = smv
+    _current_acute_fs = fs
+
 
 @dataclass
 class AcuteResident:
@@ -148,7 +160,7 @@ def _chronic_score(r: ChronicResident) -> tuple[RiskScore, list, str, str]:
 
 
 def _acute_score() -> tuple[RiskScore, list, str, str]:
-    parts = pipeline.score_acute(_ACUTE_SMV, FS)
+    parts = pipeline.score_acute(_current_acute_smv, _current_acute_fs)
     score = RiskScore(
         track="acute", risk=parts.risk, confidence=parts.confidence,
         updated_at=_iso_min_ago(ACUTE.updated_min_ago), recency=ACUTE.recency,
