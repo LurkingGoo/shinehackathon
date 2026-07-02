@@ -12,6 +12,13 @@ This project documents to a **defined standard**. New docs go in the right
 Diátaxis tier and follow the format for their kind. This file is the index and
 the standard; read it before adding docs.
 
+**Two audiences, one suite (agreed 2026-07-02):** the docs carry a
+**judge-facing layer** ([[solution-overview]] — product, problem fit, approach,
+snapshots) on top of the **engineering layer** (architecture, specs, runbook,
+ADRs). Judge-facing pages talk about the solution only — internal tooling
+(vault plumbing, index search, doc infrastructure) never appears there. Every
+judge-facing claim must trace to an engineering-tier source.
+
 ## The standard stack
 
 | Concern | Standard | Where |
@@ -26,6 +33,8 @@ the standard; read it before adding docs.
 
 | Tier | Doc | Purpose |
 |------|-----|---------|
+| Explanation | [[solution-overview]] | **Judge-facing** product story: problem → solution → credibility → limits. No internals; every claim traces into the tiers below |
+| How-to | [[slide-plan]] | Deck-as-code plan: tooling, 12-slide spine, asset list, guardrails |
 | Explanation | [[backend-architecture]] | Why the system is shaped this way (arc42-lite) |
 | Explanation | [[scoring-card]] | What the scoring does, on what data, with what limits & ethics |
 | Reference | [[feature-spec]] | Every `RiskFeature`: inputs, formula, thresholds, weight, rationale template |

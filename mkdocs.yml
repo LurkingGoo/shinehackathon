@@ -30,20 +30,25 @@ markdown_extensions:
   - toc:
       permalink: true
   - pymdownx.highlight
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
 
 nav:
   - Overview: README.md
-  - Explanation:
+  - The Solution (judges start here):
+      - Solution overview: solution-overview.md
+      - Model card & datasheet: scoring-card.md
+      - Slide plan: slide-plan.md
+  - Engineering:
       - Backend architecture: backend-architecture.md
-      - Scoring card (model card + datasheet): scoring-card.md
-  - Reference:
       - Feature specification: feature-spec.md
-  - How-to:
       - Demo runbook: demo-runbook.md
   - Decisions (ADRs):
       - Index: adr/README.md
-      - 0001 Filesystem-first vault: adr/0001-filesystem-first-vault.md
+      - 0001 Filesystem-first vault (internal tooling): adr/0001-filesystem-first-vault.md
       - 0002 Backend stack & scoring: adr/0002-backend-stack-and-scoring.md
       - 0003 Absolute-weight risk aggregation: adr/0003-absolute-weight-risk-aggregation.md
       - 0004 Contract parity guard: adr/0004-contract-parity-guard.md

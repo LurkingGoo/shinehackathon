@@ -9,6 +9,31 @@ tags: [howto, demo, runbook]
 
 # Demo Runbook
 
+## Pre-flight checklist (do this before going on stage)
+
+Rehearsal 2026-07-02 hit a stale-server hazard: a leftover process on :8000
+served pre-real-data fixtures and "verified" fine. Never trust a running server.
+
+1. Kill anything on :8000 / :3000, start both fresh (below).
+2. Freshness assertion: `curl -s localhost:8000/caseload | grep "real stream"`
+   — must match (r-rajoo backed by the real CASAS artifact).
+3. Stream attached before the beat: `curl -s localhost:8000/health` must show
+   `"subscribers" >= 1` once the dashboard is open. Only then press Simulate.
+4. Do **not** refresh the page after Simulate — the acute row currently lives
+   only in client SSE state (fix backlog below).
+
+## Fix backlog (rehearsal findings 2026-07-02, demo-impact order)
+
+| # | Finding | Fix | Status |
+|---|---------|-----|--------|
+| 1 | Real r-rajoo ranks **2nd** (0.411) under synthetic r-wong — his real broken day breaks *downward* (2 night trips vs typ 3.8; door early) and one-sided z-scores score below-baseline as 0 | Two-sided anomaly featurization ([[feature-spec]] §2/§4 debt) — **promoted from stretch to demo-critical** | open |
+| 2 | First-on-disk fall (F01) is barely over threshold: "2.4 g, 7 s, 71%" — weak on stage | Scan falls once, pin a dramatic real trace via `SISFALL_TRACE` | open |
+| 3 | Top caseload row reads "Bedroom exit — None by 10:00" — looks like a null leak | Rephrase fixture copy: "No bedroom exit by 10:00" | open |
+| 4 | Page refresh after Simulate erases the incident; `/caseload` disagrees with the SSE event's `rank: 1` | Keep incident in service memory (TTL) and merge into `/caseload` | open |
+| 5 | Stale-server hazard (above) | Pre-flight checklist; consider a `buildInfo` field in `/health` | mitigated |
+| 6 | No SSE heartbeat/reconnect — a dropped stream means Simulate silently goes nowhere | Heartbeat + client reconnect (stretch) | open |
+| 7 | Pin/flash/auto-open animation never visually verified (data layer is; pixels aren't) | Browser rehearsal once Chrome extension is connected; capture screenshots for the deck | open |
+
 > **How-to tier.** Run the system and drive the demo's key beat: a fall firing
 > mid-shift and re-ranking the caseload live. **The seam is swapped**: the
 > frontend serves live from `scoring-service` (Next `/api/*` rewrites proxy it,
