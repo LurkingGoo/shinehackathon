@@ -1,19 +1,14 @@
 /* ============================================================================
  * THE DATA SEAM  —  the single module every component reads data through.
  *
- *   UI  ──imports──▶  dataClient  ──fetch──▶  /api/*  ──reads──▶  fixtures.ts
+ *   UI  ──imports──▶  dataClient  ──fetch──▶  /api/*  ──proxies──▶  scoring-service
  *
- * RULE: components/ and app/ import ONLY from here. They never touch fixtures,
- * /api, fetch, or any other data source directly. This is the exact seam the
- * backend replaces.
+ * RULE: components/ and app/ import ONLY from here. They never touch /api,
+ * fetch, or any other data source directly.
  *
- * HOW THE BACKEND TAKES OVER (no UI changes):
- *   1. Point the three read methods at the real service (or just make /api/*
- *      proxy the backend — the URLs already exist).
- *   2. Replace `subscribeToIncidents` with a real EventSource / WebSocket to the
- *      live channel (see CLAUDE.md). Delete `simulateIncident` — it is mock-only.
- *
- * Everything below the DataClient interface is disposable mock plumbing.
+ * The mock era is over: /api/* rewrites (next.config.mjs) proxy the FastAPI
+ * scoring-service, the live channel is real SSE, and "Simulate incident"
+ * POSTs a real injection endpoint on the service.
  * ==========================================================================*/
 
 import type {
@@ -33,8 +28,8 @@ export interface DataClient {
    */
   subscribeToIncidents(handler: (event: IncidentEvent) => void): () => void;
   /**
-   * MOCK-ONLY. Fires the canned fall so the demo's "Simulate incident" button
-   * works with no backend. Delete once the live channel exists.
+   * Demo trigger: asks the scoring-service to inject a fall. The resulting
+   * IncidentEvent arrives back through the SSE stream like a real detection.
    */
   simulateIncident(): Promise<void>;
 }
@@ -50,10 +45,6 @@ async function getJSON<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-/* --------------------- mock live-incident channel ------------------------ */
-// A tiny in-process pub/sub standing in for the backend's push channel.
-const incidentListeners = new Set<(e: IncidentEvent) => void>();
-
 /* -------------------------------- client --------------------------------- */
 export const dataClient: DataClient = {
   getRankedCaseload() {
@@ -65,18 +56,14 @@ export const dataClient: DataClient = {
   },
 
   subscribeToIncidents(handler) {
-    incidentListeners.add(handler);
-    return () => incidentListeners.delete(handler);
-    // BACKEND: replace with
-    //   const es = new EventSource("/api/incidents/stream");
-    //   es.onmessage = (m) => handler(JSON.parse(m.data));
-    //   return () => es.close();
+    const es = new EventSource("/api/incidents/stream");
+    es.onmessage = (m) => handler(JSON.parse(m.data) as IncidentEvent);
+    return () => es.close();
   },
 
   async simulateIncident() {
-    // Fetch the canned incident shape from the mock endpoint, then fan out
-    // to subscribers exactly as a real push would.
-    const event = await getJSON<IncidentEvent>("/api/incidents");
-    incidentListeners.forEach((fn) => fn(event));
+    const res = await fetch(`${BASE}/api/incidents/simulate`, { method: "POST" });
+    if (!res.ok) throw new Error(`/api/incidents/simulate -> ${res.status}`);
+    // The IncidentEvent arrives via the SSE stream — no local fan-out.
   },
 };
