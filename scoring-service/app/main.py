@@ -90,4 +90,6 @@ async def incidents_stream(request: Request) -> EventSourceResponse:
         finally:
             hub.unsubscribe(q)
 
-    return EventSourceResponse(gen())
+    # no-transform: the Next dev proxy gzip-buffers proxied responses unless
+    # told not to — buffered SSE means events never reach the browser.
+    return EventSourceResponse(gen(), headers={"Cache-Control": "no-cache, no-transform"})

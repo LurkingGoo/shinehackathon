@@ -107,11 +107,16 @@ Human styling as the visual identity — the deck theme frames, never recolors.
 
 ## Asset list (to produce, tracked here)
 
+All screenshots + chips are produced by one script — `docs/slides/capture.mjs`
+(Playwright, headless; crop regions derived from element bounding boxes so
+regenerated shots regenerate the chips). Regenerate with both servers up:
+`cd triage-dashboard && node ../docs/slides/capture.mjs`.
+
 | Asset | Source | Status |
 |---|---|---|
-| Caseload screenshot (calm) | running PoC at :3000 | blocked on browser capture (runbook fix #7) |
-| Incident screenshot pair (pin + drill-down) | running PoC, Simulate beat | blocked on same |
-| 6 walkthrough chips (see table above) | cropped from the full shots by the capture script | blocked on same |
+| Caseload screenshot (calm) | `assets/caseload-calm.png` | **done** (2026-07-02) |
+| Incident screenshot pair (pin + drill-down) | `assets/caseload-incident-pin.png`, `assets/caseload-incident-drilldown.png` | **done** (2026-07-02) |
+| 6 walkthrough chips (see table above) | `assets/chip-*.png` | **done** (2026-07-02) |
 | 3-layer architecture diagram | `docs/slides/diagrams/architecture.mmd` (from [[solution-overview]]) | to write |
 | Calibration table graphic | scoring-card §Metrics numbers, styled by theme | to write |
 | Warm Human Marp theme | `docs/slides/warm-human.css` | to write |
