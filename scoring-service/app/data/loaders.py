@@ -18,6 +18,8 @@ published against.
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -74,6 +76,31 @@ def default_sisfall_trace() -> Path | None:
     return None
 
 
-def load_casas_events(path: str | Path):  # pragma: no cover - stub
-    """CASAS ambient events -> [(timestamp, sensor, state)]. Next backend step."""
-    raise NotImplementedError("Wire CASAS ambient event parsing here.")
+@dataclass
+class CasasEvent:
+    """One CASAS ambient event: PIR motion (M###), door (D###), etc."""
+    ts: datetime
+    sensor: str
+    state: str  # ON/OFF, OPEN/CLOSE, ...
+
+
+def load_casas_events(path: str | Path) -> list[CasasEvent]:
+    """Parse a CASAS annotated-events file -> chronological CasasEvent list.
+
+    On-disk format (WSU CASAS, e.g. Aruba/HH): whitespace-separated
+        DATE TIME SENSOR STATE [activity-label begin|end]
+        2010-11-04 00:03:50.209589 M003 ON
+    Activity labels are ignored (we self-baseline, we don't train on labels).
+    """
+    events: list[CasasEvent] = []
+    for ln, line in enumerate(Path(path).read_text().splitlines(), start=1):
+        parts = line.split()
+        if not parts:
+            continue
+        if len(parts) < 4:
+            raise ValueError(f"{path}:{ln}: expected 'date time sensor state'")
+        stamp = f"{parts[0]} {parts[1]}"
+        fmt = "%Y-%m-%d %H:%M:%S.%f" if "." in parts[1] else "%Y-%m-%d %H:%M:%S"
+        events.append(CasasEvent(datetime.strptime(stamp, fmt), parts[2], parts[3]))
+    events.sort(key=lambda e: e.ts)
+    return events
