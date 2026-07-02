@@ -86,6 +86,45 @@ def compute_baselines(events: list[CasasEvent], area_map: dict[str, str]) -> dic
     return {k: v for k, v in features.items() if v is not None}
 
 
+def observations_for_day(events: list[CasasEvent], area_map: dict[str, str],
+                         day: date) -> dict[str, float]:
+    """One day's OBSERVED feature values (same definitions as the baselines) —
+    what the live pipeline scores against baselines.json via z-score."""
+    day_events = [e for e in events if e.ts.date() == day]
+    night_next = [e for e in events
+                  if e.ts.date() == day + timedelta(days=1) and e.ts.hour < SLEEP_END_H]
+    obs: dict[str, float] = {}
+
+    kitchen = [e.ts for e in day_events
+               if area_map.get(e.sensor) == "kitchen"
+               and e.sensor.startswith("M") and e.state.upper() == "ON"]
+    if len(kitchen) >= 2:
+        obs["kitchen_gap_h"] = max(
+            (b - a).total_seconds() / 3600.0 for a, b in zip(kitchen, kitchen[1:]))
+    elif day_events:
+        # 0-1 kitchen fires all day: the "gap" is the whole waking day — the
+        # inactivity signal itself, not missing data.
+        obs["kitchen_gap_h"] = 24.0
+
+    doors = [e.ts.hour + e.ts.minute / 60.0 for e in day_events
+             if area_map.get(e.sensor) == "front-door"]
+    if doors:
+        obs["door_first_open_h"] = min(doors)
+
+    trips = [e for e in day_events
+             if area_map.get(e.sensor) == "bathroom" and e.sensor.startswith("M")
+             and e.state.upper() == "ON" and e.ts.hour >= SLEEP_START_H]
+    trips += [e for e in night_next
+              if area_map.get(e.sensor) == "bathroom" and e.sensor.startswith("M")
+              and e.state.upper() == "ON"]
+    obs["night_bathroom_trips"] = float(len(trips))
+
+    obs["daily_activity"] = float(sum(
+        1 for e in day_events
+        if e.sensor.startswith("M") and e.state.upper() == "ON"))
+    return obs
+
+
 def save_baselines(baselines: dict[str, dict], path: str | Path) -> None:
     Path(path).write_text(json.dumps(baselines, indent=2) + "\n")
 

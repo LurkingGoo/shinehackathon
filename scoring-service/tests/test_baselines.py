@@ -77,3 +77,17 @@ def test_baselines_roundtrip_json(history, tmp_path):
 
 def test_thin_history_yields_no_baseline():
     assert baselines.compute_baselines([], AREA_MAP) == {}
+
+
+def test_observations_match_baseline_definitions(history):
+    """A routine day observed with observations_for_day must land ~on the
+    baseline mean (same feature definitions on both sides = low z-score)."""
+    from datetime import date
+
+    b = baselines.compute_baselines(history, AREA_MAP)
+    obs = baselines.observations_for_day(history, AREA_MAP, date(2026, 6, 7))
+    for feat in ("kitchen_gap_h", "door_first_open_h", "daily_activity"):
+        z = abs(obs[feat] - b[feat]["mean"]) / b[feat]["std"]
+        assert z < 2.0, f"{feat}: obs {obs[feat]} vs {b[feat]} (z={z:.1f})"
+    # night trips: day 7's night has 23:30 + next-day 02:00 = 2 trips
+    assert obs["night_bathroom_trips"] == 2.0
