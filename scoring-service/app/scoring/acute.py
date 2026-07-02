@@ -31,17 +31,28 @@ def smv(ax: np.ndarray, ay: np.ndarray, az: np.ndarray) -> np.ndarray:
     return np.sqrt(np.asarray(ax) ** 2 + np.asarray(ay) ** 2 + np.asarray(az) ** 2)
 
 
-def detect_fall(smv_signal: np.ndarray, fs: float) -> FallResult:
-    """Detect a fall in a signal-magnitude window sampled at `fs` Hz."""
+def detect_fall(
+    smv_signal: np.ndarray,
+    fs: float,
+    *,
+    freefall_g: float = FREEFALL_G,
+    impact_g: float = IMPACT_G,
+    freefall_min_s: float = FREEFALL_MIN_S,
+    impact_window_s: float = IMPACT_WINDOW_S,
+) -> FallResult:
+    """Detect a fall in a signal-magnitude window sampled at `fs` Hz.
+
+    Thresholds default to the module constants; the calibration harness
+    (scripts/calibrate.py) sweeps them without touching production values."""
     s = np.asarray(smv_signal, dtype=float)
     if s.size == 0:
         return FallResult(False, 0.0, 0.0, 0.0)
 
     dt = 1.0 / fs
-    freefall_min = max(1, int(FREEFALL_MIN_S * fs))
-    impact_window = max(1, int(IMPACT_WINDOW_S * fs))
+    freefall_min = max(1, int(freefall_min_s * fs))
+    impact_window = max(1, int(impact_window_s * fs))
 
-    below = s < FREEFALL_G
+    below = s < freefall_g
     # find a run of free-fall samples of at least freefall_min length
     run = 0
     for i, b in enumerate(below):
@@ -49,7 +60,7 @@ def detect_fall(smv_signal: np.ndarray, fs: float) -> FallResult:
         if run >= freefall_min:
             dip_end = i
             seg = s[dip_end + 1: dip_end + 1 + impact_window]
-            if seg.size and seg.max() > IMPACT_G:
+            if seg.size and seg.max() > impact_g:
                 impact_idx = dip_end + 1 + int(np.argmax(seg))
                 peak = float(seg.max())
                 # post-impact stillness: samples near rest after impact
