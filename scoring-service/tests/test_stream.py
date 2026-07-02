@@ -61,3 +61,32 @@ def test_incident_persists_into_caseload():
         assert all(e["score"]["track"] == "chronic" for e in calm["entries"])
     finally:
         fixtures.clear_incident()  # don't leak state into other tests
+
+
+def test_incident_trace_endpoint():
+    """The drilldown waveform: /incidents/trace 404s while calm, and during an
+    incident returns the signal window with ordered phases (free-fall before
+    impact) and the impact peak preserved by the downsampling."""
+    from fastapi.testclient import TestClient
+
+    from app.data import fixtures
+    from app.main import app
+
+    client = TestClient(app)
+    fixtures.clear_incident()
+    try:
+        assert client.get("/incidents/trace").status_code == 404
+
+        client.post("/incidents/simulate")
+        r = client.get("/incidents/trace")
+        assert r.status_code == 200
+        t = r.json()
+
+        assert 0 < len(t["samples"]) <= 360
+        ff_start, ff_end = t["phases"]["freefall"]
+        assert 0 <= ff_start < ff_end < t["phases"]["impactS"]
+        # downsampling must not drop the impact peak the rationale quotes
+        assert max(t["samples"]) >= t["peakG"] * 0.999
+        assert min(t["samples"]) < t["thresholds"]["freefallG"]
+    finally:
+        fixtures.clear_incident()

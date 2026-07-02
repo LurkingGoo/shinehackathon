@@ -298,6 +298,49 @@ def detail_by_id(rid: str) -> ResidentDetail | None:
     return None
 
 
+def acute_trace_payload(max_points: int = 360) -> dict | None:
+    """The signal behind the incident, shaped for the drilldown waveform:
+    a window around the detected fall, downsampled with extremes preserved
+    (a plain stride would drop the 1–3-sample impact peak at 200 Hz), plus
+    phase positions in seconds so the UI can band free-fall / impact / still.
+    None when no incident is active (the endpoint 404s)."""
+    from app.scoring import acute
+
+    if not incident_active():
+        return None
+    s = np.asarray(_current_acute_smv, dtype=float)
+    fs = _current_acute_fs
+    res = acute.detect_fall(s, fs)
+    if not res.detected:
+        return None
+
+    # window: 1 s of rest before the dip → 4 s past the impact
+    start = max(0, res.dip_start_idx - int(1.0 * fs))
+    end = min(s.size, res.impact_idx + int(4.0 * fs))
+    win = s[start:end]
+
+    stride = max(1, int(np.ceil(win.size / max_points)))
+    samples: list[float] = []
+    for i in range(0, win.size, stride):
+        bucket = win[i:i + stride]
+        samples.append(float(bucket[np.argmax(np.abs(bucket - 1.0))]))
+
+    to_s = lambda idx: (idx - start) / fs  # noqa: E731 — window-relative seconds
+    # camelCase keys — matches the by_alias contract the rest of the API serves
+    return {
+        "dtS": stride / fs,
+        "samples": samples,
+        "phases": {
+            "freefall": [to_s(res.dip_start_idx), to_s(res.dip_end_idx)],
+            "impactS": to_s(res.impact_idx),
+            "stillFromS": to_s(res.impact_idx) + 0.25,
+        },
+        "thresholds": {"freefallG": acute.FREEFALL_G, "impactG": acute.IMPACT_G},
+        "peakG": res.peak_g,
+        "freefallMs": res.freefall_ms,
+    }
+
+
 def build_incident_event() -> IncidentEvent:
     return IncidentEvent(
         emitted_at=_iso_min_ago(0),

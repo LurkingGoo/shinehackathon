@@ -13,6 +13,7 @@
 
 import type {
   IncidentEvent,
+  IncidentTrace,
   RankedCaseload,
   ResidentDetail,
 } from "@/lib/types";
@@ -34,6 +35,11 @@ export interface DataClient {
   simulateIncident(): Promise<void>;
   /** Demo reset: clears the active incident so the beat can be re-run. */
   clearIncident(): Promise<void>;
+  /**
+   * The accelerometer signal behind the active incident (drilldown waveform).
+   * Resolves null while the caseload is calm (the endpoint 404s).
+   */
+  getIncidentTrace(): Promise<IncidentTrace | null>;
 }
 
 /* ------------------------------- base url -------------------------------- */
@@ -72,5 +78,12 @@ export const dataClient: DataClient = {
   async clearIncident() {
     const res = await fetch(`${BASE}/api/incidents/clear`, { method: "POST" });
     if (!res.ok) throw new Error(`/api/incidents/clear -> ${res.status}`);
+  },
+
+  async getIncidentTrace() {
+    const res = await fetch(`${BASE}/api/incidents/trace`, { cache: "no-store" });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`/api/incidents/trace -> ${res.status}`);
+    return (await res.json()) as IncidentTrace;
   },
 };

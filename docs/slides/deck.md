@@ -84,13 +84,17 @@ falls caught in seconds instead of hours.
 
 ###### How it works
 
-# Sense → Score → **Decide**
+# A fall has a **signature**
 
-![bare w:940](assets/architecture.svg)
+<figure>
 
-A fall must show an **ordered signature** — a free-fall dip, an impact spike
-within half a second, then stillness. A dropped phone cannot fake the sequence,
-and every score comes from deterministic rules a caseworker can read.
+![h:330](assets/chip-sensor-waveform.png)
+
+<figcaption>Straight from the product — the drill-down shows the signal behind every incident</figcaption>
+</figure>
+
+The detector requires this **ordered sequence** — a free-fall dip, an impact
+spike within half a second, then stillness. A dropped phone cannot fake the order.
 
 ---
 
@@ -181,6 +185,16 @@ One cluster. Commodity sensors. A working system —
 validated on **4,505 real recordings** and a **220-day real home**.
 
 *Built at SHINE Hackathon. The demo runs live, replaying real recordings.*
+
+---
+
+###### Backup · for Q&A
+
+# The three **layers**
+
+![bare w:1050](assets/architecture.svg)
+
+*The home senses. The service scores. The caseworker decides.*
 
 ---
 

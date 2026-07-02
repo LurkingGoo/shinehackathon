@@ -93,6 +93,27 @@ export interface ResidentDetail extends Resident {
   briefing: string;
 }
 
+/** ---- Incident signal trace (GET /api/incidents/trace) ----
+ * The accelerometer window behind the active incident, for the drilldown
+ * waveform. 404 while calm — the panel only exists during an incident.
+ */
+export interface IncidentTrace {
+  /** Seconds between consecutive samples (after downsampling). */
+  dtS: number;
+  /** SMV in g. Rest sits near 1.0; the impact peak is preserved. */
+  samples: number[];
+  /** Detected phase positions, in seconds from the window start. */
+  phases: {
+    /** [start, end] of the free-fall dip. */
+    freefall: [number, number];
+    impactS: number;
+    stillFromS: number;
+  };
+  thresholds: { freefallG: number; impactG: number };
+  peakG: number;
+  freefallMs: number;
+}
+
 /** ---- Incident / re-rank event (pushed over the live channel) ----
  * Emitted when an acute event fires mid-shift. The UI pins `entry` to the top
  * and can open `detail` immediately without a second fetch.

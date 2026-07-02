@@ -104,10 +104,16 @@ const run = async () => {
   await chip(page, [page.locator(sel("action"))], "chip-recommended-action.png");
   await chip(
     page,
-    [page.locator(sel("sec")), ...(await page.locator(sel("featRow")).all())],
+    [page.locator('h4:has-text("ranked here")'),
+     ...(await page.locator(sel("featRow")).all())],
     "chip-feature-decomposition.png" // heading + all feature rows
   );
   await chip(page, [page.locator(sel("kpis"))], "chip-confidence-axis.png");
+  await chip(
+    page,
+    [page.locator('h4:has-text("What the sensor saw")'), page.locator(sel("trace"))],
+    "chip-sensor-waveform.png" // the ordered fall signature, from the live drilldown
+  );
 
   // -- leave the demo calm -----------------------------------------------------
   await page.request.post(`${BASE}/api/incidents/clear`);

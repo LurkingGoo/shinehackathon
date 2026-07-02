@@ -117,6 +117,7 @@ regenerated shots regenerate the chips). Regenerate with both servers up:
 | Caseload screenshot (calm) | `assets/caseload-calm.png` | **done** (2026-07-02) |
 | Incident screenshot pair (pin + drill-down) | `assets/caseload-incident-pin.png`, `assets/caseload-incident-drilldown.png` | **done** (2026-07-02) |
 | 6 walkthrough chips (see table above) | `assets/chip-*.png` | **done** (2026-07-02) |
+| Sensor-waveform chip (slide 6 visual) | `assets/chip-sensor-waveform.png` — the drilldown's "What the sensor saw" panel (feature added 2026-07-03); architecture diagram moved to backup | **done** (2026-07-03) |
 | 3-layer architecture diagram | `diagrams/architecture.mmd` → `assets/architecture.svg` via `render-diagrams.mjs` (mermaid, pure-SVG labels — htmlLabels break in `<img>`) | **done** (2026-07-02) |
 | Calibration stats graphic | `.stat` cards on deck slide 8 (numbers from [[scoring-card]]) | **done** (2026-07-02) |
 | Warm Human Marp theme | `docs/slides/warm-human.css` (tokens mirrored from `app/globals.css`) | **done** (2026-07-02) |

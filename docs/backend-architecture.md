@@ -28,6 +28,11 @@ data-science content:
 - **3 surfaces:** `GET /api/caseload` → `RankedCaseload`,
   `GET /api/residents/:id` → `ResidentDetail`, and a push channel emitting
   `IncidentEvent`.
+- **One presentation surface (added 2026-07-03):** `GET /api/incidents/trace` →
+  `IncidentTrace` — the downsampled accelerometer window + detected phase
+  positions behind the active incident, feeding the drilldown's "What the
+  sensor saw" waveform. 404 while calm. Read-only, derived from the same
+  trace the acute score is computed on (numbers always agree).
 - **Every score must decompose into `RiskFeature[]` with weights.** A black-box
   score that can't produce weighted features is rejected *by the contract*. This
   forces explainability on us — a good constraint.
@@ -52,6 +57,7 @@ Browser ──▶ Next.js (frontend + /api proxy) ──▶ FastAPI scoring-serv
   /api/caseload          →  GET  :8000/caseload
   /api/residents/:id     →  GET  :8000/residents/:id
   /api/incidents/stream  →  SSE  pipe :8000/incidents/stream
+  /api/incidents/trace   →  GET  :8000/incidents/trace   (waveform, 404 calm)
 ```
 
 The mock `/api/*` routes swap from reading `fixtures.ts` to proxying the service —

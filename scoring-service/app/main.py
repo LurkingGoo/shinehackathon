@@ -72,6 +72,17 @@ def clear_incident() -> dict:
     return {"ok": True}
 
 
+@app.get("/incidents/trace")
+def incident_trace() -> dict:
+    """The accelerometer signal behind the active incident (drilldown
+    waveform): downsampled SMV window + detected phase positions. 404 while
+    the caseload is calm — the panel only exists during an incident."""
+    payload = fixtures.acute_trace_payload()
+    if payload is None:
+        raise HTTPException(status_code=404, detail="no active incident")
+    return payload
+
+
 @app.get("/incidents/stream")
 async def incidents_stream(request: Request) -> EventSourceResponse:
     """SSE: one IncidentEvent JSON per message. The client does

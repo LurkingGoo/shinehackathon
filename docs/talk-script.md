@@ -67,19 +67,26 @@ fall — a genuine fall from a public research dataset — and fed it into our
 live detector, the same way a worn bangle would stream it. The detector
 recognised the signature, pushed the incident to this dashboard, and the
 resident pinned to the top with the evidence in plain words: an eleven
-point two g impact, then twelve seconds of no movement. The system
-suggests the next step. The caseworker makes the call.
+point two g impact, then twelve seconds of no movement.
+
+[Point at the drill-down panel — "What the sensor saw".]
+
+And you do not have to take the detection on faith. This panel shows the
+actual signal — you can see the free-fall dip, the impact spike, and the
+stillness after it. The system suggests the next step. The caseworker
+makes the call.
 
 ---
 
-## Slide 6 — How it works
+## Slide 6 — A fall has a signature
 
-Three layers. The home senses, the service scores, the caseworker decides.
-One thing matters on this slide: a fall must show an ordered signature. A
-free-fall dip, then an impact spike within half a second, then stillness.
-A dropped phone spikes but never dips first. A hard sit-down dips barely
-and recovers instantly. The order is the fingerprint, and it is why a
-single threshold would be wrong.
+This is the same panel you just saw in the demo. A fall must show an
+ordered signature. A free-fall dip, then an impact spike within half a
+second, then stillness. A dropped phone spikes but never dips first. A
+hard sit-down dips barely and recovers instantly. The order is the
+fingerprint, and it is why a single threshold would be wrong. Behind it,
+three layers — the home senses, the service scores, the caseworker
+decides.
 
 ---
 

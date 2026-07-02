@@ -28,6 +28,11 @@ class FallResult:
     peak_g: float
     freefall_ms: float
     post_impact_still_s: float
+    # sample indices of the detected phases (-1 when not detected) — lets the
+    # trace endpoint show WHERE in the signal the ordered signature sits
+    dip_start_idx: int = -1
+    dip_end_idx: int = -1
+    impact_idx: int = -1
 
 
 def smv(ax: np.ndarray, ay: np.ndarray, az: np.ndarray) -> np.ndarray:
@@ -70,7 +75,9 @@ def detect_fall(
                 # post-impact stillness: samples near rest after impact
                 tail = s[impact_idx:]
                 still = float(np.count_nonzero(np.abs(tail - 1.0) < 0.25) * dt)
-                return FallResult(True, peak, run * dt * 1000.0, still)
+                return FallResult(True, peak, run * dt * 1000.0, still,
+                                  dip_start_idx=dip_end - run + 1,
+                                  dip_end_idx=dip_end, impact_idx=impact_idx)
     return FallResult(False, float(s.max()), 0.0, 0.0)
 
 

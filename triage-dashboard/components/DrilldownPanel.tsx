@@ -1,5 +1,6 @@
 import type { ResidentDetail } from "@/lib/types";
 import { avatarColor, initials, pct, riskColor } from "@/lib/ui";
+import { TraceChart } from "./TraceChart";
 import styles from "./dashboard.module.css";
 
 export function DrilldownPanel({ detail }: { detail: ResidentDetail | null }) {
@@ -55,6 +56,8 @@ export function DrilldownPanel({ detail }: { detail: ResidentDetail | null }) {
           <div className={styles.kpiL}>Source</div>
         </div>
       </div>
+
+      {acute && <TraceChart />}
 
       <h4 className={styles.sec}>Why she&apos;s ranked here</h4>
       {detail.features.map((f, i) => (
