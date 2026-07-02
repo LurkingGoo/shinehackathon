@@ -3,7 +3,7 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.3.0
+spec_version: 1.3.1
 last_updated: 2026-07-02
 tags: [features, scoring, reference]
 ---
@@ -41,10 +41,15 @@ Compute the **signal-magnitude vector** per sample:
 **Detection sequence** (a fall is the *ordered* co-occurrence, not any single
 threshold — this is what rejects normal ADLs like sitting hard):
 
-1. **Free-fall dip:** `SMV < 0.6 g` *(tune)* sustained ≥ 80 ms.
-2. **Impact peak:** within ≤ 500 ms *(tune)* of the dip, `SMV > 2.7 g` *(tune)*.
+1. **Free-fall dip:** `SMV < 0.8 g` sustained ≥ 40 ms.
+2. **Impact peak:** within ≤ 500 ms of the dip, `SMV > 2.3 g`.
 3. **Post-impact stillness:** for the next ~10 s, `SMV` variance below the
    subject's active-motion band (person is down and not rising).
+
+*(Operating point calibrated 2026-07-02 on the full real SisFall set via
+`scripts/calibrate.py --grid` — 96.2 % detection. Trade-off recorded in
+[[0005-sensitivity-first-operating-point]] and [[scoring-card]] §Metrics.
+Pre-calibration starting points were 0.6 g / 2.7 g / 80 ms.)*
 
 If (1)→(2) fire, emit an **acute** score and an `IncidentEvent`. (3) upgrades
 severity (long-lie) but is not required to fire.

@@ -120,7 +120,7 @@ regenerated shots regenerate the chips). Regenerate with both servers up:
 | 3-layer architecture diagram | `diagrams/architecture.mmd` → `assets/architecture.svg` via `render-diagrams.mjs` (mermaid, pure-SVG labels — htmlLabels break in `<img>`) | **done** (2026-07-02) |
 | Calibration stats graphic | `.stat` cards on deck slide 8 (numbers from [[scoring-card]]) | **done** (2026-07-02) |
 | Warm Human Marp theme | `docs/slides/warm-human.css` (tokens mirrored from `app/globals.css`) | **done** (2026-07-02) |
-| The deck itself | `docs/slides/deck.md` → `deck.html` / `deck.pdf` | **done** (2026-07-02) — 12 slides, every one visually verified |
+| The deck itself | `docs/slides/deck.md` → `deck.html` / `deck.pdf` | **done** (2026-07-02) — 12-slide spine + 3 backup slides for Q&A (why no ML, where the data goes, kit per flat), every slide visually verified. Copy pass 2026-07-02: prose sentences, no semicolons, judge-critique fixes (wearable story made explicit, 29.8 % owned openly, detection sequence promoted to body text, datasets named). |
 
 Build commands (from `triage-dashboard/`, servers not required):
 
