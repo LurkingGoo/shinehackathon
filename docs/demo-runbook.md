@@ -2,48 +2,69 @@
 type: doc
 diataxis: how-to
 title: Demo Runbook
-status: draft
-last_updated: 2026-07-01
+status: active
+last_updated: 2026-07-02
 tags: [howto, demo, runbook]
 ---
 
 # Demo Runbook
 
 > **How-to tier.** Run the system and drive the demo's key beat: a fall firing
-> mid-shift and re-ranking the caseload live. Backend (`scoring-service/`) is
-> **scaffolded and fixture-backed** — endpoints + SSE work and are tested. Steps
-> marked *(planned)* are the remaining real-dataset wiring.
+> mid-shift and re-ranking the caseload live. **The seam is swapped**: the
+> frontend serves live from `scoring-service` (Next `/api/*` rewrites proxy it,
+> the live channel is real SSE, the mock routes + `fixtures.ts` are deleted).
 
-## Run the frontend (works today, mock-backed)
+## Run the full system (live, two processes)
 
 ```bash
+# 1. scoring service
+cd scoring-service
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+pytest -q                                # 30 tests: contract + scoring + stream + loaders + baselines
+
+# 2. frontend (proxies /api/* to :8000 — set SCORING_SERVICE_URL to override)
 cd triage-dashboard
 npm install
 npm run dev          # http://localhost:3000
-npm run typecheck    # tsc --noEmit
 ```
 
-Click a resident → drill-down. Press **Simulate incident** → the canned fall fires
-through the in-process pub/sub and the list re-ranks (this is the mock the backend
-replaces).
+Click a resident → drill-down. Press **Simulate incident** → the frontend POSTs
+`/api/incidents/simulate`; the service scores a fall trace through the acute
+pipeline and the `IncidentEvent` arrives back over `/api/incidents/stream` (SSE)
+— the acute row pins, flashes, and opens its drill-down.
 
-## Run the scoring service (works now, fixture-backed)
+Service endpoints: `GET /caseload`, `GET /residents/{id}`,
+`GET /incidents/stream` (SSE), `POST /incidents/simulate`, `GET /health`.
+
+Verified end-to-end through the proxy (2026-07-02): caseload 200 with computed
+scores, resident 404, and the SSE event arriving at `:3000` after a simulate POST.
+
+## Real datasets (drop-in; synthetic fallback keeps the demo alive)
+
+Dataset files are **git-ignored** (`scoring-service/data/`). Loaders parse the
+real on-disk formats and are tested against format-exact fixtures ([[scoring-card]]
+Datasheet for provenance):
+
+- **SisFall** → put trace files in `scoring-service/data/sisfall/` (falls are
+  `F*.txt`, ADLs `D*.txt`). `POST /incidents/simulate` automatically injects the
+  first real fall on disk (override with `SISFALL_TRACE=<path>`); with no files
+  it falls back to the synthetic trace, so the demo never breaks.
+- **CASAS** → any event file + a per-home sensor→area map, then:
 
 ```bash
 cd scoring-service
-python -m venv .venv && . .venv/Scripts/activate   # Windows
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-pytest -q                                          # 14 tests: contract + scoring + stream
+python scripts/build_baselines.py data/casas/events.txt data/casas/area_map.json -o baselines.json
 ```
 
-Endpoints: `GET /caseload`, `GET /residents/{id}`, `GET /incidents/stream` (SSE),
-`POST /incidents/simulate`, `GET /health`. Then point Next's `/api/*` at it
-(proxy) *(planned)* and start the frontend as above.
+### Calibrate acute thresholds (fills the scoring-card metrics)
 
-Verified end-to-end (2026-07-01): open the stream, `POST /incidents/simulate`,
-and the acute row arrives over SSE — the re-rank beat works at the backend layer
-before any frontend wiring.
+```bash
+python scripts/calibrate.py            # detection / false-alarm at current thresholds
+python scripts/calibrate.py --grid     # sweep, best rows first (sensitivity-ranked)
+```
+
+Numbers go into [[scoring-card]] §Metrics **only** from this script's output.
 
 Scores are **computed**, not hardcoded: `app/scoring/pipeline.py` turns raw
 signals into `RiskScore` + features (chronic anomaly aggregation via
@@ -53,23 +74,16 @@ acute Tan Ah Moi 0.97 (5.0 g impact, 40 s stillness). Values differ from the old
 hand-set demo numbers by design ([[scoring-card]]); real inputs arrive via
 `app/data/loaders.py`.
 
-## Drive the demo *(planned)*
+## Drive the demo (works now; real trace when the dataset is on disk)
 
-1. Start the service with a **shift replay** loaded (a CASAS slice + a SisFall
-   trace scheduled to fire).
+1. Start both processes (above), with a real SisFall fall in `data/sisfall/`.
 2. Open the dashboard — chronic caseload ranked, calm.
-3. At the scripted moment (or via **Simulate incident**), the replayer injects the
-   fall → service detects it → emits an `IncidentEvent` over
-   `GET /api/incidents/stream` (SSE) → the acute row **pins to top, flashes, opens
-   its drill-down**.
+3. Press **Simulate incident** → the real trace runs through `detect_fall` →
+   `IncidentEvent` over SSE → the acute row **pins to top, flashes, opens its
+   drill-down** (the injected trace also backs the drill-down, so the numbers
+   agree on re-fetch).
 4. Talk through the deterministic rationale — every number on screen traces to a
    `RiskFeature` ([[feature-spec]]).
-
-## De-risk first (do this before real detection)
-
-Prove the streaming path end-to-end with a **fake** event every ~5 s
-(`IncidentEvent` shape only) → confirm the UI re-ranks. The replayer/SSE plumbing
-is the demo's biggest risk, not the scoring ([[backend-architecture]] §6).
 
 ## Contract test (works now)
 
