@@ -33,9 +33,12 @@ build/
 __pycache__/
 *.pyc
 .pytest_cache/
+.mkdocs-site/
 *.log
 .DS_Store
 Thumbs.db
 
-# real dataset files (large, licensed) - keep out of the vault repo
-scoring-service/data/
+# real dataset files (large, licensed) - keep out of the vault repo,
+# but COMMIT the provenance lock (source, sha256, size, date, citation)
+scoring-service/data/**
+!scoring-service/data/datasets.lock.json

@@ -70,7 +70,8 @@ def default_sisfall_trace() -> Path | None:
     if env and Path(env).is_file():
         return Path(env)
     if SISFALL_DIR.is_dir():
-        falls = sorted(SISFALL_DIR.glob("F*.txt")) or sorted(SISFALL_DIR.glob("*.txt"))
+        # rglob: the SisFall zip extracts into per-subject folders (SA01/, ...)
+        falls = sorted(SISFALL_DIR.rglob("F*.txt")) or sorted(SISFALL_DIR.rglob("*.txt"))
         if falls:
             return falls[0]
     return None

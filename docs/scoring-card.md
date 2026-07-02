@@ -71,6 +71,16 @@ Heuristic, so evaluated by **replayed traces**, not a training metric:
 
 ## Datasheet — datasets
 
+### Provenance (process-as-code)
+Datasets are fetched ONLY via `scoring-service/scripts/fetch_datasets.py`, which
+pins **source URL + sha256 + size + fetch date + citation** in the committed
+`scoring-service/data/datasets.lock.json` and refuses checksum drift. Community
+mirrors are used (original SisFall host is down; CASAS moved to a 2.7 GB
+all-homes Zenodo bundle); citations below reference the original publications.
+The Aruba sensor→area layout file is derived from the dataset's own activity
+annotations by `scripts/derive_area_map.py` — labels reconstruct the *layout*
+(a deployment artifact an installer normally writes), they never train or score.
+
 ### SisFall (acute)
 - **What:** tri-axial accelerometer + gyroscope recordings of falls and ADLs.
 - **Who/where:** Universidad de Antioquia, Colombia; young + elderly subjects;

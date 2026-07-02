@@ -22,10 +22,23 @@ from app.data.loaders import SISFALL_DIR, SISFALL_FS, sisfall_smv  # noqa: E402
 from app.scoring import acute  # noqa: E402
 
 
-def evaluate(files: list[tuple[Path, bool]], **thresholds) -> dict:
+def load_all(files: list[tuple[Path, bool]]) -> list[tuple, ]:
+    """Parse every trace ONCE (the expensive step) so grid sweeps are cheap."""
+    data = []
+    for i, (path, is_fall) in enumerate(files, 1):
+        try:
+            data.append((sisfall_smv(path), is_fall))
+        except ValueError as e:
+            print(f"  skipping unparsable trace: {e}")
+        if i % 500 == 0:
+            print(f"  parsed {i}/{len(files)} traces ...")
+    return data
+
+
+def evaluate(data: list[tuple], **thresholds) -> dict:
     tp = fn = fp = tn = 0
-    for path, is_fall in files:
-        detected = acute.detect_fall(sisfall_smv(path), SISFALL_FS, **thresholds).detected
+    for smv, is_fall in data:
+        detected = acute.detect_fall(smv, SISFALL_FS, **thresholds).detected
         if is_fall:
             tp, fn = tp + int(detected), fn + int(not detected)
         else:
@@ -48,15 +61,17 @@ def main() -> int:
     if not args.dir.is_dir():
         print(f"no dataset at {args.dir} — download SisFall first (docs/demo-runbook.md)")
         return 1
-    files = [(p, True) for p in sorted(args.dir.glob("F*.txt"))] + \
-            [(p, False) for p in sorted(args.dir.glob("D*.txt"))]
+    files = [(p, True) for p in sorted(args.dir.rglob("F*.txt"))] + \
+            [(p, False) for p in sorted(args.dir.rglob("D*.txt"))]
     if not files:
         print(f"no F*/D* traces in {args.dir}")
         return 1
-    print(f"{sum(1 for _, f in files if f)} falls, {sum(1 for _, f in files if not f)} ADLs\n")
+    print(f"{sum(1 for _, f in files if f)} falls, {sum(1 for _, f in files if not f)} ADLs")
+    data = load_all(files)
+    print()
 
     if not args.grid:
-        r = evaluate(files)
+        r = evaluate(data)
         print(f"current thresholds  freefall<{acute.FREEFALL_G}g  impact>{acute.IMPACT_G}g  "
               f"dip>={acute.FREEFALL_MIN_S*1000:.0f}ms  window<={acute.IMPACT_WINDOW_S*1000:.0f}ms")
         print(f"  detection {r['sensitivity']:.1%} ({r['tp']}/{r['tp']+r['fn']})   "
@@ -69,7 +84,7 @@ def main() -> int:
         [0.04, 0.06, 0.08],            # freefall_min_s
         [0.4, 0.5, 0.7],               # impact_window_s
     )
-    rows = [evaluate(files, freefall_g=fg, impact_g=ig,
+    rows = [evaluate(data, freefall_g=fg, impact_g=ig,
                      freefall_min_s=fm, impact_window_s=iw)
             for fg, ig, fm, iw in grid]
     # missed falls are the costliest error (scoring-card): rank by sensitivity,
