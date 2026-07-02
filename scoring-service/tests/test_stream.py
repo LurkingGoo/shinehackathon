@@ -54,5 +54,10 @@ def test_incident_persists_into_caseload():
         assert top["rank"] == 1 and top["id"] == event["entry"]["id"]
         # chronic rows follow, re-ranked from 2 with no gaps
         assert [e["rank"] for e in after["entries"]] == list(range(1, len(after["entries"]) + 1))
+
+        # demo reset: POST /incidents/clear returns the caseload to calm
+        assert client.post("/incidents/clear").json() == {"ok": True}
+        calm = client.get("/caseload").json()
+        assert all(e["score"]["track"] == "chronic" for e in calm["entries"])
     finally:
         fixtures.clear_incident()  # don't leak state into other tests

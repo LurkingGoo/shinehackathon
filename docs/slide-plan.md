@@ -52,13 +52,15 @@ deck is a compression of that page, never a fork of it.
    when unconscious). One statistic, one sentence of human stakes (long lie).
 3. **The insight** — the home already knows. Routine is a vital sign;
    absence of motion is data. Nobody has to press anything.
-4. **The product** *(screenshot)* — the ranked caseload, calm by default.
-5. **The beat** *(screenshot pair)* — fall fires → pins to top with a
-   plain-language reason and a recommended action.
+4. **The product** *(full screenshot)* — the ranked caseload, calm by
+   default. This is the establishing shot; slides 5–7 walk through it.
+5. **The beat** *(walkthrough: full shot + chips)* — press Simulate → fall
+   pins to top. Chips: the button, the flashing acute card, the
+   recommended action.
 6. **How it works** *(mermaid, the 3-layer diagram)* — sense → score →
    decide. One line per layer; no internals.
-7. **Explainable by contract** *(screenshot: drill-down)* — every number
-   decomposes; the caseworker stays in charge.
+7. **Explainable by contract** *(walkthrough: drill-down chips)* — every
+   number decomposes; the caseworker stays in charge.
 8. **It's real** — 96.2 % detection on 1,798 real falls; the per-activity
    false-alarm story; 220 days of a real home driving the chronic track.
    (Our strongest differentiator vs. concept decks — lead with it.)
@@ -73,12 +75,43 @@ deck is a compression of that page, never a fork of it.
 Rule of thumb per slide: ≤ 30 words of body text, one visual. If a slide
 needs more words, the words belong in the demo narration, not on screen.
 
+## Product walkthrough — chip technique
+
+Full-screen screenshots don't survive a projector: judges can't find the
+element you're talking about. Every product slide therefore uses the
+**establish → chip** pattern:
+
+1. **Establish** — one full screenshot, shown once (slide 4), so the judge
+   holds the whole layout.
+2. **Chip** — subsequent slides show **cropped close-ups** of just the region
+   being discussed (a "chip"), cut from the same full screenshot, with a
+   one-line caption. The chip is the navigation: it tells the judge exactly
+   where on the screen they are without a laser pointer.
+
+Chip sequence for the demo narrative (each is a crop, produced by the same
+capture script that takes the full shots — crop coordinates live in the
+script, so regenerated screenshots regenerate the chips too):
+
+| Chip | Crop of | Caption (≤ 1 line) |
+|---|---|---|
+| Toolbar + Simulate button | header/toolbar | "One button stands in for a real fall signal" |
+| Top caseload row | r-rajoo card | "Rank 1: a real 220-day routine, broken — in plain words" |
+| Acute card (flashing) | pinned r-tan card | "A fall preempts everything — seconds, not a morning" |
+| Recommended action | acute drill-down footer | "The system suggests; the caseworker acts" |
+| Feature decomposition | drill-down feature rows | "Every score decomposes — nothing to take on faith" |
+| Confidence axis | drill-down confidence row | "Trust is shown separately from risk" |
+
+Rules: a chip is never annotated by hand (no arrows drawn in an editor —
+if a chip needs an arrow, crop tighter); chips keep the product's own Warm
+Human styling as the visual identity — the deck theme frames, never recolors.
+
 ## Asset list (to produce, tracked here)
 
 | Asset | Source | Status |
 |---|---|---|
 | Caseload screenshot (calm) | running PoC at :3000 | blocked on browser capture (runbook fix #7) |
 | Incident screenshot pair (pin + drill-down) | running PoC, Simulate beat | blocked on same |
+| 6 walkthrough chips (see table above) | cropped from the full shots by the capture script | blocked on same |
 | 3-layer architecture diagram | `docs/slides/diagrams/architecture.mmd` (from [[solution-overview]]) | to write |
 | Calibration table graphic | scoring-card §Metrics numbers, styled by theme | to write |
 | Warm Human Marp theme | `docs/slides/warm-human.css` | to write |

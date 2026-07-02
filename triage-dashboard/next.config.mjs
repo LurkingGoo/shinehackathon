@@ -11,6 +11,7 @@ const nextConfig = {
       { source: "/api/residents/:id", destination: `${SCORING_SERVICE}/residents/:id` },
       { source: "/api/incidents/stream", destination: `${SCORING_SERVICE}/incidents/stream` },
       { source: "/api/incidents/simulate", destination: `${SCORING_SERVICE}/incidents/simulate` },
+      { source: "/api/incidents/clear", destination: `${SCORING_SERVICE}/incidents/clear` },
     ];
   },
 };

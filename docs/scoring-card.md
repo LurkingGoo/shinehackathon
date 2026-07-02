@@ -27,8 +27,9 @@ weighted `features`, deterministic `rationale`. Full mechanics: [[feature-spec]]
 - **Primary:** rank a One Care caseworker's shift caseload so scarce attention
   goes to the highest-concern residents first, with an explainable "why".
 - **Live beat:** an acute fall preempts the ranking mid-shift (push event).
-- **LLM role:** smooth the `briefing` paragraph only, from facts already in
-  `features`. It never invents cause and never affects `risk`/`rationale`.
+- **Drafting layer's role:** smooth the `briefing` paragraph only, from facts
+  already in `features`. It never invents cause and never affects
+  `risk`/`rationale`.
 
 ### Out-of-scope / must-not
 - **Not** a diagnosis, a clinical device, or a guarantee no one long-lies.

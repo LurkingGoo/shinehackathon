@@ -32,6 +32,8 @@ export interface DataClient {
    * IncidentEvent arrives back through the SSE stream like a real detection.
    */
   simulateIncident(): Promise<void>;
+  /** Demo reset: clears the active incident so the beat can be re-run. */
+  clearIncident(): Promise<void>;
 }
 
 /* ------------------------------- base url -------------------------------- */
@@ -65,5 +67,10 @@ export const dataClient: DataClient = {
     const res = await fetch(`${BASE}/api/incidents/simulate`, { method: "POST" });
     if (!res.ok) throw new Error(`/api/incidents/simulate -> ${res.status}`);
     // The IncidentEvent arrives via the SSE stream — no local fan-out.
+  },
+
+  async clearIncident() {
+    const res = await fetch(`${BASE}/api/incidents/clear`, { method: "POST" });
+    if (!res.ok) throw new Error(`/api/incidents/clear -> ${res.status}`);
   },
 };

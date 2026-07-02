@@ -43,7 +43,7 @@ data-science content:
 | Live channel | **SSE** (`StreamingResponse` / `sse-starlette`) | Client stub already assumes `EventSource`; simpler than WebSocket |
 | Origin | **Next.js `/api/*` proxies the service** | Keeps client on relative URLs — no CORS, seam untouched |
 | Storage | **None for the demo** | Baselines precompute to JSON; replayer holds shift state in memory. SQLite only if event history must survive restart |
-| Briefing LLM | **Claude**, flagged, `briefing` string only | Smooths wording from `score`+`features`; never invents cause. Flag off ⇒ demo still works |
+| Briefing drafting | flagged, `briefing` string only | Smooths wording from `score`+`features`; never invents cause. Flag off ⇒ demo still works |
 
 ### Topology
 
@@ -102,8 +102,8 @@ as realistic streams to compute over and replay. Two tracks, never blended:
 ### The deterministic spine (contract-critical)
 Every score decomposes into `RiskFeature[]` with weights →
 `rationale` and `recommendedAction` are **templates filled from the top
-features**, not free text. The LLM never touches the "why"; it may only smooth
-the `briefing` paragraph from facts already in `score`+`features`.
+features**, not free text. The drafting layer never touches the "why"; it may
+only smooth the `briefing` paragraph from facts already in `score`+`features`.
 
 ## 4. Singapore fit
 

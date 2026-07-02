@@ -64,6 +64,14 @@ def simulate() -> IncidentEvent:
     return event
 
 
+@app.post("/incidents/clear")
+def clear_incident() -> dict:
+    """Demo reset: drop the active incident so /caseload returns to the calm
+    chronic ranking and the Simulate beat can be re-run."""
+    fixtures.clear_incident()
+    return {"ok": True}
+
+
 @app.get("/incidents/stream")
 async def incidents_stream(request: Request) -> EventSourceResponse:
     """SSE: one IncidentEvent JSON per message. The client does

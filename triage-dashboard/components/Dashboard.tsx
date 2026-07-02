@@ -55,6 +55,16 @@ export function Dashboard() {
     void dataClient.simulateIncident();
   }, []);
 
+  // Demo reset: clear the incident server-side (it persists in /caseload with
+  // a TTL), then re-pull the calm ranking so the beat can be re-run.
+  const reset = useCallback(async () => {
+    await dataClient.clearIncident();
+    const c = await dataClient.getRankedCaseload();
+    setEntries(rank(c.entries));
+    setDetail(null);
+    setSelectedId(null);
+  }, []);
+
   const acute = entries.filter((e) => e.score.track === "acute");
   const chronic = entries.filter((e) => e.score.track !== "acute");
   const needAttention = acute.length + chronic.filter((e) => e.score.risk >= 0.55).length;
@@ -84,8 +94,8 @@ export function Dashboard() {
             <span className={styles.pulse} />
             Live · replaying data
           </span>
-          <button className={styles.btn} onClick={simulate} disabled={hasAcute}>
-            Simulate incident
+          <button className={styles.btn} onClick={hasAcute ? reset : simulate}>
+            {hasAcute ? "Reset demo" : "Simulate incident"}
           </button>
         </div>
       </div>

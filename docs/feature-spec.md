@@ -143,11 +143,11 @@ days ago scores with honestly *low* confidence — the UI shows it as a separate
 ## 3. Determinism guarantee
 
 The pipeline `features → risk → rationale → recommendedAction` is **pure**: same
-inputs ⇒ same outputs, no randomness, no LLM. The only LLM touch is the
-`briefing` string (see [[scoring-card]] §Intended use), which paraphrases facts
-already present in `features` and may **never** introduce a cause not in the
-feature set. A contract test asserts the `briefing` contains no numbers absent
-from `features`.
+inputs ⇒ same outputs, no randomness, nothing generative in the scoring path.
+The only machine-drafted text is the `briefing` string (see [[scoring-card]]
+§Intended use), which paraphrases facts already present in `features` and may
+**never** introduce a cause not in the feature set. A contract test asserts the
+`briefing` contains no numbers absent from `features`.
 
 ## 4. Planned features (post-MVP)
 

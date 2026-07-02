@@ -134,8 +134,8 @@ Full model card & datasheet: [[scoring-card]].
 
 1. **Escalation integrations** — welfare-call automation (Twilio), MOH/AIC
    line handoff on unacknowledged acute events.
-2. **Caseworker briefing** — a short LLM-drafted morning brief per flagged
+2. **Caseworker briefing** — a short auto-drafted morning brief per flagged
    resident, grounded strictly in the deterministic features (guardrailed —
-   generation never changes a score).
+   the drafting layer never changes a score or invents a cause).
 3. **Pilot** — one One Care cluster, N units, measure time-to-detection and
    caseworker minutes saved per shift.
