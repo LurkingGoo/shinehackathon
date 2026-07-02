@@ -47,3 +47,4 @@ nav:
       - 0002 Backend stack & scoring: adr/0002-backend-stack-and-scoring.md
       - 0003 Absolute-weight risk aggregation: adr/0003-absolute-weight-risk-aggregation.md
       - 0004 Contract parity guard: adr/0004-contract-parity-guard.md
+      - 0005 Sensitivity-first operating point: adr/0005-sensitivity-first-operating-point.md

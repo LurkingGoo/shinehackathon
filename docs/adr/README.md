@@ -3,7 +3,7 @@ type: doc-index
 diataxis: reference
 title: Architecture Decision Records
 status: active
-last_updated: 2026-07-01
+last_updated: 2026-07-02
 tags: [adr, decisions]
 ---
 
@@ -22,6 +22,7 @@ mirrors the append-only `decisions.md` but in the standard per-file form.
 | [[0002-backend-stack-and-scoring]] | Python/FastAPI backend, SSE, heuristic self-baselining scoring | Accepted |
 | [[0003-absolute-weight-risk-aggregation]] | Absolute-weight risk aggregation for cross-resident comparability | Accepted |
 | [[0004-contract-parity-guard]] | Contract parity guarded by generated schema + types.ts field-diff | Accepted |
+| [[0005-sensitivity-first-operating-point]] | Sensitivity-first acute operating point (96.2% detection / 29.8% ADL false-alarm) | Accepted |
 
 ## Template
 

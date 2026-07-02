@@ -53,7 +53,9 @@ Heuristic, so evaluated by **replayed traces**, not a training metric.
 | Pre-calibration (0.6 g / 2.7 g / 80 ms / 500 ms) | 51.8% | 17.8% |
 | **Calibrated (0.8 g / 2.3 g / 40 ms / 500 ms)** | **96.2%** | 29.8% |
 
-Chosen sensitivity-first (missed falls are the costliest error, below). The
+Chosen sensitivity-first (missed falls are the costliest error, below) — the
+full trade-off and rejected alternative are recorded in
+[[0005-sensitivity-first-operating-point]]. The
 29.8% false-alarm rate is on SisFall's **deliberately fall-like ADLs**
 performed by young adults; per-activity split (`scripts/fa_breakdown.py`):
 alarms concentrate ~100% in vigorous activities (jogging, jumping obstacles,
