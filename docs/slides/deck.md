@@ -249,7 +249,19 @@ and everything after (detection, push, re-rank) is the production path.*
 
 # The hardware **exists today**
 
-![bare h:225](assets/bangle-render.svg)
+<div class="cols">
+<figure>
+
+![bare h:180](assets/bangle-render.svg)
+
+</figure>
+<figure>
+
+![w:195](assets/hardware-page.png)
+
+<figcaption>Live in the dashboard today: /hardware streams a recorded fall through the production path</figcaption>
+</figure>
+</div>
 
 | Device | Real product, buyable now | Price |
 |---|---|---|

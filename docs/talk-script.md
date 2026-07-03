@@ -9,8 +9,9 @@ tags: [pitch, script, demo]
 
 # Presenter Script
 
-> **How to use this.** This version carries the operator's voice pass from
-> 2026-07-03. The facts and the slide order are locked. Every claim traces to
+> **How to use this.** The operator's voice pass of 2026-07-03 now covers the
+> full script, all twelve slides and the pocket answers. The facts and the
+> slide order are locked. Every claim traces to
 > [[solution-overview]] or [[scoring-card]]. Stage directions sit in
 > [brackets]. Target: about six minutes before Q&A.
 
@@ -66,11 +67,11 @@ speak one language.
 ## Slide 4: The product
 
 And this is the product. One screen, calm by default. Every resident is
-ranked by how much they need a visit today, and every row explains itself in
-one sentence a human wrote the template for. The top row here is not staged.
-It carries two hundred and twenty days of a real elderly resident's sensor
-data, and the reason reads kitchen inactivity: an eleven hour gap, where her
-normal is about four hours.
+ranked by how much they need a visit today. And every row explains itself,
+in one sentence a human wrote the template for. The top row here is not
+staged. It carries two hundred and twenty days of a real elderly resident's
+sensor data. And the reason reads kitchen inactivity: an eleven hour gap,
+where her normal is about four hours.
 
 ---
 
@@ -78,12 +79,12 @@ normal is about four hours.
 
 [Press Simulate. Wait for the pin, about two seconds.]
 
-What just happened is not a UI trick. That button took a genuine recorded
+So what just happened is not a UI trick. That button took a genuine recorded
 fall from a public research dataset and fed it into our live detector, the
 same way a worn bangle would stream it. The detector recognised the
-signature, pushed the incident to this dashboard, and the resident pinned to
-the top with the evidence in plain words: an eleven point two g impact, then
-twelve seconds of no movement.
+signature. It pushed the incident to this dashboard. And the resident pinned
+to the top with the evidence in plain words: an eleven point two g impact,
+then twelve seconds of no movement.
 
 [Point at the drill-down panel, "What the sensor saw".]
 
@@ -100,7 +101,7 @@ So how do we actually ascertain that a fall is a fall? This is the same
 panel you just saw in the demo. A fall must show an ordered signature. First
 a free-fall dip, then an impact spike within half a second, then stillness.
 A dropped phone spikes but never dips first. A hard sit-down dips barely and
-recovers instantly. The order is the fingerprint, and that is why a single
+recovers instantly. The order is the fingerprint. And that is why a single
 threshold would be wrong. Behind it are three layers: the home senses, the
 service scores, the care worker decides.
 
@@ -109,9 +110,9 @@ service scores, the care worker decides.
 ## Slide 7: Explainable by contract
 
 Nothing between the sensor and the care worker is a black box. Every score
-breaks apart into the sensor facts that produced it, and trust is shown on
+breaks apart into the sensor facts that produced it. And trust is shown on
 its own axis. If a sensor goes stale, confidence drops. Risk does not move.
-So a dead battery can never fake a crisis, and a care worker always knows
+So a dead battery can never fake a crisis. And a care worker always knows
 how much to believe a number before she acts on it.
 
 ---
@@ -120,14 +121,15 @@ how much to believe a number before she acts on it.
 
 We validated this on real data, and we will give you the honest version of
 the numbers. The detector catches ninety six point two percent across
-seventeen hundred and ninety eight real recorded falls. On the lab's
-deliberately fall-like daily activities the false alarm rate is twenty nine
-point eight percent, but almost all of that is jogging and jumping over
-obstacles. On the movements a monitored senior actually performs, including
-stumbling without falling, it fires at zero to five percent. And the routine
-track runs on two hundred and twenty days of a real home, where the system
-found the genuinely broken day on its own. Nothing here is trained. The
-thresholds were calibrated in the open, and anyone can rerun the script.
+seventeen hundred and ninety eight real recorded falls. Now, on the lab's
+deliberately fall-like daily activities, the false alarm rate is twenty nine
+point eight percent. We own that number. But almost all of it is jogging and
+jumping over obstacles. On the movements a monitored senior actually
+performs, including stumbling without falling, it fires at zero to five
+percent. And the routine track runs on two hundred and twenty days of a real
+home, where the system found the genuinely broken day on its own. Nothing
+here is trained. The thresholds were calibrated in the open, and anyone can
+rerun the script.
 
 ---
 
@@ -135,10 +137,10 @@ thresholds were calibrated in the open, and anyone can rerun the script.
 
 Nothing in this system imports a foreign idea of how a senior should live.
 It measures each resident's own kitchen gaps, door times and night trips for
-about two weeks, and from then on compares her only to herself. It is
-presence only, and that is what makes it acceptable to a senior who values
-her dignity. It deploys one HDB unit at a time, with an installer filling in
-a one page sensor map. It multiplies One Care's existing people. It replaces
+about two weeks. From then on it compares her only to herself. And it is
+presence only. That is what makes it acceptable to a senior who values her
+dignity. It deploys one HDB unit at a time, with an installer filling in a
+one page sensor map. It multiplies One Care's existing people. It replaces
 no one.
 
 ---
@@ -148,30 +150,31 @@ no one.
 We would rather tell you the limits than have you find them. This shrinks
 time to detection. It does not promise to catch every event. The fall
 thresholds were calibrated on mostly young adult recordings, so the senior
-false alarm rate is extrapolated, not measured. And if the bangle is on the
-nightstand when the fall happens, the ambient track still catches the
-stillness that follows. That resident surfaces by morning, which is exactly
-the long lie we exist to shorten.
+false alarm rate is extrapolated, not measured. And what if the bangle is on
+the nightstand when the fall happens? Well, the ambient track still catches
+the stillness that follows. That resident surfaces by morning. And that is
+exactly the long lie we exist to shorten.
 
 ---
 
 ## Slide 11: Beyond the PoC
 
-Three things turn this demo into a pilot. First, escalation that completes
-the loop: automated welfare calls, and a handoff to the MOH and AIC line
-when a fall goes unacknowledged. Second, a drafted morning brief per flagged
-resident, grounded strictly in the deterministic features, never touching a
-score. Third, a first cluster where we measure two numbers: time to
-detection, and care worker minutes saved per shift.
+So what turns this demo into a pilot? Three things. First, escalation that
+completes the loop: automated welfare calls, and a handoff to the MOH and
+AIC line when a fall goes unacknowledged. Second, a drafted morning brief
+for each flagged resident. It is grounded strictly in the deterministic
+features, and it never touches a score. Third, a first cluster where we
+measure two numbers: time to detection, and care worker minutes saved per
+shift.
 
 ---
 
 ## Slide 12: The ask
 
-We are asking for one cluster and commodity sensors. The system works today.
-You watched it detect a real fall live, and it is validated on four and a
-half thousand real recordings plus a two hundred and twenty day real home.
-Pilot with us.
+So here is the ask. We are asking for one cluster and commodity sensors.
+The system works today. You watched it detect a real fall live. And it is
+validated on four and a half thousand real recordings, plus a two hundred
+and twenty day real home. Pilot with us.
 
 ---
 
@@ -179,8 +182,8 @@ Pilot with us.
 
 **"Why didn't you use machine learning?"**  [slide 14]
 Because for this problem it would be worse. There is no Singapore training
-data, so any model we trained would import a Colombian or American prior,
-which is the exact assumption we refuse. A fall is physics, and physics
+data. So any model we trained would import a Colombian or American prior,
+and that is the exact assumption we refuse. A fall is physics, and physics
 transfers without training. And a care worker must be able to ask why. Our
 rules survive that question. A black box does not. Where a model will help
 later is wording the morning brief. It will never produce a score.
@@ -194,28 +197,28 @@ datasets are checksum-pinned in the repo, and every number reproduces from
 one script.
 
 **"How does a real fall actually reach this dashboard?"**  [slide 16]
-The path you watched is the production path. The bangle streams
-accelerometer readings to the scoring service, and to be precise, that
+Well, the path you watched is the production path. The bangle streams
+accelerometer readings to the scoring service. And to be precise, that
 ingestion link is the one piece we simulate, because there is no wristband
 hardware in this room. Everything from the detector onward is the real
 running system. The detector watches every reading for the ordered
 signature. A detection pushes an incident event down a live stream the
 dashboard is always listening to, and the resident pins to the top in
-seconds. The only thing the demo button changes is the source of the
-signal. It feeds a recorded fall into the detector instead of a live
+seconds. So what does the demo button actually change? Only the source of
+the signal. It feeds a recorded fall into the detector instead of a live
 bangle. Everything downstream is identical.
 
 **"Aren't you taking the hardware for granted? How do you know a fall
 happened?"**  [slide 17]
-That is a fair challenge, so let me be precise about what we own and what
+That is a fair challenge. So let me be precise about what we own and what
 we buy. The hardware is deliberately not our invention, and we researched
 it before assuming it. An open source programmable bangle with the exact
-accelerometer we need is a catalogue item today at about a hundred and
+accelerometer we need is a catalogue item today, at about a hundred and
 thirty dollars. The room sensors are twenty dollar parts with five year
-batteries. And GovTech already procures this category: a contract awarded
+batteries. And GovTech already procures this category. A contract awarded
 last year puts senior alert hardware, including fall sensors and
-wearables, in about one hundred and seventy rental blocks covering twenty
-six thousand eight hundred seniors. Buying the sensor is not the hard
+wearables, in about one hundred and seventy rental blocks, covering twenty
+six thousand eight hundred seniors. So buying the sensor is not the hard
 part. The hard part is deciding, given a stream of readings, that a fall
 is a fall and not a dropped phone. That is the part we built, and you
 watched it work live: the ordered signature, dip then spike then
@@ -232,6 +235,6 @@ installer fills in a one page sensor-to-area map. No cameras, no
 microphones, no rewiring.
 
 **"What happens to the falls you miss?"**
-They degrade to the ambient track. A missed fall becomes hours of stillness,
-and hours of stillness is exactly what the routine track surfaces. The two
+They degrade to the ambient track. A missed fall becomes hours of stillness.
+And hours of stillness is exactly what the routine track surfaces. The two
 tracks are redundancy, not alternatives.
