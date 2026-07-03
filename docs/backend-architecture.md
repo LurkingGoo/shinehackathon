@@ -45,7 +45,7 @@ data-science content:
 |-------|--------|-----|
 | Scoring service | **Python 3.11 · FastAPI · uvicorn** | Team is Python; SisFall/CASAS are Python-native |
 | Feature math | numpy / scipy / pandas | Signal magnitude, baselines, z-scores |
-| Live channel | **SSE** (`StreamingResponse` / `sse-starlette`) | Client stub already assumes `EventSource`; simpler than WebSocket |
+| Live channel | **SSE** (`StreamingResponse` / `sse-starlette`) | Client stub already assumes `EventSource`; simpler than WebSocket. Keepalive: named `heartbeat` frame after 15 s of quiet; client watchdog (35 s, 2x) reconnects silently on expiry or error |
 | Origin | **Next.js `/api/*` proxies the service** | Keeps client on relative URLs: no CORS, seam untouched |
 | Storage | **None for the demo** | Baselines precompute to JSON; replayer holds shift state in memory. SQLite only if event history must survive restart |
 | Briefing drafting | flagged, `briefing` string only | Smooths wording from `score`+`features`; never invents cause. Flag off ⇒ demo still works |

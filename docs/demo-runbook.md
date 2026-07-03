@@ -3,7 +3,7 @@ type: doc
 diataxis: how-to
 title: Demo Runbook
 status: active
-last_updated: 2026-07-02
+last_updated: 2026-07-03
 tags: [howto, demo, runbook]
 ---
 
@@ -31,7 +31,7 @@ served pre-real-data fixtures and "verified" fine. Never trust a running server.
 | 3 | Top caseload row reads "Bedroom exit — None by 10:00", which looks like a null leak | Copy now "not seen by 10:00" | **fixed 2026-07-02** |
 | 4 | Page refresh after Simulate erases the incident; `/caseload` disagrees with the SSE event's `rank: 1` | Incident kept in service memory (30-min TTL) and merged into `/caseload` at rank 1; covered by `test_incident_persists_into_caseload` | **fixed 2026-07-02** |
 | 5 | Stale-server hazard (above) | Pre-flight checklist; consider a `buildInfo` field in `/health` | mitigated |
-| 6 | No SSE heartbeat/reconnect: a dropped stream means Simulate silently goes nowhere | Heartbeat + client reconnect (stretch) | open |
+| 6 | No SSE heartbeat/reconnect: a dropped stream means Simulate silently goes nowhere | Service emits a named `heartbeat` SSE frame after 15 s of quiet; client re-arms a 35 s watchdog on any frame and silently reconnects (2 s backoff) on watchdog expiry or stream error. Covered by `test_stream_emits_heartbeat`; wire format curl-verified. Client reconnect is typecheck-verified only: rehearse one real sleep/Wi-Fi blip before demo day | **fixed 2026-07-03** |
 | 7 | Pin/flash/auto-open animation never visually verified (data layer is; pixels aren't) | Browser rehearsal once Chrome extension is connected; capture screenshots for the deck | open |
 | 8 | Regression from fix #4: Simulate button was `disabled` whenever the caseload carried an acute row, so one press disabled it for the 30-min TTL | Button toggles: active incident ⇒ **"Reset demo"** → `POST /incidents/clear` (new endpoint + proxy rewrite) returns the caseload to calm; covered in `test_incident_persists_into_caseload` | **fixed 2026-07-02** |
 
@@ -47,7 +47,7 @@ served pre-real-data fixtures and "verified" fine. Never trust a running server.
 cd scoring-service
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
-pytest -q                                # 30 tests: contract + scoring + stream + loaders + baselines
+pytest -q                                # 35 tests: contract + scoring + stream + loaders + baselines
 
 # 2. frontend (proxies /api/* to :8000; set SCORING_SERVICE_URL to override)
 cd triage-dashboard
@@ -120,6 +120,12 @@ hand-set demo numbers by design ([[scoring-card]]); real inputs arrive via
    agree on re-fetch).
 4. Talk through the deterministic rationale: every number on screen traces to a
    `RiskFeature` ([[feature-spec]]).
+
+Optional hardware beat ([[hardware-bridge-plan]] B1, ADR 0006): open
+`http://localhost:3000/hardware` in a second tab. Its "Stream a recorded fall
+from this device" button calls the same simulate endpoint; the dashboard tab
+pins through the production SSE path (verified at 70 ms). The page prints the
+honesty note: the wearable link is the one simulated link in the demo.
 
 ## Contract test (works now)
 

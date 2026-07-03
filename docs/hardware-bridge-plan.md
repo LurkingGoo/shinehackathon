@@ -2,7 +2,7 @@
 type: doc
 diataxis: explanation
 title: Hardware Bridge Plan (sense layer showcase)
-status: approved-B1 (ADR 0006)
+status: B1 shipped (ADR 0006); B2 unscheduled stretch
 last_updated: 2026-07-03
 tags: [hardware, bangle, plan, pitch, demo]
 ---
@@ -36,7 +36,11 @@ that prove the category, not exclusive dependencies.
 
 ## Phase B: the showcase build (pre-demo, timeboxed)
 
-### B1. Hardware companion panel with a live link to the dashboard
+### B1. Hardware companion panel with a live link to the dashboard *(shipped 2026-07-03)*
+
+> Shipped per ADR 0006: route `/hardware` in triage-dashboard, all acceptance
+> criteria met (pin via production SSE in 70 ms, typecheck + build + 35 tests
+> pass, no console errors). Demo wiring in [[demo-runbook]] §Optional hardware beat.
 
 A presentation surface, not a scoring change. One page in the dashboard app
 (route `/hardware`) containing:
