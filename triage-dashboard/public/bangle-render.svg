@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 420" font-family="Segoe UI, -apple-system, Roboto, Helvetica, Arial, sans-serif">
+  <!-- ============ the bangle ============ -->
+  <g transform="translate(200,196)">
+    <!-- band -->
+    <ellipse cx="0" cy="6" rx="138" ry="156" fill="none" stroke="#33291f" stroke-width="36"/>
+    <ellipse cx="0" cy="6" rx="138" ry="156" fill="none" stroke="#4a3c2d" stroke-width="24"/>
+    <!-- case -->
+    <rect x="-92" y="-108" width="184" height="184" rx="42" fill="#33291f"/>
+    <rect x="-92" y="-108" width="184" height="184" rx="42" fill="none" stroke="#5a4a38" stroke-width="3"/>
+    <!-- screen -->
+    <rect x="-76" y="-92" width="152" height="152" rx="30" fill="#fffdfb" stroke="#efe6da" stroke-width="2"/>
+    <!-- screen header -->
+    <text x="0" y="-62" text-anchor="middle" font-size="15" font-weight="600" fill="#8a7c6d">accelerometer</text>
+    <!-- baseline grid -->
+    <line x1="-60" y1="6" x2="60" y2="6" stroke="#efe6da" stroke-width="2"/>
+    <!-- the fall signature: baseline, free-fall dip, impact spike, stillness -->
+    <path d="M-60,6 h26 l9,30 l8,-84 l7,62 l6,-14 h64" fill="none" stroke="#c0392b" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- signature annotations -->
+    <text x="0" y="52" text-anchor="middle" font-size="14" fill="#8a7c6d">dip · spike · stillness</text>
+  </g>
+
+  <!-- caption under bangle -->
+  <text x="200" y="398" text-anchor="middle" font-size="20" font-weight="600" fill="#33291f">Bangle.js 2 · open source · ≈S$130</text>
+
+  <!-- ============ BLE stream ============ -->
+  <g stroke="#c65d3b" stroke-width="6" fill="none" stroke-linecap="round">
+    <path d="M418,152 a64,64 0 0 1 0,108">
+      <animate attributeName="opacity" values="1;0.15;1" dur="1.8s" begin="0s" repeatCount="indefinite"/>
+    </path>
+    <path d="M452,124 a104,104 0 0 1 0,164">
+      <animate attributeName="opacity" values="1;0.15;1" dur="1.8s" begin="0.3s" repeatCount="indefinite"/>
+    </path>
+    <path d="M486,96 a144,144 0 0 1 0,220">
+      <animate attributeName="opacity" values="1;0.15;1" dur="1.8s" begin="0.6s" repeatCount="indefinite"/>
+    </path>
+  </g>
+  <text x="452" y="330" text-anchor="middle" font-size="18" fill="#8a7c6d">Bluetooth LE · raw readings</text>
+
+  <!-- ============ scoring service ============ -->
+  <g transform="translate(560,150)">
+    <rect x="0" y="0" width="130" height="112" rx="20" fill="#fbeee7" stroke="#c65d3b" stroke-width="2"/>
+    <text x="65" y="48" text-anchor="middle" font-size="17" font-weight="600" fill="#c65d3b">detector</text>
+    <text x="65" y="74" text-anchor="middle" font-size="14" fill="#8a7c6d">fall signature</text>
+  </g>
+  <line x1="700" y1="206" x2="742" y2="206" stroke="#c65d3b" stroke-width="5" stroke-linecap="round"/>
+  <path d="M742,206 l-12,-8 v16 z" fill="#c65d3b"/>
+
+  <!-- ============ dashboard ============ -->
+  <g transform="translate(756,92)">
+    <rect x="0" y="0" width="196" height="228" rx="20" fill="#fffdfb" stroke="#efe6da" stroke-width="3"/>
+    <!-- pinned acute row -->
+    <rect x="14" y="16" width="168" height="46" rx="12" fill="#fbe9e6" stroke="#c0392b" stroke-width="2.5"/>
+    <circle cx="38" cy="39" r="9" fill="#c0392b"/>
+    <rect x="58" y="28" width="90" height="8" rx="4" fill="#c0392b" opacity="0.55"/>
+    <rect x="58" y="43" width="112" height="7" rx="3.5" fill="#8a7c6d" opacity="0.45"/>
+    <!-- calm rows -->
+    <g fill="#faf5ee" stroke="#efe6da" stroke-width="2">
+      <rect x="14" y="74" width="168" height="40" rx="12"/>
+      <rect x="14" y="122" width="168" height="40" rx="12"/>
+      <rect x="14" y="170" width="168" height="40" rx="12"/>
+    </g>
+    <g fill="#8a7c6d" opacity="0.35">
+      <rect x="30" y="88" width="96" height="7" rx="3.5"/>
+      <rect x="30" y="136" width="110" height="7" rx="3.5"/>
+      <rect x="30" y="184" width="84" height="7" rx="3.5"/>
+    </g>
+  </g>
+  <text x="854" y="352" text-anchor="middle" font-size="18" fill="#8a7c6d">pins to the top in seconds</text>
+</svg>
