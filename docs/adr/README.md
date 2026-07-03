@@ -23,6 +23,7 @@ mirrors the append-only `decisions.md` but in the standard per-file form.
 | [[0003-absolute-weight-risk-aggregation]] | Absolute-weight risk aggregation for cross-resident comparability | Accepted |
 | [[0004-contract-parity-guard]] | Contract parity guarded by generated schema + types.ts field-diff | Accepted |
 | [[0005-sensitivity-first-operating-point]] | Sensitivity-first acute operating point (96.2% detection / 29.8% ADL false-alarm) | Accepted |
+| [[0006-hardware-showcase-b1-scope]] | Hardware showcase scope: B1 companion panel only | Accepted |
 
 ## Template
 

@@ -2,7 +2,7 @@
 type: doc
 diataxis: explanation
 title: Hardware Bridge Plan (sense layer showcase)
-status: draft-for-operator-review
+status: approved-B1 (ADR 0006)
 last_updated: 2026-07-03
 tags: [hardware, bangle, plan, pitch, demo]
 ---
