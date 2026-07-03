@@ -41,6 +41,8 @@ nav:
   - The Solution (judges start here):
       - Solution overview: solution-overview.md
       - Model card & datasheet: scoring-card.md
+      - Hardware scan (sense layer): hardware-scan.md
+      - Hardware bridge plan: hardware-bridge-plan.md
       - Slide plan: slide-plan.md
   - Engineering:
       - Backend architecture: backend-architecture.md

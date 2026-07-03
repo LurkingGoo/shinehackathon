@@ -29,14 +29,14 @@ data-science content:
   `GET /api/residents/:id` → `ResidentDetail`, and a push channel emitting
   `IncidentEvent`.
 - **One presentation surface (added 2026-07-03):** `GET /api/incidents/trace` →
-  `IncidentTrace` — the downsampled accelerometer window + detected phase
+  `IncidentTrace`: the downsampled accelerometer window + detected phase
   positions behind the active incident, feeding the drilldown's "What the
   sensor saw" waveform. 404 while calm. Read-only, derived from the same
   trace the acute score is computed on (numbers always agree).
 - **Every score must decompose into `RiskFeature[]` with weights.** A black-box
   score that can't produce weighted features is rejected *by the contract*. This
-  forces explainability on us — a good constraint.
-- `risk` and `confidence` are **separate 0..1 axes** — never conflated.
+  forces explainability on us (a good constraint).
+- `risk` and `confidence` are **separate 0..1 axes**, never conflated.
   `updatedAt` is ISO-8601; `recency` is a pre-formatted display string.
 
 ## 2. Solidified stack
@@ -46,7 +46,7 @@ data-science content:
 | Scoring service | **Python 3.11 · FastAPI · uvicorn** | Team is Python; SisFall/CASAS are Python-native |
 | Feature math | numpy / scipy / pandas | Signal magnitude, baselines, z-scores |
 | Live channel | **SSE** (`StreamingResponse` / `sse-starlette`) | Client stub already assumes `EventSource`; simpler than WebSocket |
-| Origin | **Next.js `/api/*` proxies the service** | Keeps client on relative URLs — no CORS, seam untouched |
+| Origin | **Next.js `/api/*` proxies the service** | Keeps client on relative URLs: no CORS, seam untouched |
 | Storage | **None for the demo** | Baselines precompute to JSON; replayer holds shift state in memory. SQLite only if event history must survive restart |
 | Briefing drafting | flagged, `briefing` string only | Smooths wording from `score`+`features`; never invents cause. Flag off ⇒ demo still works |
 
@@ -60,7 +60,7 @@ Browser ──▶ Next.js (frontend + /api proxy) ──▶ FastAPI scoring-serv
   /api/incidents/trace   →  GET  :8000/incidents/trace   (waveform, 404 calm)
 ```
 
-The mock `/api/*` routes swap from reading `fixtures.ts` to proxying the service —
+The mock `/api/*` routes swap from reading `fixtures.ts` to proxying the service,
 the exact swap the seam was built for. `simulateIncident` +
 `app/api/incidents/route.ts` are deleted once the live channel exists.
 
@@ -70,7 +70,7 @@ the exact swap the seam was built for. `simulateIncident` +
 scoring-service/
   app/
     main.py            # FastAPI app + the 3 routes
-    models.py          # pydantic — MUST serialize to lib/types.ts EXACTLY
+    models.py          # pydantic: MUST serialize to lib/types.ts EXACTLY
     scoring/
       acute.py         #  SisFall fall detection
       chronic.py       #  CASAS baseline + anomaly
@@ -83,12 +83,12 @@ scoring-service/
   requirements.txt
 ```
 
-## 3. Scoring approach — credible heuristics (NO model training)
+## 3. Scoring approach: credible heuristics (NO model training)
 
 **We do not train a model.** No labels, no fitted classifier. Datasets are used
 as realistic streams to compute over and replay. Two tracks, never blended:
 
-### Acute — SisFall fall detection (physics, not ML)
+### Acute: SisFall fall detection (physics, not ML)
 - Signal-magnitude vector `SMV = √(ax²+ay²+az²)`.
 - Fall pattern = free-fall dip below a low threshold → impact peak above a high
   threshold within a short window → post-impact stillness.
@@ -96,14 +96,14 @@ as realistic streams to compute over and replay. Two tracks, never blended:
 - `confidence` = margin past the thresholds.
 - Acute always pins to the top of the caseload (a "now" interrupt).
 
-### Chronic — CASAS ambient anomaly (self-baselining)
+### Chronic: CASAS ambient anomaly (self-baselining)
 - Precompute each resident's **own** routine baseline: first-kitchen-motion hour,
   per-hour activity counts, typical inter-event gaps.
 - Live score = deviation from that baseline (z-score / gap-vs-typical).
 - `features` map onto the existing fixtures: "Kitchen inactivity 16h vs typ. <4h",
   "Front door not opened", "Last confirmed motion".
 - `risk` = normalized weighted sum of feature contributions.
-- `confidence` = data completeness / signal quality — a **separate axis**.
+- `confidence` = data completeness / signal quality, a **separate axis**.
 
 ### The deterministic spine (contract-critical)
 Every score decomposes into `RiskFeature[]` with weights →
@@ -116,19 +116,19 @@ only smooth the `briefing` paragraph from facts already in `score`+`features`.
 CASAS (US) and SisFall (Colombia) are **not** Singapore data, but the method
 carries **no geographic assumption**:
 
-- **Fall detection is physics** — same accelerometer signature in an HDB flat as
+- **Fall detection is physics**: same accelerometer signature in an HDB flat as
   anywhere. Zero transfer risk.
-- **Chronic is self-referential** — each resident is their *own* baseline, so no
+- **Chronic is self-referential**: each resident is their *own* baseline, so no
   foreign "routine prior" is baked in. Deployed locally, it learns each
   resident's rhythm in days.
-- **Singapore fit lives in the framing** (HDB units, One Care, JSGP) — already in
-  the frozen Warm Human UI — not in the math.
+- **Singapore fit lives in the framing** (HDB units, One Care, JSGP), already in
+  the frozen Warm Human UI, not in the math.
 - **Judging answer:** public datasets are *proxies* (Singapore eldercare sensor
   data isn't public); the method needs no local training, so real deployment
   self-calibrates from local residents. Proxy for method validation, not a claim
   that US routines equal Singapore routines.
 
-## 5. Scope discipline — is it overengineered?
+## 5. Scope discipline: is it overengineered?
 
 **Appropriately scoped, not over-built.** Guardrails:
 
@@ -138,12 +138,12 @@ carries **no geographic assumption**:
 - **Already trimmed:** no model training; no DB; SSE not WebSocket;
   Twilio/Supabase deferred until the flow is agreed.
 - **Explicit fallbacks if time runs short (a decision, not a scramble):**
-  1. **Precompute the entire chronic caseload offline to JSON** — chronic is not a
+  1. **Precompute the entire chronic caseload offline to JSON.** Chronic is not a
      "now" concern, so the only running-server duty becomes the acute SSE replayer.
-  2. **Make the service SSE-only** — serve the two GETs as static JSON.
+  2. **Make the service SSE-only.** Serve the two GETs as static JSON.
 - **Watch:** do not add a DB or start training "because we have the data."
 
-## 6. Biggest risk — the replayer, not the scoring
+## 6. Biggest risk: the replayer, not the scoring
 
 The demo climax is a fall firing mid-shift → live re-rank. That's timing/streaming
 plumbing (accelerated clock, scripted injection, SSE piped through Next) and it's
@@ -169,5 +169,5 @@ Ordered by value-to-effort. None required for the demo.
 
 `models.py` must serialize to **exactly** the `lib/types.ts` shapes. Add a tiny
 **contract test**: hit each endpoint, validate the JSON against a schema derived
-from `types.ts`. That is the entire risk surface of the swap — guard it and the
+from `types.ts`. That is the entire risk surface of the swap; guard it and the
 backend is truly drop-in.

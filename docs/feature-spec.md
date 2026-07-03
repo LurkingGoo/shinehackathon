@@ -13,16 +13,16 @@ tags: [features, scoring, reference]
 > **Reference tier.** Every `RiskFeature` the scoring service emits, concrete
 > enough to implement with zero guessing. Bump `spec_version` on any change and
 > run a doc pass ([[README]]). Thresholds marked *(tune)* are starting points to
-> calibrate on the real SisFall/CASAS traces — the *method* is fixed, the numbers
+> calibrate on the real SisFall/CASAS traces: the *method* is fixed, the numbers
 > are tunable. Contract these feed: `RiskFeature` in `triage-dashboard/lib/types.ts`.
 
 ## 0. Common definitions
 
 - **`RiskFeature`** = `{ label, value, weight, baseline }` (display strings +
   `weight` 0..1). The set of features for a resident is the *entire* explanation
-  of their score — nothing enters `risk`/`rationale` that isn't a feature.
+  of their score; nothing enters `risk`/`rationale` that isn't a feature.
 - **risk** (0..1) = sum of absolute weighted feature contributions
-  (`Σ wᵢ·aᵢ`, clipped) — comparable across residents (§2,
+  (`Σ wᵢ·aᵢ`, clipped), comparable across residents (§2,
   [[0003-absolute-weight-risk-aggregation]]).
 - **confidence** (0..1) = data quality axis (completeness · sensor health ·
   baseline maturity). **Never** mixed into risk.
@@ -32,14 +32,14 @@ tags: [features, scoring, reference]
 
 ---
 
-## 1. ACUTE track — fall detection (SisFall, physics)
+## 1. ACUTE track: fall detection (SisFall, physics)
 
 **Source signal.** Tri-axial accelerometer, ~200 Hz (SisFall: ADXL345 / MMA8451Q).
 Compute the **signal-magnitude vector** per sample:
 `SMV = √(ax² + ay² + az²)`, in g (1 g = rest).
 
 **Detection sequence** (a fall is the *ordered* co-occurrence, not any single
-threshold — this is what rejects normal ADLs like sitting hard):
+threshold; this is what rejects normal ADLs like sitting hard):
 
 1. **Free-fall dip:** `SMV < 0.8 g` sustained ≥ 40 ms.
 2. **Impact peak:** within ≤ 500 ms of the dip, `SMV > 2.3 g`.
@@ -47,7 +47,7 @@ threshold — this is what rejects normal ADLs like sitting hard):
    subject's active-motion band (person is down and not rising).
 
 *(Operating point calibrated 2026-07-02 on the full real SisFall set via
-`scripts/calibrate.py --grid` — 96.2 % detection. Trade-off recorded in
+`scripts/calibrate.py --grid`: 96.2 % detection. Trade-off recorded in
 [[0005-sensitivity-first-operating-point]] and [[scoring-card]] §Metrics.
 Pre-calibration starting points were 0.6 g / 2.7 g / 80 ms.)*
 
@@ -62,7 +62,7 @@ severity (long-lie) but is not required to fire.
 | Free-fall duration | dip window (ms) | `min(1, dip_ms/300)` | 0.2–0.3 | `typ. 0 ms` | Very short dips (stumble) → lower weight, may route to chronic frailty |
 | Post-impact inactivity | SMV variance after impact | inactivity seconds → `min(1, s/120)` | 0.1–0.2, **severity escalator** | `typ. resumes < 20 s` | If the person rises quickly, weight→low; still logged |
 
-**risk (acute)** — a *detected* fall is definitionally top-priority (it preempts
+**risk (acute).** A *detected* fall is definitionally top-priority (it preempts
 the ranking), so risk floors high and scales with impact severity:
 `risk = clamp(0.9 + 0.1·severity, 0, 1)`, `severity = (peak − 2.7)/(6 − 2.7)`.
 It is **not** a chronic weighted sum. Undetected → a low residual (`0.2·severity`)
@@ -79,14 +79,14 @@ after impact."`)
 
 ---
 
-## 2. CHRONIC track — routine anomaly (CASAS, self-baselining)
+## 2. CHRONIC track: routine anomaly (CASAS, self-baselining)
 
 **Source signal.** CASAS ambient events: PIR motion (`M###`), door (`D###`),
 optionally item/temperature sensors. Each event = `(timestamp, sensor, state)`.
 Sensors are mapped to **areas** (kitchen, bedroom, bathroom, front-door) via a
 per-home layout file.
 
-**Baseline (self-referential — no population prior).** For each resident, from
+**Baseline (self-referential, no population prior).** For each resident, from
 their **own** trailing history (target ≥ 14 days), precompute per feature a
 typical value + spread, stored in `baselines.json`:
 `{ mean, std, typical_display }`. This is why the method is **Singapore-portable**:
@@ -100,18 +100,18 @@ distribution is thin.
 
 **Directionality (`side`, spec 1.3.0).** Each feature declares which departure
 from baseline is concerning: `high` (`z' = z`, e.g. kitchen gap), `low`
-(`z' = −z`, e.g. activity volume), or `both` (`z' = |z|`, e.g. night trips —
-more suggests UTI/decline, fewer corroborates inactivity; door timing — any
-break in the routine is signal). Motivated by the real CASAS resident's broken
+(`z' = −z`, e.g. activity volume), or `both` (`z' = |z|`, e.g. night trips,
+where more suggests UTI/decline and fewer corroborates inactivity; or door
+timing, where any break in the routine is signal). Motivated by the real CASAS resident's broken
 day (2011-02-19): two of three signals broke *downward* and scored 0 under
 one-sided scoring, dropping the genuinely anomalous resident to rank 2.
 Implemented as `chronic.anomaly(..., side)` / `ChronicFeatureInput.side`.
 
-**Aggregate:** `risk = clamp(Σ(weightᵢ · aᵢ), 0, 1)` — the **sum of absolute
+**Aggregate:** `risk = clamp(Σ(weightᵢ · aᵢ), 0, 1)`, the **sum of absolute
 weighted contributions**, NOT a per-resident weighted mean. Weights are
 pre-calibrated importances that sum to ≤ 1, so a resident with one dominant
 feature does not have that feature renormalized to 100 % of their score. This
-keeps `risk` **comparable across residents** — the property the ranking depends
+keeps `risk` **comparable across residents**, the property the ranking depends
 on. Implemented as `chronic.contribution_risk`; see
 [[0003-absolute-weight-risk-aggregation]]. (`chronic.aggregate_risk`, the
 weighted *mean*, remains for relative-weight uses.)
@@ -123,13 +123,13 @@ weighted *mean*, remains for relative-weight uses.)
 | Kitchen inactivity | kitchen PIR gap since last fire | hours since last kitchen motion → z vs baseline gap | high | 0.45–0.55 | `typ. < 4h` | Resident out (door opened + gone) → suppress, don't score as anomaly |
 | Front door timing | front-door sensor, first-open time | today's first open vs typical first-open hour | both | 0.10–0.20 | `typ. 08:10` | Weekend/routine variance → wide std absorbs it |
 | Last confirmed motion | any PIR, most recent | recency string + area; low weight, context | high | 0.10–0.20 | `""` | Sensor fault looks like inactivity → cross-check sensor-health feature |
-| Night activity (bathroom trips) | bathroom PIR during sleep window | PIR fires clustered into **visits** (fires ≥ 10 min *(tune)* apart = new trip) vs baseline nightly trips | both | 0.15–0.25 | `typ. 3–4` | UTI/decline signal; abnormal count either way ⇒ elevated. Raw fires overcount ~17× (a PIR refires per visit — measured on CASAS Aruba) |
+| Night activity (bathroom trips) | bathroom PIR during sleep window | PIR fires clustered into **visits** (fires ≥ 10 min *(tune)* apart = new trip) vs baseline nightly trips | both | 0.15–0.25 | `typ. 3–4` | UTI/decline signal; abnormal count either way ⇒ elevated. Raw fires overcount ~17× (a PIR refires per visit; measured on CASAS Aruba) |
 | Activity volume | all PIR fires / hour, rolling | today's daily total vs baseline daily total | low | 0.10–0.20 | `typ. N fires/day` | Whole-day low volume corroborates inactivity |
-| Sensor-health / data gap | per-sensor last-seen | stale sensor → flags **confidence**, not risk | — | (feeds confidence) | `all reporting` | Prevents a dead sensor from reading as "resident inactive" |
+| Sensor-health / data gap | per-sensor last-seen | stale sensor → flags **confidence**, not risk | n/a | (feeds confidence) | `all reporting` | Prevents a dead sensor from reading as "resident inactive" |
 
 **confidence (chronic)** = `min(data_completeness, sensor_health, baseline_maturity)`
 where `baseline_maturity = min(1, days_of_history / 14)`. A resident onboarded 2
-days ago scores with honestly *low* confidence — the UI shows it as a separate axis.
+days ago scores with honestly *low* confidence; the UI shows it as a separate axis.
 
 **rationale template (example):**
 `"No {area} activity in {duration} — usually {baseline_behavior}."`

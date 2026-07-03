@@ -17,8 +17,8 @@ tags: [scoring, model-card, datasheet, ethics, limits]
 ## Model Card
 
 ### Overview
-Two-track risk scorer for an eldercare triage caseload. **No trained model** — a
-deterministic heuristic pipeline. **Acute**: physics-based fall detection over
+Two-track risk scorer for an eldercare triage caseload. **No trained model**,
+just a deterministic heuristic pipeline. **Acute**: physics-based fall detection over
 accelerometer magnitude. **Chronic**: self-baselining anomaly over ambient
 routine signals. Output per resident: `risk` (0..1), `confidence` (0..1),
 weighted `features`, deterministic `rationale`. Full mechanics: [[feature-spec]].
@@ -33,7 +33,7 @@ weighted `features`, deterministic `rationale`. Full mechanics: [[feature-spec]]
 
 ### Out-of-scope / must-not
 - **Not** a diagnosis, a clinical device, or a guarantee no one long-lies.
-- **Not** an autonomous dispatcher — a human caseworker decides.
+- **Not** an autonomous dispatcher: a human caseworker decides.
 - **Not** a surveillance tool: ambient PIR/door presence only, no cameras/audio.
 - Must **never** blend acute and chronic into one number, or conflate `risk`
   with `confidence`.
@@ -54,21 +54,21 @@ Heuristic, so evaluated by **replayed traces**, not a training metric.
 | Pre-calibration (0.6 g / 2.7 g / 80 ms / 500 ms) | 51.8% | 17.8% |
 | **Calibrated (0.8 g / 2.3 g / 40 ms / 500 ms)** | **96.2%** | 29.8% |
 
-Chosen sensitivity-first (missed falls are the costliest error, below) — the
+Chosen sensitivity-first (missed falls are the costliest error, below). The
 full trade-off and rejected alternative are recorded in
 [[0005-sensitivity-first-operating-point]]. The
 29.8% false-alarm rate is on SisFall's **deliberately fall-like ADLs**
 performed by young adults; per-activity split (`scripts/fa_breakdown.py`):
 alarms concentrate ~100% in vigorous activities (jogging, jumping obstacles,
 running stairs, car ingress/egress, collapsing into a chair), while
-elderly-typical movements — walking slowly, slow sits, lying down, stooping,
-even **stumbling without falling** — trigger at 0–5%. Daily alarm load on a
+elderly-typical movements (walking slowly, slow sits, lying down, stooping,
+even **stumbling without falling**) trigger at 0–5%. Daily alarm load on a
 monitored elderly resident is therefore far below the headline ADL rate.
 
-- Demo incident trace (pinned): SisFall `F11_SA16_R03` — **11.2 g** peak
+- Demo incident trace (pinned): SisFall `F11_SA16_R03`: **11.2 g** peak
   impact, **12 s** post-impact stillness. This is the fall replayed by
   `POST /incidents/simulate` and the numbers shown on the acute card.
-- Chronic: real-resident validation via CASAS Aruba (220 days) — the
+- Chronic: real-resident validation via CASAS Aruba (220 days). The
   self-baselined features recover a genuine routine (typ. kitchen gap 4.2 h,
   first door-open 09:35, 3.8 night bathroom trips) and `--demo-day auto`
   isolates a genuinely broken day (2011-02-19: 11.1 h kitchen gap, z ≈ 3.2).
@@ -81,22 +81,22 @@ monitored elderly resident is therefore far below the headline ADL rate.
 - **False positives** cost caseworker time and can erode trust → chronic actions
   are graduated (welfare call before dispatch).
 - **Fairness:** self-baselining avoids a population prior, but a resident with an
-  irregular lifestyle gets wide baselines (less sensitive) — flagged as a known
+  irregular lifestyle gets wide baselines (less sensitive), flagged as a known
   limitation, surfaced via `confidence`.
 - **Transparency:** every score decomposes into human-readable features; no
   black box reaches the caseworker.
 
 ### Limitations
 - Acute thresholds are calibrated on SisFall (waist-worn sensor, mostly young
-  adults; 15 elderly for ADLs only) — the fall physics transfers, but the
+  adults; 15 elderly for ADLs only). The fall physics transfers, but the
   false-alarm profile on a genuinely elderly cohort is extrapolated, not measured.
 - Chronic needs ~14 days of a resident's history for a mature baseline; new
   residents score at low confidence by design.
-- A dead/blinded sensor can masquerade as inactivity — mitigated by the
+- A dead/blinded sensor can masquerade as inactivity; mitigated by the
   sensor-health feature feeding `confidence`, not eliminated.
 - Datasets are **proxies** (below), not Singapore field data.
 
-## Datasheet — datasets
+## Datasheet: datasets
 
 ### Provenance (process-as-code)
 Datasets are fetched ONLY via `scoring-service/scripts/fetch_datasets.py`, which
@@ -105,7 +105,7 @@ pins **source URL + sha256 + size + fetch date + citation** in the committed
 mirrors are used (original SisFall host is down; CASAS moved to a 2.7 GB
 all-homes Zenodo bundle); citations below reference the original publications.
 The Aruba sensor→area layout file is derived from the dataset's own activity
-annotations by `scripts/derive_area_map.py` — labels reconstruct the *layout*
+annotations by `scripts/derive_area_map.py`. Labels reconstruct the *layout*
 (a deployment artifact an installer normally writes), they never train or score.
 
 ### SisFall (acute)
@@ -115,17 +115,17 @@ annotations by `scripts/derive_area_map.py` — labels reconstruct the *layout*
 - **Why here:** provides real fall *traces* to detect and to inject as the live
   demo incident. Used as signal, **not** for training.
 - **Provenance / limits:** lab-collected, not Singapore, not in-home. Body
-  placement and subject demographics differ from deployment — acceptable because
+  placement and subject demographics differ from deployment. Acceptable because
   fall detection is physics (magnitude signature), which transfers.
 
 ### CASAS (chronic)
-- **What:** ambient smart-home event streams — PIR motion, door, item sensors
-  with timestamps.
+- **What:** ambient smart-home event streams (PIR motion, door, item sensors
+  with timestamps).
 - **Who/where:** Washington State University CASAS project, US apartments.
 - **Why here:** realistic routine/ambient streams to compute per-resident
   baselines and score deviation. Used as signal, **not** for training.
-- **Provenance / limits:** US homes, US routines. Mitigated by **self-baselining**
-  — each resident is scored against their own history, so no US routine prior is
+- **Provenance / limits:** US homes, US routines. Mitigated by **self-baselining**:
+  each resident is scored against their own history, so no US routine prior is
   imported. Sensor layout differs per home → a per-home area-mapping file is
   required at deployment.
 
@@ -137,5 +137,5 @@ so a real deployment self-calibrates from local residents within days. This is a
 Singapore conditions.
 
 ## Change log
-- 1.0 (2026-07-01) — initial card. Update the Datasheet on any dataset change and
+- 1.0 (2026-07-01): initial card. Update the Datasheet on any dataset change and
   the Limitations/Metrics after threshold calibration ([[README]] ritual).

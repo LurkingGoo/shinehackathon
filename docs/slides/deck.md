@@ -11,7 +11,7 @@ footer: Morning Triage · One Care @ Jurong Spring · JSGP
 
 # Morning **Triage**
 
-The morning triage for One Care caseworkers —
+The morning triage for One Care caseworkers:
 who needs you first, and why, in plain language.
 
 ---
@@ -25,7 +25,7 @@ who needs you first, and why, in plain language.
 Alarm buttons and pendants only help while the fallen person
 can still press them. An unconscious senior presses nothing.
 
-The fall becomes a **long lie** — hours helpless on the floor
+The fall becomes a **long lie**: hours helpless on the floor
 before anyone thinks to check.
 
 ---
@@ -40,8 +40,11 @@ Routine is a vital sign, and absence of motion is data.
 The ambient track asks the senior to wear nothing, press nothing,
 and puts no camera in the room.
 
-One optional bangle adds a second layer —
+One optional bangle adds a second layer:
 falls caught in seconds instead of hours.
+
+*All of it is off-the-shelf hardware, and Singapore already
+deploys senior alert wearables at 26,800-resident scale.*
 
 ---
 
@@ -63,7 +66,7 @@ falls caught in seconds instead of hours.
 
 ![w:1020](assets/chip-simulate-button.png)
 
-<figcaption>The button replays a real recorded fall through the live detector — the same signal a worn bangle would stream</figcaption>
+<figcaption>The button replays a real recorded fall through the live detector, the same signal a worn bangle would stream</figcaption>
 </figure>
 <div class="cols">
 <figure>
@@ -90,10 +93,10 @@ falls caught in seconds instead of hours.
 
 ![h:330](assets/chip-sensor-waveform.png)
 
-<figcaption>Straight from the product — the drill-down shows the signal behind every incident</figcaption>
+<figcaption>Straight from the product: the drill-down shows the signal behind every incident</figcaption>
 </figure>
 
-The detector requires this **ordered sequence** — a free-fall dip, an impact
+The detector requires this **ordered sequence**: a free-fall dip, an impact
 spike within half a second, then stillness. A dropped phone cannot fake the order.
 
 ---
@@ -107,7 +110,7 @@ spike within half a second, then stillness. A dropped phone cannot fake the orde
 
 ![](assets/chip-feature-decomposition.png)
 
-<figcaption>Every score breaks into the sensor facts that produced it — nothing is taken on faith</figcaption>
+<figcaption>Every score breaks into the sensor facts that produced it. Nothing is taken on faith</figcaption>
 </figure>
 <figure>
 
@@ -132,14 +135,14 @@ The system ranks and explains.
 <div class="stat sage"><b>220 days</b><span>one real home · CASAS Aruba</span></div>
 
 Nothing is trained. The thresholds were calibrated openly on the full SisFall set,
-and the lab false alarms concentrate in jogging and jumping — movements a
+and the lab false alarms concentrate in jogging and jumping, movements a
 monitored senior rarely performs.
 
 <figure>
 
 ![w:760](assets/chip-top-row.png)
 
-<figcaption>Rank 1 carries 220 real days of one elderly resident — the system found the broken day on its own</figcaption>
+<figcaption>Rank 1 carries 220 real days of one elderly resident. The system found the broken day on its own</figcaption>
 </figure>
 
 ---
@@ -160,7 +163,7 @@ monitored senior rarely performs.
 
 - It shrinks time to detection. It does not promise to catch every event.
 - Fall thresholds were calibrated on mostly young-adult recordings, so the senior false-alarm rate is extrapolated rather than measured.
-- A missed fall — or a bangle left on the nightstand — degrades to the ambient track, where hours of stillness still surface that resident by morning.
+- A missed fall (or a bangle left on the nightstand) degrades to the ambient track, where hours of stillness still surface that resident by morning.
 - An irregular life earns wide baselines. The system says so through *low confidence* instead of hiding it.
 
 ---
@@ -181,7 +184,7 @@ monitored senior rarely performs.
 
 # Pilot **with us**
 
-One cluster. Commodity sensors. A working system —
+One cluster. Commodity sensors. A working system,
 validated on **4,505 real recordings** and a **220-day real home**.
 
 *Built at SHINE Hackathon. The demo runs live, replaying real recordings.*
@@ -205,7 +208,7 @@ validated on **4,505 real recordings** and a **220-day real home**.
 - **No Singapore training data exists.** A model trained on Colombian or American recordings would import exactly the prior we refuse to assume.
 - **A fall is physics.** The free-fall, impact and stillness sequence transfers across bodies and homes without any training step.
 - **A caseworker must be able to ask why.** Decomposable rules survive that question. A black box does not.
-- Where a model helps later — smoothing the wording of the morning brief. It will never produce a score.
+- Where a model helps later: smoothing the wording of the morning brief. It will never produce a score.
 
 ---
 
@@ -216,7 +219,7 @@ validated on **4,505 real recordings** and a **220-day real home**.
 | Dataset | Role in the system |
 |---|---|
 | **SisFall** · Universidad de Antioquia · 4,505 recordings, 1,798 real falls | Calibrates the fall thresholds, measures the detector, and supplies the live demo trace |
-| **CASAS Aruba** · Washington State University · 220 days of one elderly resident's home | Validates that self-baselining recovers a real routine — and finds the day it broke |
+| **CASAS Aruba** · Washington State University · 220 days of one elderly resident's home | Validates that self-baselining recovers a real routine, and finds the day it broke |
 
 Nothing is trained on either dataset. Both are provenance-pinned with
 checksums in a committed lock file, and every number reproduces from one script.
@@ -231,14 +234,28 @@ The path is the same in the demo and in deployment. Only the source of
 the signal changes.
 
 1. The bangle streams accelerometer readings to the scoring service.
-2. The detector watches every reading for the ordered fall signature —
+2. The detector watches every reading for the ordered fall signature:
    dip, spike, stillness.
 3. A detection pushes an incident event down a live stream the dashboard
    is always listening to. The resident pins to the top in seconds.
 
-*Step 1 is the one link we simulate — there is no wristband in the room.
+*Step 1 is the one link we simulate; there is no wristband in the room.
 The Simulate button feeds a real recorded SisFall trace straight into step 2,
-and everything after — detection, push, re-rank — is the production path.*
+and everything after (detection, push, re-rank) is the production path.*
+
+---
+
+###### Backup · for Q&A
+
+# The hardware **exists today**
+
+![bare h:225](assets/bangle-render.svg)
+
+| Device | Real product, buyable now | Price |
+|---|---|---|
+| Wearable: raw accelerometer, BLE | **Bangle.js 2**, Kionix KX022, open firmware | ≈S$130 |
+| Room presence · door events | **Aqara P1** motion · contact, 5-yr battery | ≈US$20 · 15 |
+| Singapore precedent | **GovTech WAAS** (iWOW, 2025): 170 blocks · 26,800 seniors | govt tender |
 
 ---
 
@@ -246,7 +263,7 @@ and everything after — detection, push, re-rank — is the production path.*
 
 # What a flat **needs**
 
-- Motion sensors in the rooms that carry routine — kitchen, bedroom, bathroom, living room.
+- Motion sensors in the rooms that carry routine: kitchen, bedroom, bathroom, living room.
 - One contact sensor on the front door.
 - One optional bangle for the acute track. The routine track works with nothing worn at all.
 - An installer fills in a one-page sensor-to-area map. No cameras, no microphones, no rewiring.

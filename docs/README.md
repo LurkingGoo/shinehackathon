@@ -6,16 +6,16 @@ last_updated: 2026-07-02
 tags: [documentation, standard, index]
 ---
 
-# shinehackathon — Documentation
+# shinehackathon Documentation
 
 This project documents to a **defined standard**. New docs go in the right
 Diátaxis tier and follow the format for their kind. This file is the index and
 the standard; read it before adding docs.
 
 **Two audiences, one suite (agreed 2026-07-02):** the docs carry a
-**judge-facing layer** ([[solution-overview]] — product, problem fit, approach,
+**judge-facing layer** ([[solution-overview]]: product, problem fit, approach,
 snapshots) on top of the **engineering layer** (architecture, specs, runbook,
-ADRs). Judge-facing pages talk about the solution only — internal tooling
+ADRs). Judge-facing pages talk about the solution only; internal tooling
 (vault plumbing, index search, doc infrastructure) never appears there. Every
 judge-facing claim must trace to an engineering-tier source.
 
@@ -25,9 +25,9 @@ judge-facing claim must trace to an engineering-tier source.
 |---------|----------|-------|
 | Organizing framework | **Diátaxis** (Explanation · Reference · How-to · Tutorial) | tier tag in each doc's frontmatter |
 | Architecture | **arc42 (lite)** | [[backend-architecture]] |
-| Decisions | **MADR** (Markdown ADR) — one file per decision | `docs/adr/` |
+| Decisions | **MADR** (Markdown ADR), one file per decision | `docs/adr/` |
 | Scoring, datasets, limits, ethics | **Scoring Card** = Model Card (Mitchell et al.) + Datasheet for Datasets (Gebru et al.) | [[scoring-card]] |
-| Concrete features | **Reference spec** — one row per feature, implementable with zero guessing | [[feature-spec]] |
+| Concrete features | **Reference spec**: one row per feature, implementable with zero guessing | [[feature-spec]] |
 
 ## Index (by Diátaxis tier)
 
@@ -38,13 +38,15 @@ judge-facing claim must trace to an engineering-tier source.
 | Explanation | [[backend-architecture]] | Why the system is shaped this way (arc42-lite) |
 | Explanation | [[scoring-card]] | What the scoring does, on what data, with what limits & ethics |
 | Reference | [[feature-spec]] | Every `RiskFeature`: inputs, formula, thresholds, weight, rationale template |
+| Reference | [[hardware-scan]] | Sense-layer hardware survey with sources: Bangle.js 2, Aqara, GovTech WAAS precedent |
+| Explanation | [[hardware-bridge-plan]] | Draft plan (operator review pending): hardware showcase phases, cut lines, pilot scope |
 | Reference | `triage-dashboard/lib/types.ts` | The authoritative data contract (code is source of truth) |
 | How-to | [[demo-runbook]] | Run the service + trigger the live re-rank demo |
 | Decisions | [[adr/README]] | ADR index + MADR template |
 
 ## The documentation ritual *(mandated)*
 
-Documentation is not optional cleanup — it is part of "done." A **documentation
+Documentation is not optional cleanup; it is part of "done." A **documentation
 pass** is required whenever any of these change:
 
 1. **Scoring logic or a feature** → update [[feature-spec]] (bump its `spec_version`)
@@ -59,7 +61,7 @@ pass** is required whenever any of these change:
    one; supersede it).
 
 **Scope rule (agreed 2026-07-02):** the ritual fires on **method** changes.
-Threshold *tuning* — numbers marked *(tune)* in [[feature-spec]] — requires no
+Threshold *tuning* (numbers marked *(tune)* in [[feature-spec]]) requires no
 doc pass and no `spec_version` bump; only the calibrated results land in
 [[scoring-card]] §Metrics, and only from `scripts/calibrate.py` output.
 
@@ -68,7 +70,7 @@ concrete enough to implement without asking · limitations/ethics stay honest ·
 `_tools/vault-search/index.py` re-run so docs stay searchable.
 
 > To make this ritual fire automatically from the Session Protocol it would need a
-> line in the (immutable) project `CLAUDE.md` — that requires operator
+> line in the (immutable) project `CLAUDE.md`, and that requires operator
 > authorization. Until then it is enforced by convention here and in `state.md`.
 
 ## Rendered site (localhost)
@@ -82,7 +84,7 @@ python -m mkdocs serve -a 127.0.0.1:8001    # http://127.0.0.1:8001
 python -m mkdocs build                      # static site → .mkdocs-site/ (git-ignored)
 ```
 
-The markdown in `docs/` remains the single source of truth — the site is only a
+The markdown in `docs/` remains the single source of truth; the site is only a
 renderer. New docs must be added to the `nav:` section of `mkdocs.yml`.
 
 ## Data provenance (process-as-code)
@@ -92,8 +94,8 @@ downloads every source, records **URL + sha256 + size + fetch date + citation**
 in `scoring-service/data/datasets.lock.json` (committed; the data itself is
 git-ignored), and refuses artifacts whose checksum drifts from the lock.
 `--verify` re-checks a machine against the lock. The [[scoring-card]] Datasheet
-cites the lock as its provenance record. The full data flow — which bytes come
-from where and what touches them — is documented in [[scoring-card]] (Datasheet)
+cites the lock as its provenance record. The full data flow (which bytes come
+from where and what touches them) is documented in [[scoring-card]] (Datasheet)
 and [[backend-architecture]] §Topology/Data flows.
 
 ## Conventions
