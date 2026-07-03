@@ -63,6 +63,45 @@ def test_incident_persists_into_caseload():
         fixtures.clear_incident()  # don't leak state into other tests
 
 
+class _ConnectedRequest:
+    """Stand-in for starlette Request: a client that never disconnects."""
+
+    async def is_disconnected(self) -> bool:
+        return False
+
+
+def test_stream_emits_heartbeat(monkeypatch):
+    """Keepalive (demo-runbook fix #6): with no incidents flowing, the SSE
+    frame generator must still emit a named heartbeat frame so the client
+    watchdog can tell a quiet stream from a dead one (sleep / Wi-Fi blip),
+    and a real incident must still interleave through."""
+    from app import main
+
+    monkeypatch.setattr(main, "HEARTBEAT_SECONDS", 0.05)  # don't wait 15s in CI
+
+    async def run():
+        gen = main.incident_frames(_ConnectedRequest())
+        try:
+            # quiet stream -> heartbeat frame within ~2 intervals
+            frame = await asyncio.wait_for(gen.__anext__(), timeout=2.0)
+            assert frame == {"event": "heartbeat", "data": "{}"}
+
+            # a published incident still flows through as a plain data frame
+            event = build_incident_event()
+            assert main.hub.publish(event) >= 1
+            while True:
+                frame = await asyncio.wait_for(gen.__anext__(), timeout=2.0)
+                if frame.get("event") != "heartbeat":
+                    break
+            assert frame["data"] == event.model_dump_json(by_alias=True)
+        finally:
+            before = main.hub.subscriber_count
+            await gen.aclose()
+            assert main.hub.subscriber_count == before - 1  # unsubscribed
+
+    asyncio.run(run())
+
+
 def test_incident_trace_endpoint():
     """The drilldown waveform: /incidents/trace 404s while calm, and during an
     incident returns the signal window with ordered phases (free-fall before

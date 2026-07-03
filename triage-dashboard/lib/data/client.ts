@@ -64,9 +64,53 @@ export const dataClient: DataClient = {
   },
 
   subscribeToIncidents(handler) {
-    const es = new EventSource("/api/incidents/stream");
-    es.onmessage = (m) => handler(JSON.parse(m.data) as IncidentEvent);
-    return () => es.close();
+    // Keepalive watchdog (demo-runbook fix #6): the service emits a named
+    // "heartbeat" event every ~15s. If nothing (message or heartbeat) lands
+    // within WATCHDOG_MS, or the stream errors (laptop sleep, Wi-Fi blip),
+    // silently tear down and reconnect. No user action, no UI change.
+    const WATCHDOG_MS = 35_000; // ~2x the server heartbeat interval
+    const RECONNECT_DELAY_MS = 2_000;
+    let es: EventSource | null = null;
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
+    let reconnect: ReturnType<typeof setTimeout> | undefined;
+    let closed = false;
+
+    const armWatchdog = () => {
+      clearTimeout(watchdog);
+      watchdog = setTimeout(
+        () => restart(`no message or heartbeat in ${WATCHDOG_MS}ms`),
+        WATCHDOG_MS,
+      );
+    };
+
+    const restart = (reason: string) => {
+      if (closed) return;
+      console.warn(`[incidents/stream] reconnecting: ${reason}`);
+      es?.close();
+      clearTimeout(watchdog);
+      clearTimeout(reconnect);
+      reconnect = setTimeout(connect, RECONNECT_DELAY_MS);
+    };
+
+    const connect = () => {
+      if (closed) return;
+      es = new EventSource("/api/incidents/stream");
+      armWatchdog();
+      es.onmessage = (m) => {
+        armWatchdog();
+        handler(JSON.parse(m.data) as IncidentEvent);
+      };
+      es.addEventListener("heartbeat", armWatchdog);
+      es.onerror = () => restart("stream error");
+    };
+
+    connect();
+    return () => {
+      closed = true;
+      clearTimeout(watchdog);
+      clearTimeout(reconnect);
+      es?.close();
+    };
   },
 
   async simulateIncident() {

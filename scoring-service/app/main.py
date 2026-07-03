@@ -12,6 +12,7 @@ dataset loaders + real detection replace the source without changing shapes.
 from __future__ import annotations
 
 import asyncio
+import time
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +23,10 @@ from app.models import IncidentEvent, RankedCaseload, ResidentDetail
 from app.replay.engine import hub
 
 app = FastAPI(title="triage scoring-service", version="0.1.0")
+
+# Keepalive cadence for /incidents/stream (demo-runbook fix #6). The client
+# watchdog assumes ~2x this interval; keep the two in sync if it changes.
+HEARTBEAT_SECONDS = 15.0
 
 # Dev convenience: allow the Next app to connect directly (it also proxies).
 app.add_middleware(
@@ -83,24 +88,40 @@ def incident_trace() -> dict:
     return payload
 
 
+async def incident_frames(request: Request):
+    """The SSE frame generator behind /incidents/stream (module-level so the
+    heartbeat behaviour is testable without holding a live HTTP stream open).
+    Yields incident frames as they arrive and a named `heartbeat` frame every
+    HEARTBEAT_SECONDS of quiet so the client can tell a calm stream from a
+    dead socket (sleep / Wi-Fi blip)."""
+    q = hub.subscribe()
+    last_sent = time.monotonic()
+    try:
+        while True:
+            if await request.is_disconnected():
+                break
+            try:
+                event = await asyncio.wait_for(
+                    q.get(), timeout=min(1.0, HEARTBEAT_SECONDS)
+                )
+            except asyncio.TimeoutError:
+                # loop so disconnects are noticed promptly; heartbeat when quiet
+                if time.monotonic() - last_sent >= HEARTBEAT_SECONDS:
+                    last_sent = time.monotonic()
+                    yield {"event": "heartbeat", "data": "{}"}
+                continue
+            last_sent = time.monotonic()
+            yield {"data": event.model_dump_json(by_alias=True)}
+    finally:
+        hub.unsubscribe(q)
+
+
 @app.get("/incidents/stream")
 async def incidents_stream(request: Request) -> EventSourceResponse:
     """SSE: one IncidentEvent JSON per message. The client does
     `new EventSource('/api/incidents/stream')` and JSON.parse(m.data)."""
-    async def gen():
-        q = hub.subscribe()
-        try:
-            while True:
-                if await request.is_disconnected():
-                    break
-                try:
-                    event = await asyncio.wait_for(q.get(), timeout=1.0)
-                except asyncio.TimeoutError:
-                    continue  # loop so disconnects are noticed promptly
-                yield {"data": event.model_dump_json(by_alias=True)}
-        finally:
-            hub.unsubscribe(q)
-
     # no-transform: the Next dev proxy gzip-buffers proxied responses unless
     # told not to — buffered SSE means events never reach the browser.
-    return EventSourceResponse(gen(), headers={"Cache-Control": "no-cache, no-transform"})
+    return EventSourceResponse(
+        incident_frames(request), headers={"Cache-Control": "no-cache, no-transform"}
+    )
