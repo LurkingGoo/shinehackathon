@@ -12,6 +12,7 @@ dataset loaders + real detection replace the source without changing shapes.
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 
 from fastapi import FastAPI, HTTPException, Request
@@ -55,18 +56,60 @@ def resident(rid: str) -> ResidentDetail:
     return detail
 
 
+# Server-side rotation cursor: each POST /incidents/simulate advances it so the
+# demo round-robins through DISTINCT fall traces (different subject / peak-g)
+# instead of replaying one pinned trace. Module-level = shared across the process.
+_rotation_idx = 0
+
+
 @app.post("/incidents/simulate", response_model=IncidentEvent)
 def simulate() -> IncidentEvent:
-    """Inject a fall: a REAL SisFall trace when one is on disk (data/sisfall/
-    or $SISFALL_TRACE), else the synthetic trace so the demo never breaks.
-    The trace runs through the same acute pipeline as any detection."""
-    trace = loaders.default_sisfall_trace()
-    if trace is not None:
-        fixtures.set_acute_trace(loaders.sisfall_smv(trace), loaders.SISFALL_FS)
+    """Inject a fall, ROUND-ROBINING through a set of distinct falls so each
+    press looks different. Uses REAL SisFall traces when data/sisfall/ is on
+    disk (loaders.demo_rotation_traces), else a set of synthetic variants so the
+    demo never breaks. The chosen trace runs through the same acute pipeline as
+    any detection and flows to /caseload, the SSE event and /incidents/trace."""
+    global _rotation_idx
+    # $SISFALL_TRACE is an explicit single-trace pin (operator override) — honor
+    # it verbatim and skip rotation so the injected trace is exactly that file.
+    env_pin = os.environ.get("SISFALL_TRACE")
+    if env_pin:
+        trace = loaders.default_sisfall_trace()
+        if trace is not None:
+            fixtures.set_acute_trace(loaders.sisfall_smv(trace), loaders.SISFALL_FS)
+        fixtures.mark_incident()
+        event = fixtures.build_incident_event()
+        hub.publish(event)
+        return event
+
+    traces = loaders.demo_rotation_traces()
+    if traces:
+        path = traces[_rotation_idx % len(traces)]
+        fixtures.set_acute_trace(loaders.sisfall_smv(path), loaders.SISFALL_FS)
+    else:
+        smv, fs = fixtures.synthetic_rotation_trace(_rotation_idx)
+        fixtures.set_acute_trace(smv, fs)
+    _rotation_idx += 1
     fixtures.mark_incident()  # /caseload now carries the acute row (refresh-proof)
     event = fixtures.build_incident_event()
     hub.publish(event)
     return event
+
+
+@app.post("/incidents/simulate-nearmiss")
+def simulate_nearmiss() -> dict:
+    """Specificity demo: inject a dropped-phone-like impact spike (no free-fall
+    dip before, no stillness after) through the SAME detector. It must NOT
+    register as a fall — no incident is marked, the caseload stays calm. Returns
+    what the detector saw so the UI can show a calm 'checked, not a fall' note."""
+    from app.scoring import acute
+
+    res = acute.detect_fall(fixtures.nearmiss_smv(), fixtures.FS)
+    return {
+        "detected": res.detected,
+        "peakG": round(res.peak_g, 2),
+        "reason": "no free-fall dip / no stillness",
+    }
 
 
 @app.post("/incidents/clear")

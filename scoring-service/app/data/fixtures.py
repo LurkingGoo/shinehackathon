@@ -162,18 +162,53 @@ _try_real_resident()
 
 
 # ------------------------------ acute trace ------------------------------- #
-def _fall_smv() -> np.ndarray:
+def _fall_smv(
+    peak: float = 5.0, freefall_s: float = 0.3, still_s: float = 40.0
+) -> np.ndarray:
     """Synthetic SisFall-like signal-magnitude trace (g): rest → free-fall dip →
-    impact peak (~5g) → ~40s stillness. Replaced by a real SisFall trace once
-    app/data/loaders.py lands."""
+    impact peak → stillness. Parametrised so the rotation can offer visibly
+    different falls when no real SisFall data is on disk. Used as the fallback
+    for a real trace once app/data/loaders.py lands."""
     rest = np.ones(int(1.0 * FS))
-    freefall = np.full(int(0.3 * FS), 0.2)
-    impact = np.array([5.0, 4.6, 3.8])
-    still = np.ones(int(40.0 * FS))
+    freefall = np.full(int(freefall_s * FS), 0.2)
+    impact = np.array([peak, peak * 0.92, peak * 0.76])
+    still = np.ones(int(still_s * FS))
     return np.concatenate([rest, freefall, impact, still])
 
 
 _ACUTE_SMV = _fall_smv()
+
+# Synthetic rotation — the fallback when data/sisfall/ is empty. Distinct
+# peak-g and free-fall durations so successive Simulate presses still differ
+# visibly (the drilldown waveform, peakG and freefallMs all change).
+_SYNTHETIC_ROTATION: list[np.ndarray] = [
+    _fall_smv(peak=5.0, freefall_s=0.30, still_s=40.0),
+    _fall_smv(peak=3.4, freefall_s=0.12, still_s=25.0),
+    _fall_smv(peak=6.8, freefall_s=0.45, still_s=50.0),
+]
+
+
+def synthetic_rotation_trace(i: int) -> tuple[np.ndarray, float]:
+    """The i-th synthetic fall variant (round-robin) + its sample rate."""
+    smv = _SYNTHETIC_ROTATION[i % len(_SYNTHETIC_ROTATION)]
+    return smv, FS
+
+
+def nearmiss_smv() -> np.ndarray:
+    """A dropped-phone-like SMV: a sharp impact spike with NO free-fall dip
+    before it and NO sustained stillness after (continued handling motion). Fed
+    to the SAME acute.detect_fall, it must return detected=False — the
+    specificity demo. Signal never dips below the free-fall threshold, so the
+    ordered fall signature is absent."""
+    rest = np.ones(int(1.0 * FS))
+    # sharp impact-like spike (above the impact threshold) but no preceding dip
+    spike = np.array([4.6, 4.1, 3.3, 2.0])
+    # afterwards: the phone keeps being handled — jittery motion, never still,
+    # and never dips into free-fall territory
+    rng = np.random.default_rng(7)
+    after = 1.0 + 0.18 * np.sin(np.linspace(0, 30, int(3.0 * FS))) \
+        + 0.05 * rng.standard_normal(int(3.0 * FS))
+    return np.concatenate([rest, spike, np.clip(after, 0.85, None)])
 
 # The trace behind r-tan's acute score. Injection (a real SisFall trace via
 # POST /incidents/simulate) replaces it so the drilldown fetched later matches

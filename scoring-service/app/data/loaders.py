@@ -86,6 +86,62 @@ def default_sisfall_trace() -> Path | None:
     return None
 
 
+_rotation_cache: list[Path] | None = None
+
+
+def demo_rotation_traces(n: int = 4) -> list[Path]:
+    """A curated set of DISTINCT real SisFall falls for the Simulate rotation.
+
+    `POST /incidents/simulate` round-robins through these so each press shows a
+    visibly different fall (different subject, different peak-g / free-fall).
+    Selection is deterministic and cached: the curated dramatic pin
+    (default_sisfall_trace) first, then one detected fall per distinct subject,
+    each with a peak-g at least 0.5 g apart from the ones already chosen so the
+    drilldown numbers differ noticeably. Returns [] when no real SisFall data is
+    on disk — the caller then falls back to the synthetic rotation so the demo
+    never breaks. All picks pass the same production detector.
+    """
+    global _rotation_cache
+    if _rotation_cache is not None:
+        return _rotation_cache
+    from app.scoring import acute
+
+    picks: list[Path] = []
+    peaks: list[float] = []
+
+    def consider(p: Path) -> None:
+        if len(picks) >= n or p in picks:
+            return
+        try:
+            res = acute.detect_fall(sisfall_smv(p), SISFALL_FS)
+        except (ValueError, OSError):
+            return
+        if not res.detected:
+            return
+        if any(abs(res.peak_g - pk) < 0.5 for pk in peaks):
+            return
+        picks.append(p)
+        peaks.append(res.peak_g)
+
+    pin = default_sisfall_trace()
+    if pin is not None:
+        consider(pin)
+
+    if SISFALL_DIR.is_dir():
+        seen_subjects: set[str] = set()
+        for p in sorted(SISFALL_DIR.rglob("F*.txt")):
+            if len(picks) >= n:
+                break
+            subj = p.parent.name
+            if subj in seen_subjects:
+                continue
+            seen_subjects.add(subj)
+            consider(p)
+
+    _rotation_cache = picks
+    return picks
+
+
 @dataclass
 class CasasEvent:
     """One CASAS ambient event: PIR motion (M###), door (D###), etc."""

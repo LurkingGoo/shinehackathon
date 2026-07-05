@@ -102,6 +102,61 @@ def test_stream_emits_heartbeat(monkeypatch):
     asyncio.run(run())
 
 
+def test_simulate_rotates_traces():
+    """Each POST /incidents/simulate advances a server-side rotation cursor, so
+    two successive presses inject DIFFERENT falls (different peak-g) whenever the
+    rotation has more than one trace — real SisFall set or synthetic fallback."""
+    from fastapi.testclient import TestClient
+
+    from app.data import fixtures, loaders
+    from app.main import app
+
+    client = TestClient(app)
+    fixtures.clear_incident()
+    try:
+        rotation_len = len(loaders.demo_rotation_traces()) or len(
+            fixtures._SYNTHETIC_ROTATION
+        )
+        if rotation_len < 2:
+            import pytest
+
+            pytest.skip("only one trace available — nothing to rotate")
+
+        peaks = []
+        for _ in range(min(rotation_len, 3)):
+            client.post("/incidents/simulate")
+            peaks.append(client.get("/incidents/trace").json()["peakG"])
+        # successive presses differ; the cursor advanced each time
+        assert len(set(peaks)) > 1
+    finally:
+        fixtures.clear_incident()
+
+
+def test_simulate_nearmiss_is_not_a_fall():
+    """A dropped-phone impact goes through the SAME detector and must NOT
+    register: detected=False, and crucially it marks NO incident — the caseload
+    stays calm (the specificity claim)."""
+    from fastapi.testclient import TestClient
+
+    from app.data import fixtures
+    from app.main import app
+
+    client = TestClient(app)
+    fixtures.clear_incident()
+    try:
+        r = client.post("/incidents/simulate-nearmiss").json()
+        assert r["detected"] is False
+        assert r["peakG"] > 0
+        assert r["reason"] == "no free-fall dip / no stillness"
+
+        # no incident was marked: caseload is still all-chronic
+        caseload = client.get("/caseload").json()
+        assert all(e["score"]["track"] == "chronic" for e in caseload["entries"])
+        assert client.get("/incidents/trace").status_code == 404
+    finally:
+        fixtures.clear_incident()
+
+
 def test_incident_trace_endpoint():
     """The drilldown waveform: /incidents/trace 404s while calm, and during an
     incident returns the signal window with ordered phases (free-fall before

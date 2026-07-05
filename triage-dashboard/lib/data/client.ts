@@ -33,6 +33,12 @@ export interface DataClient {
    * IncidentEvent arrives back through the SSE stream like a real detection.
    */
   simulateIncident(): Promise<void>;
+  /**
+   * Specificity demo: injects a dropped-phone-like impact through the SAME
+   * detector. It returns detected:false and marks NO incident — the caseload
+   * stays calm. Resolves with what the detector saw for a calm UI note.
+   */
+  simulateNearMiss(): Promise<{ detected: boolean; peakG: number; reason: string }>;
   /** Demo reset: clears the active incident so the beat can be re-run. */
   clearIncident(): Promise<void>;
   /**
@@ -117,6 +123,14 @@ export const dataClient: DataClient = {
     const res = await fetch(`${BASE}/api/incidents/simulate`, { method: "POST" });
     if (!res.ok) throw new Error(`/api/incidents/simulate -> ${res.status}`);
     // The IncidentEvent arrives via the SSE stream — no local fan-out.
+  },
+
+  async simulateNearMiss() {
+    const res = await fetch(`${BASE}/api/incidents/simulate-nearmiss`, {
+      method: "POST",
+    });
+    if (!res.ok) throw new Error(`/api/incidents/simulate-nearmiss -> ${res.status}`);
+    return (await res.json()) as { detected: boolean; peakG: number; reason: string };
   },
 
   async clearIncident() {

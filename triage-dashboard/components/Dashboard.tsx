@@ -22,7 +22,9 @@ export function Dashboard() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [flashId, setFlashId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [nearMiss, setNearMiss] = useState<string | null>(null);
   const acuteRef = useRef<HTMLDivElement>(null);
+  const nearMissTimer = useRef<ReturnType<typeof setTimeout>>();
 
   // initial load — ALL data via dataClient, never fixtures/api directly
   useEffect(() => {
@@ -55,6 +57,19 @@ export function Dashboard() {
     void dataClient.simulateIncident();
   }, []);
 
+  // Specificity demo: a dropped-phone impact that the detector correctly
+  // ignores. No incident is marked — just a transient, non-alarming note.
+  const simulateNearMiss = useCallback(async () => {
+    const r = await dataClient.simulateNearMiss();
+    setNearMiss(
+      `✓ Checked — dropped phone, not a fall. Detector stayed silent (peak ${r.peakG}g).`,
+    );
+    clearTimeout(nearMissTimer.current);
+    nearMissTimer.current = setTimeout(() => setNearMiss(null), 4000);
+  }, []);
+
+  useEffect(() => () => clearTimeout(nearMissTimer.current), []);
+
   // Demo reset: clear the incident server-side (it persists in /caseload with
   // a TTL), then re-pull the calm ranking so the beat can be re-run.
   const reset = useCallback(async () => {
@@ -82,6 +97,14 @@ export function Dashboard() {
         <div className={styles.greet}>
           <div className={styles.greetHi}>Ang Mo Kio cluster</div>
           <div className={styles.greetSm}>Wed 1 Jul · 08:00</div>
+          <nav className={styles.docNav}>
+            <a className={styles.docLink} href="/judge-brief.html">
+              Judge brief <span aria-hidden>→</span>
+            </a>
+            <a className={styles.docLink} href="/slides.pdf" target="_blank" rel="noopener">
+              Slides <span aria-hidden>↗</span>
+            </a>
+          </nav>
         </div>
       </header>
 
@@ -94,11 +117,22 @@ export function Dashboard() {
             <span className={styles.pulse} />
             Live · replaying data
           </span>
+          {!hasAcute && (
+            <button className={`${styles.btn} ${styles.btnCalm}`} onClick={simulateNearMiss}>
+              Simulate near-miss
+            </button>
+          )}
           <button className={styles.btn} onClick={hasAcute ? reset : simulate}>
             {hasAcute ? "Reset demo" : "Simulate incident"}
           </button>
         </div>
       </div>
+
+      {nearMiss && (
+        <div className={styles.calmBanner} role="status">
+          {nearMiss}
+        </div>
+      )}
 
       <div className={styles.grid}>
         <div>

@@ -9,6 +9,16 @@
 .greet { text-align: right; }
 .greetHi { font-size: 15px; font-weight: 650; }
 .greetSm { font-size: 13px; color: var(--muted); }
+.docNav { display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px; }
+.docLink {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 650; color: var(--brand); text-decoration: none;
+  padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--panel); transition: transform .15s, border-color .15s, box-shadow .15s;
+}
+.docLink:hover { transform: translateY(-1px); border-color: var(--brand); box-shadow: 0 4px 12px rgba(198,93,59,.18); }
+.docLink span { transition: transform .18s; }
+.docLink:hover span { transform: translate(3px, -3px); }
 
 /* ---- toolbar ---- */
 .toolbar {
@@ -33,6 +43,27 @@
 }
 .btn:hover { transform: translateY(-1px); }
 .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+/* secondary (calm) button — the specificity demo, sage not terracotta */
+.btnCalm {
+  background: var(--sage);
+  box-shadow: 0 4px 12px rgba(111, 143, 106, .28);
+}
+
+/* transient non-alarming note when a near-miss was correctly ignored */
+.calmBanner {
+  background: var(--sage-soft); color: var(--sage);
+  border: 1px solid var(--sage); border-radius: var(--radius-sm);
+  padding: 12px 18px; margin-bottom: 22px; font-size: 14px; font-weight: 600;
+  box-shadow: var(--shadow);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .calmBanner { animation: calmIn .25s ease-out; }
+}
+@keyframes calmIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* ---- layout ---- */
 .grid { display: grid; grid-template-columns: 1fr 380px; gap: 24px; align-items: start; }

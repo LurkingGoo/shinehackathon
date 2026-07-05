@@ -32,7 +32,7 @@ before anyone thinks to check.
 
 <!-- _class: statement -->
 
-###### The insight
+###### The approach
 
 # The home **already knows**
 
@@ -48,40 +48,13 @@ deploys senior alert wearables at 26,800-resident scale.*
 
 ---
 
-###### The product
+###### How it's built
 
-# One screen, **calm by default**
+# The three **layers**
 
-![h:395](assets/caseload-calm.png)
+![bare w:1050](assets/architecture.svg)
 
-*Every resident is ranked by need, and every row explains itself in one sentence.*
-
----
-
-###### The demo beat
-
-# A fall **preempts everything**
-
-<figure>
-
-![w:1020](assets/chip-simulate-button.png)
-
-<figcaption>The button replays a real recorded fall through the live detector, the same signal a worn bangle would stream</figcaption>
-</figure>
-<div class="cols">
-<figure>
-
-![](assets/chip-acute-card.png)
-
-<figcaption>The fall pins to the top in seconds and states its evidence in plain words</figcaption>
-</figure>
-<figure>
-
-![](assets/chip-recommended-action.png)
-
-<figcaption>The system suggests the next step. The caseworker makes the call</figcaption>
-</figure>
-</div>
+*The home senses. The service scores. The caseworker decides.*
 
 ---
 
@@ -98,6 +71,122 @@ deploys senior alert wearables at 26,800-resident scale.*
 
 The detector requires this **ordered sequence**: a free-fall dip, an impact
 spike within half a second, then stillness. A dropped phone cannot fake the order.
+
+<!--
+A fall reaches the sensor as a shape, not a number. The line drops toward zero first:
+free-fall, the half-second the body falls with nothing holding it up. Then the spike:
+the floor. Then it goes flat and stays flat: stillness, the body not getting back up.
+Free-fall, impact, stillness, in that order. A dropped phone has the dip and the spike,
+but it gets picked up, so the stillness never comes. The detector checks the sequence,
+not the violence, so a slammed door or a bag set down hard can't fake it.
+-->
+
+---
+
+###### The two datasets
+
+# Why these two **recordings**
+
+<div class="stat sun"><b>4,505</b><span>real recordings · 1,798 falls · 38 people · SisFall</span></div>
+<div class="stat sage"><b>220 days</b><span>one senior, living alone · CASAS Aruba</span></div>
+
+*One teaches the detector what a fall is in physics.
+The other teaches the system what one person's normal life is in rhythm.*
+
+Both run on the same cheap sensor class a worn bangle carries, the **ADXL345**
+accelerometer, so what the detector sees in the data is what it would see in a home.
+
+<!--
+SisFall and CASAS do two different jobs. SisFall gives us 4,505 real recordings, 1,798
+of them genuine falls, from 38 different people, sensors strapped to real bodies hitting
+real floors. It was recorded on the ADXL345, the same cheap accelerometer class a worn
+bangle carries, so the detector learns to see exactly what it would see in a real home.
+CASAS Aruba covers 220 days, roughly seven months, of one real elderly person living
+alone, with every motion sensor and every door event logged. SisFall teaches the detector
+what a fall is in physics: the dip, the impact, the stillness. CASAS teaches the system
+what one person's ordinary life is in rhythm, so it can notice the morning that rhythm
+breaks. No third dataset would add what these two don't already carry. The two tracks
+stay separate all the way down: the calibration you are about to see only ever touches
+SisFall. CASAS is never tuned against a target. From those 220 days we compute each
+resident's own baseline and score every new day as a deviation from that person's rhythm,
+so the routine track learns without any training and without any population average.
+-->
+
+---
+
+###### Where the number comes from
+
+# How we got our **number**
+
+- We wrote the detector first, the dip, spike, stillness rule.
+- Then we ran it over all **4,505** recordings and **counted**: falls caught, and ordinary activities that false-fired.
+- Then we turned the threshold dials until it caught **96.2%** of the falls.
+
+*The number comes from counting an experiment, not from a claim. We measured a detector
+and did not train a model, so it carries to Singapore with no local data.*
+
+<!--
+96.2 percent isn't a guess and isn't borrowed. We wrote the detector first: the rule that
+looks for a free-fall dip, then an impact, then stillness, in that order. We ran that rule
+over all 4,505 recordings, one at a time, and counted. Every real fall it caught, we
+tallied. Every ordinary activity it mistook for a fall, we tallied too. Then we turned the
+threshold dials, how deep a dip and how hard a spike, and re-counted, until it caught 96.2
+percent of the falls. That step only measured and tuned the detector; it never filtered or
+sorted a single recording or person out of the set. The number comes from counting an
+experiment, not from a claim. It also carries to Singapore: we were never learning a
+population or memorizing Colombian bodies, we were measuring a detector against physics.
+Physics is the same in Jurong as in a lab in Antioquia, so the detector carries over with
+no local training data. That is why we don't train a model.
+-->
+
+---
+
+###### What the numbers say
+
+# We ran it on **real recordings**
+
+<div class="stat red"><b>96.2%</b><span>of 1,798 real falls detected · SisFall</span></div>
+<div class="stat sun"><b>35.2% → 18.8%</b><span>false alarms: young adults → elderly movement</span></div>
+<div class="stat sage"><b>220 days</b><span>one real home · CASAS Aruba</span></div>
+
+The detector caught 96.2% of the 1,798 real falls. The false alarms split by body: 35.2% on young adults
+hurling themselves into lab falls, but **18.8%** on the elderly participants, roughly
+half, because older movement is slower and less abrupt. On elderly falls the detector
+caught **84.0%**, though all 75 come from a single volunteer, so we hold that figure
+lightly. Nothing is trained here, because the thresholds came straight out of the data.
+
+<figure>
+
+![w:760](assets/chip-top-row.png)
+
+<figcaption>Rank 1 carries 220 real days of one elderly resident. The system found the broken day on its own</figcaption>
+</figure>
+
+<!--
+Each of the three numbers answers a different worry. The 96.2 percent of 1,798 real falls
+is the detector catching the thing it exists to catch. The middle number is false alarms.
+On young adults throwing themselves into lab falls it fires 35.2 percent of the time;
+split the recordings by body and re-count the elderly participants alone, and it fires
+18.8 percent, roughly half. That is a measurement, not a hope: older movement is slower
+and less abrupt, so it trips the detector less often. The one number we hold lightly is
+elderly falls: 84.0 percent caught, but those 75 falls all come from a single volunteer,
+the only elderly participant cleared to fall on camera, so it's a real number from a thin
+sample and we say so. The 220 days on the right is the other track: one real home where
+the system found the broken day by itself. That track runs on a different mechanism: from
+those 220 days it builds the resident's own baseline and scores each new day as a
+deviation from that rhythm, so it needs no training run and no population average to know
+that this morning broke this person's pattern.
+-->
+
+---
+
+###### The product
+
+# One screen, **calm by default**
+
+![h:395](assets/caseload-calm.png)
+
+*Every resident is ranked by need, and every row explains itself in one sentence.*
 
 ---
 
@@ -126,34 +215,30 @@ The system ranks and explains.
 
 ---
 
-###### Validated on real data
+###### The demo beat
 
-# It's **real**, not a concept
-
-<div class="stat red"><b>96.2%</b><span>of 1,798 real falls detected · SisFall</span></div>
-<div class="stat sun"><b>29.8% → 0–5%</b><span>lab alarms → elderly-typical movement</span></div>
-<div class="stat sage"><b>220 days</b><span>one real home · CASAS Aruba</span></div>
-
-Nothing is trained. The thresholds were calibrated openly on the full SisFall set,
-and the lab false alarms concentrate in jogging and jumping, movements a
-monitored senior rarely performs.
+# A fall **preempts everything**
 
 <figure>
 
-![w:760](assets/chip-top-row.png)
+![w:1020](assets/chip-simulate-button.png)
 
-<figcaption>Rank 1 carries 220 real days of one elderly resident. The system found the broken day on its own</figcaption>
+<figcaption>Each press streams a different real recorded fall through the live detector, the same signal a worn bangle would send. A second button injects a dropped phone the detector ignores</figcaption>
 </figure>
+<div class="cols">
+<figure>
 
----
+![](assets/chip-acute-card.png)
 
-###### Built for Singapore
+<figcaption>The fall pins to the top in seconds and states its evidence in plain words</figcaption>
+</figure>
+<figure>
 
-# No imported **prior**
+![](assets/chip-recommended-action.png)
 
-- **Self-baselining.** The system measures each resident's own kitchen gaps, door times and night trips for about two weeks, then flags deviation from that person's own normal.
-- **Presence-only dignity.** Seniors accept what does not watch them.
-- **Per-HDB deployment.** An installer fills in a one-page sensor map. The product multiplies One Care's existing people and replaces no one.
+<figcaption>The system suggests the next step. The caseworker makes the call</figcaption>
+</figure>
+</div>
 
 ---
 
@@ -162,19 +247,33 @@ monitored senior rarely performs.
 # What we **don't** claim
 
 - It shrinks time to detection. It does not promise to catch every event.
-- Fall thresholds were calibrated on mostly young-adult recordings, so the senior false-alarm rate is extrapolated rather than measured.
+- The senior false-alarm rate is **measured** rather than guessed, because it came in at 18.8% on real elderly recordings, lower than young adults. What stays thin is elderly *fall* data, since our falls come from one volunteer, and a lab fall is not the same as a home fall.
 - A missed fall (or a bangle left on the nightstand) degrades to the ambient track, where hours of stillness still surface that resident by morning.
 - An irregular life earns wide baselines. The system says so through *low confidence* instead of hiding it.
 
+<!--
+Here is what we deliberately don't claim. We shrink time to detection; we do not promise
+to catch every event, and any deck that promises that is lying. The second line used to
+say our senior false-alarm rate was extrapolated from young adults. We measured it
+directly on the elderly recordings at 18.8 percent, lower than the young adults, and
+corrected the slide rather than let a flattering guess stand. The honest gap runs the
+other direction: elderly fall data is thin. All our elderly falls come from one volunteer,
+and a fall staged in a lab is not a fall in a real kitchen. We name that caveat rather than
+paper over it. The last two lines are the safety net: a missed fall, or a bangle left on
+the nightstand, drops to the ambient track, where hours of stillness still surface that
+person by morning; and an irregular life earns a wide baseline, which the system reports
+through low confidence instead of hiding.
+-->
+
 ---
 
-###### Beyond the PoC
+###### The next step
 
-# From demo to **pilot**
+# What a pilot would **prove**
 
 - **Escalation that completes the loop.** Automated welfare calls, and a handoff to the MOH/AIC line when a fall goes unacknowledged.
 - **A morning brief per flagged resident.** Auto-drafted wording, grounded strictly in the deterministic features. The drafting layer never touches a score.
-- **One One Care cluster to start.** Measure time to detection and caseworker minutes saved per shift.
+- **One One Care cluster to start.** Measured on two numbers: time to detection, and caseworker minutes saved per shift.
 
 ---
 
@@ -187,17 +286,7 @@ monitored senior rarely performs.
 One cluster. Commodity sensors. A working system,
 validated on **4,505 real recordings** and a **220-day real home**.
 
-*Built at SHINE Hackathon. The demo runs live, replaying real recordings.*
-
----
-
-###### Backup · for Q&A
-
-# The three **layers**
-
-![bare w:1050](assets/architecture.svg)
-
-*The home senses. The service scores. The caseworker decides.*
+*Built at SHINE Hackathon. The demo runs live on real recordings, a different one each press.*
 
 ---
 
@@ -216,10 +305,12 @@ validated on **4,505 real recordings** and a **220-day real home**.
 
 # Where the **data goes**
 
-| Dataset | Role in the system |
-|---|---|
-| **SisFall** · Universidad de Antioquia · 4,505 recordings, 1,798 real falls | Calibrates the fall thresholds, measures the detector, and supplies the live demo trace |
-| **CASAS Aruba** · Washington State University · 220 days of one elderly resident's home | Validates that self-baselining recovers a real routine, and finds the day it broke |
+*What each dataset teaches is earlier in the deck. This is the provenance behind those numbers.*
+
+| Dataset | Source | Provenance |
+|---|---|---|
+| **SisFall** | Universidad de Antioquia | 4,505 recordings, 1,798 real falls, checksum-pinned |
+| **CASAS Aruba** | Washington State University | 220-day single-resident home log, checksum-pinned |
 
 Nothing is trained on either dataset. Both are provenance-pinned with
 checksums in a committed lock file, and every number reproduces from one script.
@@ -240,8 +331,9 @@ the signal changes.
    is always listening to. The resident pins to the top in seconds.
 
 *Step 1 is the one link we simulate; there is no wristband in the room.
-The Simulate button feeds a real recorded SisFall trace straight into step 2,
-and everything after (detection, push, re-rank) is the production path.*
+Each press of the Simulate button feeds a different real SisFall trace straight into
+step 2; a second button injects a dropped phone the detector ignores. Everything after
+(detection, push, re-rank) is the production path.*
 
 ---
 
