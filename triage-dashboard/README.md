@@ -5,6 +5,18 @@ ranked caseload a One Care caseworker scans at shift start. Acute (fall) events
 preempt the top; chronic anomaly scores rank the calm caseload beneath;
 rationale is deterministic. Theme: **Warm Human**.
 
+## Live deployment
+
+| Service | URL |
+|---------|-----|
+| **Dashboard (the app)** | https://triage-dashboard-zyur.onrender.com |
+| Scoring service (API) | https://triage-scoring-service.onrender.com |
+
+Open the **dashboard** URL — that is the app. The scoring service is the FastAPI
+backend it proxies `/api/*` to (`/caseload`, `/health` return JSON; `/` is
+intentionally 404). Both run on Render free tier and cold-start after ~15 min
+idle (~50s first hit), so hit both once to warm them before presenting.
+
 **Read `CLAUDE.md` first** — it's the handoff brief (intent, the mock seam,
 endpoints the backend must provide, done-vs-next, run commands).
 
