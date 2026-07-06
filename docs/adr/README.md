@@ -24,6 +24,7 @@ mirrors the append-only `decisions.md` but in the standard per-file form.
 | [[0004-contract-parity-guard]] | Contract parity guarded by generated schema + types.ts field-diff | Accepted |
 | [[0005-sensitivity-first-operating-point]] | Sensitivity-first acute operating point (96.2% detection / 29.8% ADL false-alarm) | Accepted |
 | [[0006-hardware-showcase-b1-scope]] | Hardware showcase scope: B1 companion panel only | Accepted |
+| [[0007-public-deploy-topology]] | Public deploy topology: Render Blueprint, two services, synthetic fallback | Accepted |
 
 ## Template
 

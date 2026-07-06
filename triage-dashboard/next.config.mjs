@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
-const SCORING_SERVICE = process.env.SCORING_SERVICE_URL ?? "http://127.0.0.1:8000";
+const RAW_SCORING = process.env.SCORING_SERVICE_URL ?? "http://127.0.0.1:8000";
+// A host reference (e.g. Render's `fromService` property:host) arrives without a
+// scheme; the rewrite destinations need a full URL, so default a bare host to https.
+const SCORING_SERVICE = /^https?:\/\//.test(RAW_SCORING) ? RAW_SCORING : `https://${RAW_SCORING}`;
 
 const nextConfig = {
   reactStrictMode: true,

@@ -1,0 +1,40 @@
+# Render Blueprint — deploys BOTH services from one repo push.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# One connect in the Render dashboard (New > Blueprint > pick this repo) brings up:
+#   1. triage-scoring-service  (FastAPI, Python)
+#   2. triage-dashboard        (Next.js, Node) — proxies /api/* to service 1
+#
+# The dashboard's SCORING_SERVICE_URL is wired automatically from the scoring
+# service's host (see next.config.mjs — a bare host is upgraded to https://).
+#
+# Note: Render free web services cold-start after ~15 min idle (~50s first hit).
+# Fine for judging; hit both URLs once to warm them before you present.
+# If Render rejects `runtime:`, swap each to `env:` (older Blueprint field name).
+
+services:
+  - type: web
+    name: triage-scoring-service
+    runtime: python
+    rootDir: scoring-service
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /caseload
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+
+  - type: web
+    name: triage-dashboard
+    runtime: node
+    rootDir: triage-dashboard
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: SCORING_SERVICE_URL
+        fromService:
+          type: web
+          name: triage-scoring-service
+          property: host

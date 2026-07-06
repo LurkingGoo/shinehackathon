@@ -65,7 +65,7 @@
   </header>
 
   <h2><span class="num">1.</span>Backend architecture</h2>
-  <p>The whole system is three layers.</p>
+  <p><strong>The whole system is three layers,</strong> each with one job.</p>
   <pre>Browser  ──▶  Next.js (dashboard + /api proxy)  ──▶  FastAPI scoring service</pre>
   <ul>
     <li><strong>The browser</strong> shows one screen: the caseload, ranked by who needs a caseworker first.</li>
@@ -73,6 +73,7 @@
     <li><strong>The FastAPI service</strong> reads the sensor data, computes each resident's risk, and pushes a live event the second a fall fires.</li>
   </ul>
   <p class="tagline">The home senses. The service scores. The caseworker decides.</p>
+  <p><strong>How the data reaches the screen, and why through an API.</strong> The sensor recordings sit with the scoring service, never in the browser. When the dashboard loads, it asks the service for the caseload over <code class="inline">/api/caseload</code>; the service runs the detector and the routine scoring over each resident's inputs and returns the computed scores and ranking as JSON. The browser receives numbers and one-line rationale, never raw signal. The demo caseload is a fixed cast of residents, but none of their scores or ranking are stored: the pipeline recomputes them on every request, and a real deployment feeds the same code live sensor data in place of the fixed inputs. We put scoring behind an API for three reasons. The detector, the calibration, and the dataset loaders are Python built on numpy and scipy, which the browser cannot run. The dashboard stays display-only behind a single data seam, so the screen never computes a score it would then have to defend. And the same seam that serves the morning caseload also carries the live fall re-rank over SSE, so the acute alert arrives through the exact path the caseload already uses.</p>
   <p>What each layer is built on, and why:</p>
   <table>
     <thead><tr><th>Layer</th><th>We used</th><th>Because</th></tr></thead>
@@ -87,10 +88,10 @@
   <p>We don't train a model. The datasets are realistic streams we compute over, and the detector explains every score it produces.</p>
 
   <h2><span class="num">2.</span>Feature specification: from raw data to the live demo</h2>
-  <p><strong>Why these two datasets?</strong></p>
-  <p><strong>SisFall</strong> gives us 4,505 real accelerometer recordings, 1,798 of them real falls, from 38 people. They were recorded on an ADXL345, the same cheap sensor class a worn bangle carries, and every fall shows up as a sharp spike at impact.</p>
-  <p><strong>CASAS Aruba</strong> is 220 days of one real elderly person living alone, every motion and door event logged as it happened for the better part of a year.</p>
-  <p><strong>The detector.</strong> From SisFall we built the detector — plain calculations for what a fall actually looks like: the free-fall dip, the spike at impact, the stillness after.</p>
+  <p><strong>How we get the data.</strong> We use two public datasets. SisFall gives us the falls: 4,505 accelerometer recordings from 38 people, 1,798 of them real falls, all recorded on an ADXL345, the same cheap sensor a worn bangle carries. CASAS Aruba gives us the routine: 220 days of one elderly person living alone, with every motion and door event logged. Before anything runs, <code class="inline">fetch_datasets.py</code> checks each file against a pinned sha256 hash, so what sits on disk is provably the published dataset. SisFall arrives organised by person: 38 folders, 23 young adults and 15 elderly, and inside each folder the files are named by type, <code class="inline">F</code> for a fall and <code class="inline">D</code> for an ordinary activity.</p>
+  <p><strong>How we filter it.</strong> Each dataset gets one filter. On SisFall we filter by participant: <code class="inline">calibrate.py --subjects SE</code> keeps the 15 elderly folders to measure seniors on their own, and running it with no filter keeps all 38 pooled for the headline number. On CASAS there is no cohort to split, because it is one person, so the filter is time: we learn that resident's own baseline from their 220 days and score every later day against it. Neither filter imports an outside assumption about how a senior should move or live.</p>
+  <p><strong>How we use it.</strong> From SisFall we build the fall detector, a set of plain calculations for the shape of a fall, and calibrate its thresholds against every recording. From CASAS we build each resident's routine baseline. Both run live inside the scoring service, and the dashboard ranks the caseload from the scores they return.</p>
+  <h3>What a fall looks like</h3>
   <figure style="margin:20px 0;">
     <svg viewBox="0 0 640 240" width="640" style="max-width:100%; height:auto; display:block; background:#fff; border:1px solid #e8ddd5; border-radius:10px;" role="img" aria-label="A fall's signal-magnitude waveform: rest near 1 g, a free-fall dip below 0.8 g, a sharp spike above 2.3 g at impact, then a flat still tail.">
       <!-- plot area: x 56..616, y 20..200 ; g-scale: 0 g at y=200, 6 g at y=20 -->
@@ -115,43 +116,56 @@
     </svg>
     <figcaption style="font-size:13px; color:#6b5d55; margin-top:8px; text-align:center;">One real fall: rest at 1 g, a dip below the 0.8 g free-fall line, a spike past the 2.3 g impact line, then stillness.</figcaption>
   </figure>
-  <p><strong>Routine.</strong> From CASAS we learn routine — what one resident's ordinary day looks like, so we can tell when it breaks.</p>
-  <h3>How a fall is detected</h3>
   <p>A fall is an <em>ordered sequence</em>:</p>
   <ol>
     <li><strong>Free-fall dip</strong>: the accelerometer drops below 0.8 g as the body drops.</li>
     <li><strong>Impact spike</strong>: within half a second, it jumps above 2.3 g when the body hits the floor.</li>
     <li><strong>Stillness</strong>: for the next ~10 seconds, the person doesn't move.</li>
   </ol>
-  <p>A dropped phone gives you the spike but not the free-fall before it or the stillness after. Requiring the whole sequence is what keeps ordinary life — sitting down hard, setting a phone on a table — from firing.</p>
-  <h3>Where the numbers came from: we counted them</h3>
-  <p>We didn't set the thresholds by hand and hope. We wrote the detector — dip, then impact, then stillness — pointed it at all 4,505 recordings, and counted: falls caught, false fires. We turned the dials and counted again until it caught <strong>96.2% of real falls</strong>. We never dropped a recording or a person from the set; we only measured. The number is counted, not claimed.</p>
-  <p>Because the recordings are labelled by who performed them, we counted the same thing separately for the seniors:</p>
+  <p>A dropped phone gives a spike, but it produces neither the free-fall before it nor the stillness after, which is how we tell a dropped object from a person falling.</p>
+  <h3>How we set the operating point</h3>
+  <p>The detector has four thresholds: how far the signal must dip for free-fall, how hard it must spike for impact, how long the dip must last, and how quickly the impact must follow. We swept 144 combinations of them (four free-fall cutoffs, four impact cutoffs, three dip durations, three impact windows). Every combination ran through all 4,505 recordings and produced its own confusion matrix. We ranked the results by detection first, then by the lower false-alarm rate, because a missed fall costs more than a false one. These were the top rows of that sweep:</p>
+  <table>
+    <thead><tr><th>Free-fall</th><th>Impact</th><th>Dip</th><th>Window</th><th>Detection</th><th>False alarm</th></tr></thead>
+    <tbody>
+      <tr><td>&lt; 0.8 g</td><td>&gt; 2.0 g</td><td>40 ms</td><td>700 ms</td><td>97.8%</td><td>35.7%</td></tr>
+      <tr><td>&lt; 0.8 g</td><td>&gt; 2.0 g</td><td>40 ms</td><td>500 ms</td><td>97.6%</td><td>34.4%</td></tr>
+      <tr><td>&lt; 0.8 g</td><td>&gt; 2.3 g</td><td>40 ms</td><td>700 ms</td><td>96.7%</td><td>30.4%</td></tr>
+      <tr style="background:#f7e7df;"><td><strong>&lt; 0.8 g</strong></td><td><strong>&gt; 2.3 g</strong></td><td><strong>40 ms</strong></td><td><strong>500 ms</strong></td><td><strong>96.2%</strong></td><td><strong>29.8%</strong></td></tr>
+      <tr><td>&lt; 0.8 g</td><td>&gt; 2.3 g</td><td>40 ms</td><td>400 ms</td><td>95.7%</td><td>29.0%</td></tr>
+      <tr><td>&lt; 0.8 g</td><td>&gt; 2.7 g</td><td>40 ms</td><td>500 ms</td><td>94.3%</td><td>25.6%</td></tr>
+    </tbody>
+  </table>
+  <figcaption style="font-size:13px; color:#6b5d55; margin:-6px 0 16px; text-align:center;">Six of the 144 combinations, ranked by detection then false-alarm. The highlighted row is the one the live detector ships with.</figcaption>
+  <p>The three rows above the highlight lower the impact cutoff to 2.0 g. That catches about 1.4 more points of real falls, but fires on nearly 5 more points of ordinary activity. We took the row at the knee: free-fall below 0.8 g, impact above 2.3 g, a dip of at least 40 ms, and impact within 500 ms. It caught <strong>96.2% of real falls</strong> at a 29.8% false-alarm rate on the pooled set, and those four thresholds are the ones the live detector runs. We never dropped a recording or a person from the set.</p>
+  <h3>The elderly, measured separately</h3>
+  <p>We ran the same detector and the same confusion count on the 15 elderly folders alone. Only one of those participants (SE06) was cleared to perform falls, so the 75 elderly fall recordings all come from that one body, while the 893 ordinary-activity recordings draw on all 15. Counted that way:</p>
   <ul>
-    <li><strong>Elderly false alarms: 18.8%</strong> — 168 of 893 ordinary-activity recordings from the elderly participants (SE01–SE15) that tripped the detector when nothing was wrong. That's roughly half the young-adult rate of <strong>35.2%</strong> (638 of 1,814): elderly movement is slower and less abrupt, so it looks less like a fall.</li>
-    <li><strong>Elderly fall detection: 84.0%</strong> — 63 of 75 real elderly falls caught. All 75 came from a single volunteer (SE06, the only elderly participant cleared to perform falls): one body, not fifteen. A promising number on thin evidence, and we won't dress it up.</li>
+    <li><strong>Elderly false alarms: 18.8%</strong>. That is 168 of 893 ordinary-activity recordings from the elderly participants (SE01 to SE15) that tripped the detector when nothing was wrong, roughly half the young-adult rate of <strong>35.2%</strong> (638 of 1,814). Elderly movement is slower and less abrupt, so it looks less like a fall.</li>
+    <li><strong>Elderly fall detection: 84.0%</strong>, 63 of 75 real elderly falls caught. All 75 came from a single volunteer (SE06, the only elderly participant cleared to perform falls), so this is one body, not fifteen. It is a promising number on thin evidence.</li>
   </ul>
-  <p>On CASAS the resident is their own baseline. From 220 days we learned <em>their</em> normal — when they first enter the kitchen, how many night trips they make, their typical door times — and scored each new day as a deviation from that rhythm. No population average, no imported assumption about how a senior "should" live. Each person is measured only against themselves, which is how the routine track works without any training.</p>
+  <p>On CASAS each resident is scored against their own history. From 220 days we learn <em>their</em> normal, when they first enter the kitchen, how many night trips they make, their typical door times, and we score each new day as a deviation from that rhythm.</p>
   <h3>How we found the five residents</h3>
-  <p>The dashboard shows a caseload of five — Rajoo, Wong, Lim, Devi, and Goh — each ranked by need. Four are calm. The system pushed <strong>Rajoo to the top (0.65)</strong> on its own: we handed it 220 days and asked it to find the day the routine broke. It picked <strong>2011-02-19</strong>, the day his own pattern fell apart — a long kitchen gap, an early door, fewer night trips. We never marked that day; it found it.</p>
+  <p>The dashboard shows a caseload of five (Rajoo, Wong, Lim, Devi, and Goh), each ranked by need. Four are calm. The system pushed <strong>Rajoo to the top (0.65)</strong> on its own: we handed it 220 days and asked it to find the day the routine broke. It picked <strong>2011-02-19</strong>, the day his own pattern fell apart, with a long kitchen gap, an early door, and fewer night trips. We never marked that day as anomalous.</p>
   <h3>The next feature: the live simulation</h3>
-  <p>The demo's beat is a fall firing mid-shift. Pressing <strong>Simulate</strong> replays a <em>real recorded SisFall fall</em> into the same detector the caseload runs on, and it rotates through several real traces, so each press is a different body and a different waveform rather than a canned replay. Detection sends a live event down the stream; the fall pins to the top in seconds, flashes, and opens its drill-down. The waveform on screen is the actual trace the score was computed on, so the picture and the numbers agree. A second button injects a <em>dropped phone</em> — a spike with no free-fall or stillness — and the detector correctly stays silent, the specificity you want in a home.</p>
+  <p>The demo's beat is a fall firing mid-shift. Pressing <strong>Simulate</strong> replays a <em>real recorded SisFall fall</em> into the same detector the caseload runs on, and it rotates through several real traces, so each press is a different body and a different waveform rather than a canned replay. Detection sends a live event down the stream; the fall pins to the top in seconds, flashes, and opens its drill-down. The waveform on screen is the actual trace the score was computed on, so the picture and the numbers agree. A second button injects a <em>dropped phone</em>, a spike with no free-fall or stillness, and the detector correctly stays silent, so an everyday knock never pages a caseworker.</p>
   <h3>The demo run</h3>
-  <p>Two processes: the FastAPI service and the Next.js dashboard. The caseload loads calm and ranked. Press Simulate; the recorded trace runs through <code class="inline">detect_fall</code>, the incident arrives back over SSE, the acute row takes over the top. Only the wristband link is faked — detection, the push, and the re-rank are the real production path.</p>
+  <p>The demo runs two processes: the FastAPI service and the Next.js dashboard. The caseload loads calm and ranked. Press Simulate; the recorded trace runs through <code class="inline">detect_fall</code>, the incident arrives back over SSE, the acute row takes over the top. Only the wristband link is faked. Detection, the push, and the re-rank are the real production path.</p>
 
   <h2><span class="num">3.</span>Approach: problem to dashboard</h2>
+  <p><strong>The whole approach.</strong> Nothing here needs new hardware or a trained model. The home already produces the data, so we read the sensors a senior already lives with, calibrate the fall detector on public recordings, and turn the result into a ranked screen a caseworker can act on.</p>
   <h3>The problem</h3>
-  <p>Alarm buttons and pendants only help while the fallen person can still press them. A senior who falls and goes unconscious presses nothing. The fall becomes a <em>long lie</em> — hours on the floor before anyone thinks to check.</p>
+  <p>Alarm buttons and pendants only help while the fallen person can still press them. A senior who falls and goes unconscious presses nothing. The fall becomes a <em>long lie</em>, hours on the floor before anyone thinks to check.</p>
   <h3>The approach, and the hardware already exists</h3>
-  <p>The home already knows. Routine is a vital sign, and absence of motion is data. The routine track needs the senior to wear or press nothing; ambient motion and door sensors are enough. One optional bangle adds a second layer that catches a fall in seconds instead of hours. All of it is off-the-shelf: the <strong>Bangle.js 2</strong> (~S$130) and <strong>Aqara</strong> motion and contact sensors (~US$20). Singapore already runs senior alert wearables at scale — GovTech's WAAS covers <strong>26,800 seniors across 170 blocks</strong>. We're not inventing hardware; we're pointing existing hardware at the right question.</p>
+  <p>The home already knows. Routine is a vital sign, and absence of motion is data. The routine track needs the senior to wear or press nothing; ambient motion and door sensors are enough. One optional bangle adds a second layer that catches a fall in seconds instead of hours. All of it is off-the-shelf: the <strong>Bangle.js 2</strong> (~S$130) and <strong>Aqara</strong> motion and contact sensors (~US$20). Singapore already runs senior alert wearables at scale: GovTech's WAAS covers <strong>26,800 seniors across 170 blocks</strong>. The hardware is already in the field; what we add is the detection and ranking that reads it.</p>
   <h3>Researching and understanding the data</h3>
-  <p>We calibrated fall detection on real recordings and let each resident self-baseline from their own history. The two tracks stay separate: a fall is physics that transfers across any body and any floor, while routine is self-referential and each person is their own control. Calibration only touches the fall track on SisFall; the routine track is never tuned against a target. Neither track imports a foreign prior, which is why the method carries to Singapore without local training data.</p>
+  <p>We calibrated fall detection on real recordings and let each resident self-baseline from their own history. The two tracks stay separate: calibration only touches the fall track on SisFall, and the routine track is never tuned against a target. Neither track imports a foreign prior, which is why the method carries to Singapore without local training data.</p>
   <h3>Building the dashboard</h3>
-  <p>One screen, calm by default. Every resident ranked by need, every row explaining itself in one sentence. Every score breaks down into the sensor facts that produced it. Risk and confidence sit on separate axes, so a stale sensor lowers confidence but can never fake a crisis. The system ranks and explains; a human makes the call.</p>
+  <p>The dashboard is a single ranked list, one row per resident: name, risk score, the sensor reading behind it, and a one-sentence reason. A detected fall pins to the top; the calm caseload ranks below it by how far each resident's day has drifted from their own routine. Opening a row shows the sensor facts that produced the score. Risk and confidence are separate columns, so a stale or missing sensor lowers confidence without inflating risk, and cannot manufacture a crisis. The system ranks and explains; the caseworker makes the call.</p>
   <h3>What we don't claim</h3>
   <ul>
     <li>We shrink the time it takes to <em>notice</em> a fall. We don't promise to catch every one.</li>
-    <li>Our fall thresholds were tuned on the whole SisFall set, mostly younger adults, but we measured the senior false-alarm rate separately at <strong>18.8%</strong> on 893 elderly recordings, about half the young-adult rate — measured, not extrapolated. The remaining caveats are narrower: the elderly <em>fall</em> data is thin (63 of 75 caught, all from one volunteer), and a lab fall is not a home fall.</li>
+    <li>Our fall thresholds were tuned on the whole SisFall set, mostly younger adults, but we measured the senior false-alarm rate separately at <strong>18.8%</strong> on 893 elderly recordings, about half the young-adult rate. The remaining caveats are narrower: the elderly <em>fall</em> data is thin (63 of 75 caught, all from one volunteer), and a fall performed in a lab is not the same as a fall at home.</li>
     <li>If a fall is missed, or the bangle is left on the nightstand, the resident still surfaces the slow way: hours of unusual stillness push them up the routine ranking by morning.</li>
     <li>A genuinely irregular life gets wide baselines and scores less sensitively. We show that as <em>low confidence</em> rather than hiding it.</li>
   </ul>
