@@ -1,5 +1,6 @@
-# AI instructions — vault file, not source code
+# AI instructions — vault files, not source code
 CLAUDE.md
+CLAUDE.md.sha256
 
 # AI volatile state — never commit
 state.md
@@ -16,8 +17,11 @@ _codebase-index.md
 _manifest.md
 _index.md
 
-# Claude Code local config
+# Claude Code local config + vault-desk tooling (session/search helpers, not app code)
 .claude/
+scripts/
+status.config.json
+docs/adr/0001-filesystem-first-vault.md
 
 # ── Mandatory vault baseline (retrofit 2026-07-01) ──
 .env*

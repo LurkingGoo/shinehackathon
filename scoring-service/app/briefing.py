@@ -1,9 +1,9 @@
 """Shift briefing text.
 
-Deterministic by default. An LLM (Claude) MAY smooth the wording, but only from
+Deterministic by default. An LLM MAY smooth the wording, but only from
 facts already in `score` + `features` — it must never introduce a cause not in
-the feature set (docs/scoring-card.md, docs/feature-spec.md §3). Flagged off by
-default so a missing key / dead network never breaks the demo.
+the feature set. Flagged off by default so a missing key / dead network never
+breaks the demo.
 """
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ def smooth_briefing(d: ResidentDetail) -> str:
     in tests/test_contract.py (no number absent from features)."""
     if not BRIEFING_LLM:
         return deterministic_briefing(d)
-    # Hook: call Claude here with a strict "paraphrase only, invent nothing"
+    # Hook: call an LLM here with a strict "paraphrase only, invent nothing"
     # prompt built from d.features. Falls back on any error.
     try:  # pragma: no cover - optional path
         raise NotImplementedError

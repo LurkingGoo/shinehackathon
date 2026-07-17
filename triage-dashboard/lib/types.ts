@@ -1,9 +1,10 @@
 /* ============================================================================
  * DATA CONTRACT — the shapes the UI expects.
  *
- * This is the agreement between frontend (done) and backend (next). The UI
- * renders exactly these types; the backend's job is to return them from the
- * endpoints listed in CLAUDE.md. Change a field here → update both sides.
+ * This is the agreement between frontend and backend. The UI renders exactly
+ * these types; the backend returns them from `/api/caseload`,
+ * `/api/residents/:id`, and `/api/incidents/stream`. Change a field here →
+ * update both sides.
  *
  * Design law encoded in these types:
  *   - `track` separates ACUTE (a "now" interrupt) from CHRONIC (a "this-week"

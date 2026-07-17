@@ -17,9 +17,6 @@ backend it proxies `/api/*` to (`/caseload`, `/health` return JSON; `/` is
 intentionally 404). Both run on Render free tier and cold-start after ~15 min
 idle (~50s first hit), so hit both once to warm them before presenting.
 
-**Read `CLAUDE.md` first** — it's the handoff brief (intent, the mock seam,
-endpoints the backend must provide, done-vs-next, run commands).
-
 ## Quick start
 
 ```bash
@@ -27,17 +24,9 @@ npm install
 npm run dev      # http://localhost:3000
 ```
 
-> **One-time git fix (first thing in the terminal).** These files were authored
-> in a sandbox whose filesystem mount corrupted the repo index and left a stale
-> lock. Clear it natively before your first commit:
-> ```bash
-> # from the repo root: shinehackathon/
-> rm -f .git/index.lock .git/index      # (Windows: del .git\index.lock .git\index)
-> git reset                              # rebuild index from HEAD
-> git add triage-dashboard mockups
-> git commit -m "feat: Warm Human triage dashboard frontend + mock seam"
-> ```
-> The working-tree files are intact; only the git index needs rebuilding.
+To see live data, run the scoring service alongside (see the repo root
+`README.md` — or just use the root `start.bat` / `start.sh`, which launches
+both). Without it, the app falls back to its built-in fixtures.
 
 Then click a resident to drill down, and press **Simulate incident** to fire a
 mock fall and watch the list re-rank.
@@ -46,7 +35,6 @@ mock fall and watch the list re-rank.
 
 ```
 triage-dashboard/
-├── CLAUDE.md                     # handoff brief — start here
 ├── app/
 │   ├── layout.tsx                # root layout + metadata
 │   ├── globals.css               # WARM HUMAN design tokens (:root vars)
@@ -80,23 +68,12 @@ seam the backend replaces — keep it the single crossing point.
 - Next.js 14 (App Router), React 18, TypeScript.
 - CSS Modules + CSS variables, **no Tailwind** — design tokens stay explicit and
   dependencies minimal, so the data seam is the only thing that moves during the
-  backend build. (Provisional brief allowed a simpler path; this is it.)
-- The app lives in a subfolder because the parent `shinehackathon/` folder is an
-  Obsidian vault whose root `CLAUDE.md` is immutable. This app is self-contained.
+  backend build.
+- The app is self-contained in this subfolder; the sibling `scoring-service/`
+  is the FastAPI backend it proxies `/api/*` to.
 
 ## Backend & scoring documentation
 
-The engineering docs the backend needs live in [`../docs/`](../docs/) (tracked in
-this repo; authored in Obsidian, so internal links are WikiLinks). Start with
-[`../docs/README.md`](../docs/README.md) — the index and the documentation
-standard. Key entries:
-
-- [`../docs/backend-architecture.md`](../docs/backend-architecture.md) — the
-  system design behind the `lib/data/client.ts` seam (arc42-lite).
-- [`../docs/feature-spec.md`](../docs/feature-spec.md) — every `RiskFeature`
-  concretely: inputs, formula, thresholds, weights, rationale templates.
-- [`../docs/scoring-card.md`](../docs/scoring-card.md) — what the scoring does, on
-  what data (SisFall/CASAS), with what limits & ethics.
-- [`../docs/demo-runbook.md`](../docs/demo-runbook.md) — run it and drive the live
-  re-rank demo.
+- [`../scoring-service/README.md`](../scoring-service/README.md) — the FastAPI
+  backend: scoring pipeline, endpoints, tests.
 - [`../docs/adr/`](../docs/adr/) — Architecture Decision Records (MADR).

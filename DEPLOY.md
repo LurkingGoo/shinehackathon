@@ -5,18 +5,14 @@ that proxies `/api/*` to it. No database, no secrets. The demo runs on a synthet
 fall/near-miss fallback when the licensed datasets are absent (they are git-ignored),
 so nothing extra is needed to make Simulate work.
 
-The steps that need **your** accounts are marked 🔑 — I cannot create accounts or
-enter credentials for you.
+The steps that need your own accounts are marked 🔑.
 
 ---
 
 ## Prerequisites (one-time, yours 🔑)
 
-1. A **GitHub** account and this repo pushed to it (there is no git remote yet):
+1. A **GitHub** account and this repo pushed to it:
    ```bash
-   gh repo create shinehackathon-triage --private --source=. --push   # if you have gh
-   # or make an empty repo on github.com, then:
-   git remote add origin https://github.com/<you>/<repo>.git
    git push -u origin main
    ```
 2. A **Render** account (free): https://render.com — sign in with GitHub.
@@ -74,6 +70,5 @@ the brief/deck come from the committed `metrics.json` and are unaffected either 
 
 ## Before deploying
 
-- Commit the pending pitch edits + these deploy files (one commit).
-- `metrics.json` and `datasets.lock.json` are committed; the data dirs are not.
+- `datasets.lock.json` is committed; the raw data dirs are not.
 - Nothing here writes secrets to the repo.

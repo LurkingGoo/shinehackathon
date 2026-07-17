@@ -11,14 +11,13 @@ tags: [adr, decisions]
 
 Format: **MADR** (Markdown Any Decision Records). One file per decision,
 `NNNN-kebab-title.md`, numbered in order. An accepted ADR is **immutable** — to
-change a decision, add a new ADR that supersedes it (link both ways). This
-mirrors the append-only `decisions.md` but in the standard per-file form.
+change a decision, add a new ADR that supersedes it (link both ways).
+(Numbering starts at 0002; 0001 covered internal tooling and is not published.)
 
 ## Index
 
 | # | Title | Status |
 |---|-------|--------|
-| [[0001-filesystem-first-vault]] | Filesystem-first vault + vault-search wiring | Accepted |
 | [[0002-backend-stack-and-scoring]] | Python/FastAPI backend, SSE, heuristic self-baselining scoring | Accepted |
 | [[0003-absolute-weight-risk-aggregation]] | Absolute-weight risk aggregation for cross-resident comparability | Accepted |
 | [[0004-contract-parity-guard]] | Contract parity guarded by generated schema + types.ts field-diff | Accepted |

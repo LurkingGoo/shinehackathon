@@ -28,7 +28,7 @@ dataset is public.
 - **No model training.** Credible heuristics: acute = SisFall accel-magnitude
   fall detection (physics); chronic = **self-baselining** CASAS anomaly (each
   resident scored against their own routine).
-- **No database** for the demo (baselines → JSON, replayer in-memory). Claude
+- **No database** for the demo (baselines → JSON, replayer in-memory). An LLM
   smooths the `briefing` string only, behind a flag.
 - Design detail: [[backend-architecture]]; features: [[feature-spec]]; scoring
   card + datasets + limits: [[scoring-card]].
