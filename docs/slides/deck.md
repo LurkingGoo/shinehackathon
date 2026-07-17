@@ -34,11 +34,12 @@ before anyone thinks to check.
 
 ###### The approach
 
-# The home **already knows**
+# Help that needs **no button**
 
-Routine is a vital sign, and absence of motion is data.
-The ambient track asks the senior to wear nothing, press nothing,
-and puts no camera in the room.
+Motion and door sensors log every kitchen visit and every door event.
+When a morning breaks that pattern, or hours pass with no movement at all,
+the resident surfaces on the caseload. Nothing worn, nothing pressed,
+and no camera in the room.
 
 One optional bangle adds a second layer:
 falls caught in seconds instead of hours.
@@ -48,13 +49,19 @@ deploys senior alert wearables at 26,800-resident scale.*
 
 ---
 
-###### How it's built
+###### How it is built
 
 # The three **layers**
 
 ![bare w:1050](assets/architecture.svg)
 
 *The home senses. The service scores. The caseworker decides.*
+
+*The math is Python, so the service computes and the browser only displays. The API call carries the JSON between them.*
+
+<!--
+Why two processes and not one? The scoring is Python: the detector, the calibration, and the dataset loaders, all built on numpy and scipy. The browser runs JavaScript and cannot run that math. So the service computes the numbers and returns them as JSON, and the browser only displays them. The API call is the browser asking the service for the scores it cannot compute itself.
+-->
 
 ---
 
@@ -73,12 +80,11 @@ The detector requires this **ordered sequence**: a free-fall dip, an impact
 spike within half a second, then stillness. A dropped phone cannot fake the order.
 
 <!--
-A fall reaches the sensor as a shape, not a number. The line drops toward zero first:
-free-fall, the half-second the body falls with nothing holding it up. Then the spike:
-the floor. Then it goes flat and stays flat: stillness, the body not getting back up.
-Free-fall, impact, stillness, in that order. A dropped phone has the dip and the spike,
-but it gets picked up, so the stillness never comes. The detector checks the sequence,
-not the violence, so a slammed door or a bag set down hard can't fake it.
+The signal drops toward zero first: free-fall, the half-second the body falls with
+nothing holding it up. Then the spike: the impact with the floor. Then it goes flat and
+stays flat: stillness. Free-fall, impact, stillness, in that order. A dropped phone has
+the dip and the spike, but it gets picked up, so the stillness never comes. The detector
+checks the sequence, so a slammed door or a bag set down hard cannot fake it.
 -->
 
 ---
@@ -105,7 +111,7 @@ CASAS Aruba covers 220 days, roughly seven months, of one real elderly person li
 alone, with every motion sensor and every door event logged. SisFall teaches the detector
 what a fall is in physics: the dip, the impact, the stillness. CASAS teaches the system
 what one person's ordinary life is in rhythm, so it can notice the morning that rhythm
-breaks. No third dataset would add what these two don't already carry. The two tracks
+breaks. No third dataset would add what these two do not already carry. The two tracks
 stay separate all the way down: the calibration you are about to see only ever touches
 SisFall. CASAS is never tuned against a target. From those 220 days we compute each
 resident's own baseline and score every new day as a deviation from that person's rhythm,
@@ -120,23 +126,27 @@ so the routine track learns without any training and without any population aver
 
 - We wrote the detector first, the dip, spike, stillness rule.
 - Then we ran it over all **4,505** recordings and **counted**: falls caught, and ordinary activities that false-fired.
-- Then we turned the threshold dials until it caught **96.2%** of the falls.
+- Then we swept **144** threshold combinations and kept the operating point that caught **96.2%** of the falls.
 
-*The number comes from counting an experiment, not from a claim. We measured a detector
+*The number comes from counting an experiment. We measured a detector
 and did not train a model, so it carries to Singapore with no local data.*
 
 <!--
-96.2 percent isn't a guess and isn't borrowed. We wrote the detector first: the rule that
+96.2 percent is not a guess and is not borrowed. We wrote the detector first: the rule that
 looks for a free-fall dip, then an impact, then stillness, in that order. We ran that rule
 over all 4,505 recordings, one at a time, and counted. Every real fall it caught, we
-tallied. Every ordinary activity it mistook for a fall, we tallied too. Then we turned the
-threshold dials, how deep a dip and how hard a spike, and re-counted, until it caught 96.2
-percent of the falls. That step only measured and tuned the detector; it never filtered or
+tallied. Every ordinary activity it mistook for a fall, we tallied too. Then we recalibrated:
+we swept 144 threshold combinations, four free-fall cutoffs, four impact cutoffs, three dip
+durations, three impact windows. Every combination ran over all 4,505 recordings and produced
+a confusion matrix, and we kept the operating point that caught the most falls at the lowest
+false-alarm rate: free-fall below 0.8 g, impact above 2.3 g, a dip of at least 40 ms, impact
+within 500 ms. That caught 96.2 percent of the falls. That step only measured and tuned the
+detector; it never filtered or
 sorted a single recording or person out of the set. The number comes from counting an
-experiment, not from a claim. It also carries to Singapore: we were never learning a
-population or memorizing Colombian bodies, we were measuring a detector against physics.
+experiment rather than from a claim. It also carries to Singapore: we were never learning a
+population, we were measuring a detector against physics.
 Physics is the same in Jurong as in a lab in Antioquia, so the detector carries over with
-no local training data. That is why we don't train a model.
+no local training data. That is why we do not train a model.
 -->
 
 ---
@@ -167,10 +177,10 @@ Each of the three numbers answers a different worry. The 96.2 percent of 1,798 r
 is the detector catching the thing it exists to catch. The middle number is false alarms.
 On young adults throwing themselves into lab falls it fires 35.2 percent of the time;
 split the recordings by body and re-count the elderly participants alone, and it fires
-18.8 percent, roughly half. That is a measurement, not a hope: older movement is slower
+18.8 percent, roughly half. That is a measurement rather than a hope: older movement is slower
 and less abrupt, so it trips the detector less often. The one number we hold lightly is
 elderly falls: 84.0 percent caught, but those 75 falls all come from a single volunteer,
-the only elderly participant cleared to fall on camera, so it's a real number from a thin
+the only elderly participant cleared to fall on camera, so it is a real number from a thin
 sample and we say so. The 220 days on the right is the other track: one real home where
 the system found the broken day by itself. That track runs on a different mechanism: from
 those 220 days it builds the resident's own baseline and scores each new day as a
@@ -244,7 +254,7 @@ The system ranks and explains.
 
 ###### Honest limits
 
-# What we **don't** claim
+# What we do **not** claim
 
 - It shrinks time to detection. It does not promise to catch every event.
 - The senior false-alarm rate is **measured** rather than guessed, because it came in at 18.8% on real elderly recordings, lower than young adults. What stays thin is elderly *fall* data, since our falls come from one volunteer, and a lab fall is not the same as a home fall.
@@ -252,7 +262,7 @@ The system ranks and explains.
 - An irregular life earns wide baselines. The system says so through *low confidence* instead of hiding it.
 
 <!--
-Here is what we deliberately don't claim. We shrink time to detection; we do not promise
+Here is what we deliberately do not claim. We shrink time to detection; we do not promise
 to catch every event, and any deck that promises that is lying. The second line used to
 say our senior false-alarm rate was extrapolated from young adults. We measured it
 directly on the elderly recordings at 18.8 percent, lower than the young adults, and
@@ -283,8 +293,8 @@ through low confidence instead of hiding.
 
 # Pilot **with us**
 
-One cluster. Commodity sensors. A working system,
-validated on **4,505 real recordings** and a **220-day real home**.
+We ask for one cluster and commodity sensors. The working system
+is already validated on **4,505 real recordings** and a **220-day real home**.
 
 *Built at SHINE Hackathon. The demo runs live on real recordings, a different one each press.*
 
