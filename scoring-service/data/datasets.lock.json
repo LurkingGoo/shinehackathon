@@ -14,5 +14,12 @@
     "fetched": "2026-07-02",
     "citation": "Cook et al. \u2014 CASAS Aruba testbed (WSU), single resident, 2010-11-04..2011-06-11. Mirror; official distribution moved into the 2.7 GB Zenodo all-homes bundle (record 15708568).",
     "target": "casas/aruba.txt"
+  },
+  "shine26_falldetection_labels": {
+    "sha256": "357b31f744121634239776a2d25d2bb42afbacf8734704a061ad940594880889",
+    "files": 3,
+    "fetched": "2026-07-26",
+    "source_url": "https://drive.google.com/drive/folders/1BHxXPKu8jBUgdwCzu-VbWhSmHkXwGHAv",
+    "citation": "SHINE26 organiser FallDetectionDataset (rgb+depth frames; labels only fetched)"
   }
 }
