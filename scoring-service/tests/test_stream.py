@@ -114,7 +114,9 @@ def test_simulate_rotates_traces():
     client = TestClient(app)
     fixtures.clear_incident()
     try:
-        rotation_len = len(loaders.demo_rotation_traces()) or len(
+        # mirror what /incidents/simulate actually rotates through: real SMV
+        # traces (raw Tier-1 or curated Tier-2), else the synthetic fallback.
+        rotation_len = len(loaders.demo_rotation_smv()) or len(
             fixtures._SYNTHETIC_ROTATION
         )
         if rotation_len < 2:

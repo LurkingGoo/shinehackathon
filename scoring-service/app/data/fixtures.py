@@ -25,9 +25,10 @@ from app.models import (
     IncidentEvent,
     RankedCaseload,
     ResidentDetail,
+    RiskFeature,
     RiskScore,
 )
-from app.scoring import pipeline
+from app.scoring import pipeline, rationale
 from app.scoring.pipeline import ChronicFeatureInput as CFI
 
 FS = 200.0  # accelerometer sample rate (Hz), SisFall-like
@@ -221,6 +222,54 @@ def set_acute_trace(smv: np.ndarray, fs: float = FS) -> None:
     global _current_acute_smv, _current_acute_fs
     _current_acute_smv = smv
     _current_acute_fs = fs
+    clear_cv_incident()  # a real accelerometer trace supersedes any camera override
+
+
+# --- Camera / pose fall track (the /watch stretch) -------------------------- #
+# When set, the acute row is presented from a browser VISION heuristic instead
+# of the accelerometer pipeline. Honest by construction: rule-based, so the
+# confidence is the browser's estimate (not the calibrated 96% detector) and
+# there is no accelerometer waveform to drill into.
+_cv_override: dict | None = None
+
+
+def set_cv_incident(stillness_s: float = 8.0, confidence: float = 0.7,
+                    note: str | None = None) -> None:
+    global _cv_override
+    conf = float(np.clip(confidence, 0.0, 1.0))
+    still = max(0.0, float(stillness_s))
+    _cv_override = {
+        "sensor": "Camera (pose)",
+        "sensor_class": "Vision — browser pose heuristic",
+        "confidence": conf,
+        "stillness_s": still,
+        "rationale": note or f"Camera: upright → horizontal, still {still:.0f}s",
+    }
+
+
+def clear_cv_incident() -> None:
+    global _cv_override
+    _cv_override = None
+
+
+def _cv_score() -> tuple[RiskScore, list, str, str]:
+    """Present the active camera incident as the acute row. Risk is top (a
+    detected fall is priority regardless of modality); confidence is the honest
+    heuristic estimate; the recommended action is the SAME acute escalation."""
+    ov = _cv_override
+    feats = [
+        RiskFeature(label="Posture", value="upright → horizontal", weight=0.6,
+                    baseline="standing / seated"),
+        RiskFeature(label="Stillness", value=f"{ov['stillness_s']:.0f}s no movement",
+                    weight=0.4, baseline="< 2s normal"),
+    ]
+    action = rationale.recommend_action("acute", "Pose", 1.0)
+    score = RiskScore(
+        track="acute", risk=1.0, confidence=ov["confidence"],
+        updated_at=_iso_min_ago(ACUTE.updated_min_ago), recency=ACUTE.recency,
+        sensor=ov["sensor"], sensor_class=ov["sensor_class"], rationale=ov["rationale"],
+    )
+    return score, feats, action, ov["rationale"]
 
 
 @dataclass
@@ -255,6 +304,8 @@ def _chronic_score(r: ChronicResident) -> tuple[RiskScore, list, str, str]:
 
 
 def _acute_score() -> tuple[RiskScore, list, str, str]:
+    if _cv_override is not None:  # camera/pose incident supersedes the accel path
+        return _cv_score()
     parts = pipeline.score_acute(_current_acute_smv, _current_acute_fs)
     score = RiskScore(
         track="acute", risk=parts.risk, confidence=parts.confidence,
@@ -305,6 +356,7 @@ def mark_incident() -> None:
 def clear_incident() -> None:
     global _incident_at
     _incident_at = None
+    clear_cv_incident()
 
 
 def incident_active() -> bool:
@@ -341,8 +393,8 @@ def acute_trace_payload(max_points: int = 360) -> dict | None:
     None when no incident is active (the endpoint 404s)."""
     from app.scoring import acute
 
-    if not incident_active():
-        return None
+    if not incident_active() or _cv_override is not None:
+        return None  # camera incidents have no accelerometer waveform to drill
     s = np.asarray(_current_acute_smv, dtype=float)
     fs = _current_acute_fs
     res = acute.detect_fall(s, fs)

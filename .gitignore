@@ -46,3 +46,14 @@ Thumbs.db
 # but COMMIT the provenance lock (source, sha256, size, date, citation)
 scoring-service/data/**
 !scoring-service/data/datasets.lock.json
+
+# Tier-2 CURATED artifacts (2026-07-24 hosting design): tiny, derived from the
+# raw datasets by scripts/curate.py, COMMITTED so a fresh clone / Render runs on
+# REAL data with zero download. Re-include the dir first, then its contents.
+!scoring-service/data/curated/
+!scoring-service/data/curated/**
+
+# data-prep tooling under scoring-service (app code, NOT the vault-desk scripts/
+# on line 22) — committed for reproducibility of the curated artifacts above.
+!scoring-service/scripts/
+!scoring-service/scripts/**

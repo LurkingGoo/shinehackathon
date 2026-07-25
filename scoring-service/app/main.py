@@ -13,12 +13,16 @@ from __future__ import annotations
 
 import asyncio
 import os
+import threading
 import time
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 from sse_starlette.sse import EventSourceResponse
 
+from app.alerts import telegram
 from app.data import fixtures, loaders
 from app.models import IncidentEvent, RankedCaseload, ResidentDetail
 from app.replay.engine import hub
@@ -65,9 +69,11 @@ _rotation_idx = 0
 @app.post("/incidents/simulate", response_model=IncidentEvent)
 def simulate() -> IncidentEvent:
     """Inject a fall, ROUND-ROBINING through a set of distinct falls so each
-    press looks different. Uses REAL SisFall traces when data/sisfall/ is on
-    disk (loaders.demo_rotation_traces), else a set of synthetic variants so the
-    demo never breaks. The chosen trace runs through the same acute pipeline as
+    press looks different. Uses REAL SisFall traces — raw data/sisfall/ when
+    present, else the committed curated set (loaders.demo_rotation_smv), so a
+    fresh clone still fires genuine falls; only with NEITHER on disk does it fall
+    back to synthetic variants so the demo never breaks. The chosen trace runs
+    through the same acute pipeline as
     any detection and flows to /caseload, the SSE event and /incidents/trace."""
     global _rotation_idx
     # $SISFALL_TRACE is an explicit single-trace pin (operator override) — honor
@@ -80,12 +86,13 @@ def simulate() -> IncidentEvent:
         fixtures.mark_incident()
         event = fixtures.build_incident_event()
         hub.publish(event)
+        _dispatch_alert(event)
         return event
 
-    traces = loaders.demo_rotation_traces()
+    traces = loaders.demo_rotation_smv()
     if traces:
-        path = traces[_rotation_idx % len(traces)]
-        fixtures.set_acute_trace(loaders.sisfall_smv(path), loaders.SISFALL_FS)
+        t = traces[_rotation_idx % len(traces)]
+        fixtures.set_acute_trace(t.smv, t.fs)
     else:
         smv, fs = fixtures.synthetic_rotation_trace(_rotation_idx)
         fixtures.set_acute_trace(smv, fs)
@@ -93,6 +100,45 @@ def simulate() -> IncidentEvent:
     fixtures.mark_incident()  # /caseload now carries the acute row (refresh-proof)
     event = fixtures.build_incident_event()
     hub.publish(event)
+    _dispatch_alert(event)
+    return event
+
+
+def _dispatch_alert(event: IncidentEvent) -> None:
+    """Fire the Telegram fall alert off the request path. A no-op when Telegram
+    isn't configured (is_configured False), and a daemon thread otherwise so a
+    slow/failed send never delays or breaks the incident response."""
+    if not telegram.is_configured():
+        return
+    threading.Thread(
+        target=telegram.send_incident_alert, args=(event,), daemon=True
+    ).start()
+
+
+class CvDetectedRequest(BaseModel):
+    """Body the browser pose heuristic POSTs when it sees a fall. All optional —
+    an empty body fires with sensible defaults so a bare click still demos.
+    camelCase aliases so the browser can send {stillnessS, confidence, note}."""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    stillness_s: float = 8.0
+    confidence: float = 0.7
+    note: str | None = None
+
+
+@app.post("/incidents/cv-detected", response_model=IncidentEvent)
+def cv_detected(body: CvDetectedRequest | None = None) -> IncidentEvent:
+    """Camera / pose fall track (the /watch stretch). The browser MediaPipe
+    heuristic (upright -> horizontal -> still) calls this to fire the SAME
+    incident path as an accelerometer fall: it ranks into /caseload, streams over
+    SSE and dispatches Telegram. Honestly labelled — sensor = camera, confidence
+    = the browser's heuristic estimate (NOT the calibrated 96% detector), and no
+    accelerometer waveform is exposed (/incidents/trace 404s for it)."""
+    b = body or CvDetectedRequest()
+    fixtures.set_cv_incident(b.stillness_s, b.confidence, b.note)
+    fixtures.mark_incident()
+    event = fixtures.build_incident_event()
+    hub.publish(event)
+    _dispatch_alert(event)
     return event
 
 
@@ -118,6 +164,18 @@ def clear_incident() -> dict:
     chronic ranking and the Simulate beat can be re-run."""
     fixtures.clear_incident()
     return {"ok": True}
+
+
+@app.get("/training-stats")
+def training_stats() -> dict:
+    """Judge-metrics page data: the ILLUSTRATIVE logistic regression on curated
+    SisFall magnitude features. Its ~80% ceiling is served alongside the shipped
+    detector's 96.2% headline to make the honest point that magnitudes alone
+    don't separate falls — the ordered signature does. Deterministic + cached, so
+    the numbers never drift between calls. See app/model/training.py."""
+    from app.model import training
+
+    return training.training_report()
 
 
 @app.get("/incidents/trace")

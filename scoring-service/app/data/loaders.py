@@ -27,9 +27,12 @@ import numpy as np
 SISFALL_FS = 200.0  # Hz
 _ADXL345_G_PER_BIT = (2 * 16.0) / (2 ** 13)  # 13-bit ADC over ±16 g
 
-# Where real dataset files live (git-ignored; see docs/demo-runbook.md).
+# Where real dataset files live. Tier-1 raw (sisfall/) is git-ignored and only
+# present on a dev machine; Tier-2 curated (curated/falls.json) is committed, so
+# a fresh clone / Render runs the rotation on REAL falls with zero download.
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 SISFALL_DIR = DATA_DIR / "sisfall"
+CURATED_FALLS = DATA_DIR / "curated" / "falls.json"
 
 
 def load_sisfall_trace(path: str | Path) -> np.ndarray:
@@ -140,6 +143,50 @@ def demo_rotation_traces(n: int = 4) -> list[Path]:
 
     _rotation_cache = picks
     return picks
+
+
+@dataclass
+class SmvTrace:
+    """A ready-to-score fall: signal-magnitude vector in g + its sample rate.
+
+    The unit the rotation actually feeds the detector, decoupled from where it
+    came from (raw Tier-1 file vs committed Tier-2 curated window)."""
+    id: str
+    smv: np.ndarray
+    fs: float
+
+
+def _curated_falls() -> list[SmvTrace]:
+    """Tier-2 fallback: real SisFall SMV windows committed to the repo.
+
+    Read from data/curated/falls.json (produced by scripts/curate.py from the
+    raw dataset, full 200 Hz). Lets a fresh clone with no raw data/sisfall/ run
+    the Simulate rotation on GENUINE falls. [] if the curated file is absent."""
+    if not CURATED_FALLS.is_file():
+        return []
+    import json
+    data = json.loads(CURATED_FALLS.read_text(encoding="utf-8"))
+    default_fs = float(data.get("fs", SISFALL_FS))
+    out: list[SmvTrace] = []
+    for t in data.get("traces", []):
+        smv = np.asarray(t["samples"], dtype=float)
+        if smv.size:
+            out.append(SmvTrace(id=t["id"], smv=smv, fs=float(t.get("fs", default_fs))))
+    return out
+
+
+def demo_rotation_smv(n: int = 4) -> list[SmvTrace]:
+    """SMV traces for the Simulate rotation — REAL falls, source-agnostic.
+
+    Prefers raw Tier-1 (data/sisfall/, the live per-subject selection) and falls
+    back to committed Tier-2 (data/curated/falls.json) when no raw data is on
+    disk. Empty only when NEITHER is present — the caller then uses the synthetic
+    rotation so the demo never breaks. Either way every trace passed the same
+    production detector at curation time."""
+    paths = demo_rotation_traces(n)
+    if paths:
+        return [SmvTrace(id=p.stem, smv=sisfall_smv(p), fs=SISFALL_FS) for p in paths]
+    return _curated_falls()[:n]
 
 
 @dataclass

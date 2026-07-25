@@ -95,6 +95,62 @@ def test_default_trace_resolution(tmp_path, monkeypatch):
     assert loaders.default_sisfall_trace() is None
 
 
+def test_curated_falls_fallback(monkeypatch):
+    """Fresh-clone path: with NO raw data/sisfall/ on disk, the rotation still
+    yields REAL falls from the committed Tier-2 curated set (data/curated/
+    falls.json), and every one passes the production detector."""
+    # simulate a fresh clone: no raw dir, no env pin, cold rotation cache
+    monkeypatch.setattr(loaders, "SISFALL_DIR", loaders.DATA_DIR / "no-such-raw")
+    monkeypatch.setattr(loaders, "_rotation_cache", None)
+    monkeypatch.delenv("SISFALL_TRACE", raising=False)
+
+    assert loaders.demo_rotation_traces() == []  # no raw -> no paths
+
+    traces = loaders.demo_rotation_smv()
+    assert traces, "curated fallback must supply real SMV traces"
+    for t in traces:
+        assert isinstance(t.smv, np.ndarray) and t.smv.size > 0
+        res = detect_fall(t.smv, t.fs)
+        assert res.detected, f"curated trace {t.id} must detect as a fall"
+        assert res.peak_g > 1.5
+
+
+def test_demo_rotation_smv_prefers_raw(tmp_path, monkeypatch):
+    """When raw Tier-1 IS present, the SMV rotation uses it (paths), not the
+    curated fallback — so a dev with the 786 MB sees the live selection."""
+    monkeypatch.setattr(loaders, "SISFALL_DIR", tmp_path)
+    monkeypatch.setattr(loaders, "_rotation_cache", None)
+    monkeypatch.delenv("SISFALL_TRACE", raising=False)
+    for i in range(2):
+        d = tmp_path / f"SA0{i}"
+        d.mkdir()
+        _write_sisfall(d / f"F0{i}_SA0{i}_R01.txt", _fall_profile())
+
+    traces = loaders.demo_rotation_smv()
+    assert traces
+    # raw picks carry the fixture peak (~5 g), distinct from curated (>11 g)
+    assert all(detect_fall(t.smv, t.fs).peak_g == pytest.approx(5.0, abs=0.2)
+               for t in traces)
+
+
+def test_simulate_uses_curated_without_raw(monkeypatch):
+    """POST /incidents/simulate on a fresh clone (no raw data) fires a REAL fall
+    from the curated set — a genuine acute incident, not the synthetic fallback."""
+    from app.data import fixtures
+
+    monkeypatch.setattr(loaders, "SISFALL_DIR", loaders.DATA_DIR / "no-such-raw")
+    monkeypatch.setattr(loaders, "_rotation_cache", None)
+    monkeypatch.delenv("SISFALL_TRACE", raising=False)
+    try:
+        with TestClient(app) as client:
+            event = client.post("/incidents/simulate").json()
+            assert event["event"] == "acute-detected"
+            assert event["entry"]["score"]["track"] == "acute"
+            assert event["entry"]["score"]["risk"] >= 0.9
+    finally:
+        fixtures.set_acute_trace(fixtures._ACUTE_SMV, fixtures.FS)
+
+
 def test_simulate_injects_real_trace(tmp_path, monkeypatch):
     """POST /incidents/simulate with a real-format trace on disk: the event AND
     the subsequent drilldown both score from that trace (consistent numbers)."""

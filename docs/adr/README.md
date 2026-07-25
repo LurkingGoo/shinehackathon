@@ -3,7 +3,7 @@ type: doc-index
 diataxis: reference
 title: Architecture Decision Records
 status: active
-last_updated: 2026-07-02
+last_updated: 2026-07-25
 tags: [adr, decisions]
 ---
 
@@ -24,6 +24,8 @@ change a decision, add a new ADR that supersedes it (link both ways).
 | [[0005-sensitivity-first-operating-point]] | Sensitivity-first acute operating point (96.2% detection / 29.8% ADL false-alarm) | Accepted |
 | [[0006-hardware-showcase-b1-scope]] | Hardware showcase scope: B1 companion panel only | Accepted |
 | [[0007-public-deploy-topology]] | Public deploy topology: Render Blueprint, two services, synthetic fallback | Accepted |
+| [[0008-two-tier-curated-data]] | Two-tier curated data: committed real-data artifacts baked offline | Accepted |
+| [[0009-illustrative-classifier]] | Illustrative classifier: /training-stats motivates the shipped detector | Accepted |
 
 ## Template
 
