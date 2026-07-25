@@ -16,6 +16,7 @@ import type {
   IncidentTrace,
   RankedCaseload,
   ResidentDetail,
+  TrainingStats,
 } from "@/lib/types";
 
 export interface DataClient {
@@ -46,6 +47,11 @@ export interface DataClient {
    * Resolves null while the caseload is calm (the endpoint 404s).
    */
   getIncidentTrace(): Promise<IncidentTrace | null>;
+  /**
+   * Judge-metrics payload: the illustrative classifier's real training run
+   * (convergence, splits, confusion matrices). Deterministic on the backend.
+   */
+  getTrainingStats(): Promise<TrainingStats>;
 }
 
 /* ------------------------------- base url -------------------------------- */
@@ -136,6 +142,10 @@ export const dataClient: DataClient = {
   async clearIncident() {
     const res = await fetch(`${BASE}/api/incidents/clear`, { method: "POST" });
     if (!res.ok) throw new Error(`/api/incidents/clear -> ${res.status}`);
+  },
+
+  getTrainingStats() {
+    return getJSON<TrainingStats>("/api/training-stats");
   },
 
   async getIncidentTrace() {

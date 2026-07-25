@@ -115,6 +115,42 @@ export interface IncidentTrace {
   freefallMs: number;
 }
 
+/** ---- Judge-metrics payload (GET /api/training-stats) ----
+ * The ILLUSTRATIVE magnitude-feature logistic regression (ADR 0009). Every
+ * number is measured from real deterministic GD runs on the curated SisFall
+ * table — nothing simulated. It never scores a resident; its ~80% ceiling
+ * motivates the shipped ordered-signature detector (96.2%). Like
+ * IncidentTrace, a read-only presentation surface outside the score contract. */
+export interface TrainingSplit {
+  /** e.g. "60/40" (train/test). */
+  split: string;
+  testFraction: number;
+  confusionMatrix: { tp: number; fp: number; fn: number; tn: number };
+  accuracy: number;
+  precision: number;
+  recall: number;
+  counts: { train: number; test: number };
+}
+
+export interface TrainingStats {
+  /** Honesty label — rendered, not hidden. */
+  $note: string;
+  featureNames: string[];
+  /** Standardised LR coefficients, aligned with featureNames. */
+  coefficients: number[];
+  intercept: number;
+  confusionMatrix: { tp: number; fp: number; fn: number; tn: number };
+  accuracy: number;
+  precision: number;
+  recall: number;
+  learningCurve: { trainSize: number; accuracy: number }[];
+  /** Recorded from the actual gradient-descent run (headline split). */
+  convergence: { iter: number; loss: number; testAccuracy: number }[];
+  /** Real re-fits at 60/40, 70/30, 80/20. */
+  splitSensitivity: TrainingSplit[];
+  counts: { total: number; train: number; test: number };
+}
+
 /** ---- Incident / re-rank event (pushed over the live channel) ----
  * Emitted when an acute event fires mid-shift. The UI pins `entry` to the top
  * and can open `detail` immediately without a second fetch.

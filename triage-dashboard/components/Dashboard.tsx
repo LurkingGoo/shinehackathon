@@ -101,6 +101,9 @@ export function Dashboard() {
             <a className={styles.docLink} href="/judge-brief.html">
               Judge brief <span aria-hidden>→</span>
             </a>
+            <a className={styles.docLink} href="/training">
+              Model metrics <span aria-hidden>→</span>
+            </a>
             <a className={styles.docLink} href="/slides.pdf" target="_blank" rel="noopener">
               Slides <span aria-hidden>↗</span>
             </a>

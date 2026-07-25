@@ -36,6 +36,10 @@ _LR = 0.5
 _TEST_FRACTION = 0.25
 # learning-curve x-axis: fractions of the TRAIN split used to fit each point.
 _CURVE_FRACTIONS = (0.1, 0.25, 0.5, 0.75, 1.0)
+# convergence chart: record real GD state every N iterations (4000/100 = 40 pts).
+_LOSS_EVERY = 100
+# judge split controls, as TEST fractions: 60/40, 70/30, 80/20 train/test.
+_SPLIT_TEST_FRACTIONS = (0.4, 0.3, 0.2)
 
 
 @dataclass
@@ -64,12 +68,23 @@ def _sigmoid(z: np.ndarray) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-np.clip(z, -60.0, 60.0)))
 
 
+def _log_loss(p: np.ndarray, y: np.ndarray) -> float:
+    eps = 1e-12
+    return float(-np.mean(y * np.log(p + eps) + (1 - y) * np.log(1 - p + eps)))
+
+
 def train_logistic(X: np.ndarray, y: np.ndarray,
-                   iters: int = _ITERS, lr: float = _LR) -> LogisticModel:
+                   iters: int = _ITERS, lr: float = _LR,
+                   record: list | None = None,
+                   eval_fn=None) -> LogisticModel:
     """Fit a standardised logistic regression by batch gradient descent.
 
     Deterministic: standardise on this X, zero-init, fixed iters. Degenerate
-    (zero-variance) columns get std=1 so they simply contribute nothing."""
+    (zero-variance) columns get std=1 so they simply contribute nothing.
+
+    record/eval_fn: when given, append {"iter", "loss", "testAccuracy"} every
+    _LOSS_EVERY iterations — the REAL convergence history behind the judge
+    page's training chart. Recorded from this run, never simulated."""
     mean = X.mean(axis=0)
     std = X.std(axis=0)
     std = np.where(std < 1e-9, 1.0, std)
@@ -78,8 +93,15 @@ def train_logistic(X: np.ndarray, y: np.ndarray,
     n, d = Z.shape
     w = np.zeros(d)
     b = 0.0
-    for _ in range(iters):
+    for i in range(iters):
         p = _sigmoid(Z @ w + b)
+        if record is not None and i % _LOSS_EVERY == 0:
+            snap = LogisticModel(weights=w.copy(), bias=float(b), mean=mean, std=std)
+            record.append({
+                "iter": i,
+                "loss": round(_log_loss(p, y), 6),
+                "testAccuracy": round(eval_fn(snap), 4) if eval_fn else None,
+            })
         err = p - y
         w -= lr * (Z.T @ err) / n
         b -= lr * err.mean()
@@ -126,6 +148,30 @@ def _confusion(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, int]:
     }
 
 
+def _fit_split(Xo: np.ndarray, yo: np.ndarray, test_fraction: float,
+               record: list | None = None) -> tuple[dict, LogisticModel]:
+    """One REAL train/test re-fit at the given split on the interleaved order;
+    honest held-out metrics. Backs both the headline split and the judge page's
+    60/40 · 70/30 · 80/20 controls — every number is measured, none simulated."""
+    n_test = int(round(len(yo) * test_fraction))
+    X_test, y_test = Xo[:n_test], yo[:n_test]
+    X_train, y_train = Xo[n_test:], yo[n_test:]
+    eval_fn = (lambda m: accuracy(m, X_test, y_test)) if record is not None else None
+    model = train_logistic(X_train, y_train, record=record, eval_fn=eval_fn)
+    cm = _confusion(y_test, predict(model, X_test))
+    tp, fp, fn = cm["tp"], cm["fp"], cm["fn"]
+    stats = {
+        "split": f"{round((1 - test_fraction) * 100)}/{round(test_fraction * 100)}",
+        "testFraction": test_fraction,
+        "confusionMatrix": cm,
+        "accuracy": round(accuracy(model, X_test, y_test), 4),
+        "precision": round(tp / (tp + fp), 4) if (tp + fp) else 0.0,
+        "recall": round(tp / (tp + fn), 4) if (tp + fn) else 0.0,
+        "counts": {"train": len(y_train), "test": n_test},
+    }
+    return stats, model
+
+
 @lru_cache(maxsize=1)
 def training_report() -> dict:
     """Assemble the deterministic judge-metrics payload for /training-stats.
@@ -133,41 +179,42 @@ def training_report() -> dict:
     A fixed interleaved train/test split; the confusion matrix + accuracy are on
     the held-out TEST split (honest, not train-set optimism); the learning curve
     fits growing prefixes of the train split and reports test accuracy at each.
-    Cached: identical bytes on every call."""
+    The convergence history is RECORDED from the headline split's actual GD run,
+    and splitSensitivity re-fits at 60/40, 70/30, 80/20 on the same interleaved
+    order. Cached: identical bytes on every call."""
     X, y, names = load_feature_table()
     order = _interleaved_order(y)
     Xo, yo = X[order], y[order]
-
     n = len(yo)
-    n_test = int(round(n * _TEST_FRACTION))
+
+    convergence: list = []
+    headline, model = _fit_split(Xo, yo, _TEST_FRACTION, record=convergence)
+
+    n_test = headline["counts"]["test"]
     X_test, y_test = Xo[:n_test], yo[:n_test]
     X_train, y_train = Xo[n_test:], yo[n_test:]
-
-    model = training_model = train_logistic(X_train, y_train)
-    y_pred = predict(model, X_test)
-    cm = _confusion(y_test, y_pred)
-
-    tp, fp, fn = cm["tp"], cm["fp"], cm["fn"]
-    precision = tp / (tp + fp) if (tp + fp) else 0.0
-    recall = tp / (tp + fn) if (tp + fn) else 0.0
-
     curve = []
     for frac in _CURVE_FRACTIONS:
         k = max(2, int(round(len(y_train) * frac)))
         m = train_logistic(X_train[:k], y_train[:k])
         curve.append({"trainSize": k, "accuracy": round(accuracy(m, X_test, y_test), 4)})
 
+    splits = [_fit_split(Xo, yo, tf)[0] for tf in _SPLIT_TEST_FRACTIONS]
+
     return {
         "$note": "ILLUSTRATIVE logistic regression on curated SisFall MAGNITUDE "
                  "features — its ~80% ceiling motivates the ordered-signature "
-                 "detector we ship (96.2%, see metrics.json). Not a live scorer.",
+                 "detector we ship (96.2%, see metrics.json). Not a live scorer. "
+                 "convergence + splitSensitivity are recorded from real GD runs.",
         "featureNames": names,
-        "coefficients": [round(float(c), 4) for c in training_model.weights],
-        "intercept": round(float(training_model.bias), 4),
-        "confusionMatrix": cm,
-        "accuracy": round(accuracy(model, X_test, y_test), 4),
-        "precision": round(precision, 4),
-        "recall": round(recall, 4),
+        "coefficients": [round(float(c), 4) for c in model.weights],
+        "intercept": round(float(model.bias), 4),
+        "confusionMatrix": headline["confusionMatrix"],
+        "accuracy": headline["accuracy"],
+        "precision": headline["precision"],
+        "recall": headline["recall"],
         "learningCurve": curve,
-        "counts": {"total": n, "train": len(y_train), "test": n_test},
+        "convergence": convergence,
+        "splitSensitivity": splits,
+        "counts": {"total": n, **headline["counts"]},
     }

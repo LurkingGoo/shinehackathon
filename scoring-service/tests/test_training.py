@@ -63,6 +63,54 @@ def test_training_report_is_deterministic():
     assert a == b
 
 
+def test_convergence_history_is_real_gd():
+    """The convergence chart must be RECORDED from the actual gradient-descent
+    run — monotone-ish decreasing log-loss, sampled iterations, real test
+    accuracy at each point. Nothing parametric, nothing smoothed."""
+    rep = training.training_report()
+    conv = rep["convergence"]
+    assert len(conv) >= 10  # 4000 iters sampled every 100
+    its = [p["iter"] for p in conv]
+    assert its == sorted(its) and its[0] == 0
+    losses = [p["loss"] for p in conv]
+    # GD on a fixed batch: loss must strictly improve start->end and never
+    # spike above its starting point
+    assert losses[-1] < losses[0]
+    assert max(losses) == losses[0]
+    assert all(0.0 <= p["testAccuracy"] <= 1.0 for p in conv)
+
+
+def test_split_sensitivity_three_real_refits():
+    """Judge controls 60/40, 70/30, 80/20 are REAL re-fits on the deterministic
+    interleaved order — each with its own held-out confusion matrix."""
+    rep = training.training_report()
+    splits = rep["splitSensitivity"]
+    assert [s["split"] for s in splits] == ["60/40", "70/30", "80/20"]
+    total = rep["counts"]["total"]
+    for s in splits:
+        cm = s["confusionMatrix"]
+        assert set(cm) == {"tp", "fp", "fn", "tn"}
+        assert sum(cm.values()) == s["counts"]["test"]
+        assert s["counts"]["train"] + s["counts"]["test"] == total
+        assert 0.7 <= s["accuracy"] <= 0.95  # every split stays at the honest ceiling
+        assert 0.0 <= s["precision"] <= 1.0 and 0.0 <= s["recall"] <= 1.0
+    # more training data should not tank accuracy: 80/20 within a few points of 60/40
+    assert splits[2]["accuracy"] >= splits[0]["accuracy"] - 0.05
+
+
+def test_extension_keys_deterministic_and_serialized():
+    """New keys ride the same determinism + endpoint guarantees."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    a = training.training_report()
+    assert a == training.training_report()
+    with TestClient(app) as client:
+        body = client.get("/training-stats").json()
+        assert "convergence" in body and "splitSensitivity" in body
+
+
 def test_training_stats_endpoint():
     """GET /training-stats serves the report and stays JSON-stable."""
     from fastapi.testclient import TestClient

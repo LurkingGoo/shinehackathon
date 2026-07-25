@@ -3,8 +3,8 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.4.0
-last_updated: 2026-07-25
+spec_version: 1.5.0
+last_updated: 2026-07-26
 tags: [features, scoring, reference]
 ---
 
@@ -183,9 +183,14 @@ rationale → recommendedAction` and cannot affect any resident's score:
 
 - **`GET /training-stats`** — the ILLUSTRATIVE deterministic logistic
   regression over curated SisFall magnitude features
-  ([[0009-illustrative-classifier]]). Serves the judge-metrics page; its ~80%
-  ceiling motivates the ordered-signature detector (§1). Payload carries a
-  `$note` stating it never scores a resident.
+  ([[0009-illustrative-classifier]]). Serves the judge-metrics page (`/training`
+  on the dashboard); its ~80% ceiling motivates the ordered-signature detector
+  (§1). Payload carries a `$note` stating it never scores a resident. Since
+  spec 1.5.0 it also carries `convergence` (loss + held-out accuracy RECORDED
+  from the actual gradient-descent run, sampled every 100 iterations) and
+  `splitSensitivity` (real re-fits at 60/40, 70/30, 80/20 train/test on the
+  deterministic interleaved order, each with its own held-out confusion
+  matrix) — measured numbers only, nothing parametric or simulated.
 - **Telegram alert dispatch** (`app/alerts/telegram.py`) — delivery only, off
   the request thread, fired AFTER the incident event is built. A silent no-op
   when `SHINEHACKATHON_TELEGRAM_BOT_TOKEN` / `_CHAT_ID` are unset; best-effort

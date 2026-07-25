@@ -17,6 +17,7 @@ const nextConfig = {
       { source: "/api/incidents/simulate-nearmiss", destination: `${SCORING_SERVICE}/incidents/simulate-nearmiss` },
       { source: "/api/incidents/trace", destination: `${SCORING_SERVICE}/incidents/trace` },
       { source: "/api/incidents/clear", destination: `${SCORING_SERVICE}/incidents/clear` },
+      { source: "/api/training-stats", destination: `${SCORING_SERVICE}/training-stats` },
     ];
   },
 };
