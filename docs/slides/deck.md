@@ -190,6 +190,35 @@ that this morning broke this person's pattern.
 
 ---
 
+###### The counter-experiment
+
+# We trained a model **anyway**
+
+- We fit a logistic regression on a curated table of **500** real SisFall recordings, 250 falls and 250 ordinary activities, four magnitude features per recording.
+- On the held-out **125** recordings it reaches **80.0%** accuracy, 77.9% precision and 84.1% recall. Re-fits at 60/40, 70/30 and 80/20 move accuracy only between 78.5% and 80.0%.
+- One fit takes **0.050 seconds**, so the `/training` page replays the real recorded gradient-descent run live.
+
+*The 16.2-point gap to the shipped detector's 96.2% is the evidence that the
+temporal order, free-fall then impact then stillness, is what magnitudes alone cannot see.*
+
+<!--
+The obvious question is why we did not train a model, so we trained one and put the whole
+run on the /training page, "How the model was trained". We built a curated table of 500
+real SisFall recordings, 250 falls and 250 ordinary activities, and gave a logistic
+regression the four magnitude features a summary can carry. On the held-out 125 recordings
+it reaches 80.0 percent accuracy, 77.9 percent precision and 84.1 percent recall. We then
+re-fit at 60/40, 70/30 and 80/20 splits, and accuracy only moves between 78.5 and 80.0
+percent, so the ceiling is a property of the features rather than an artifact of one
+split. One fit takes 0.050 seconds, which is why the page can replay the actual recorded
+gradient-descent run in front of you; every number on it is measured, nothing is
+simulated. The shipped detector reaches 96.2 percent on the same physics because it reads
+the order of events, the free-fall, then the impact, then the stillness. The 16.2-point
+gap is the evidence that the temporal order is what magnitudes alone cannot see. Nothing
+on this page ever scores a resident.
+-->
+
+---
+
 ###### The product
 
 # One screen, **calm by default**
@@ -249,6 +278,9 @@ The system ranks and explains.
 <figcaption>The system suggests the next step. The caseworker makes the call</figcaption>
 </figure>
 </div>
+
+*Two more live beats: `/watch` fires a named camera fall into the same path,
+and `/training` replays the trained-model run.*
 
 ---
 
@@ -370,6 +402,37 @@ step 2; a second button injects a dropped phone the detector ignores. Everything
 | Wearable: raw accelerometer, BLE | **Bangle.js 2**, Kionix KX022, open firmware | ≈S$130 |
 | Room presence · door events | **Aqara P1** motion · contact, 5-yr battery | ≈US$20 · 15 |
 | Singapore precedent | **GovTech WAAS** (iWOW, 2025): 170 blocks · 26,800 seniors | govt tender |
+
+---
+
+###### Backup · for Q&A
+
+# The camera layer, **named and opt-in**
+
+- On `/watch`, MediaPipe pose runs entirely in the browser. Upright, then horizontal within **1.8 s**, then **3.0 s** of stillness fires the same incident path. A slower transition is a deliberate lie-down and never alarms.
+- Every camera incident carries the label **Camera (pose)** and the heuristic's own 0.55 to 0.85 confidence band. The 96.2% figure belongs to the accelerometer track alone.
+- Enrolled face identity is opt-in and on-device, matched only while the person is upright, so the caseload row and the Telegram ping are **named**. Unmatched people fire the generic alert.
+- No video leaves the browser; only the detection event and the matched resident id are sent. `/alerts/status` shows whether Telegram is configured and what happened to the last dispatch.
+
+<!--
+The camera layer is the second acute source, and it is opt-in. On the /watch page,
+MediaPipe pose runs entirely in the browser; no frame leaves the device. A person upright,
+then horizontal within 1.8 seconds, then 3.0 seconds of stillness, fires the same incident
+path as the bangle, the caseload preemption, the live stream, and the Telegram ping. A
+slower transition is a deliberate lie-down and never alarms. We keep the honesty rules:
+the incident is labelled Camera (pose) and carries the heuristic's own 0.55 to 0.85
+confidence band, never the 96.2 percent figure, which belongs to the accelerometer track
+alone. Identity is enrolled and on-device: front, left and right angles are stored as
+embeddings in the browser's storage, no image is kept and nothing is uploaded. Matching
+runs only while the person is upright, and the binding carries the name through the fall,
+so the dashboard row and the Telegram ping are named. Unmatched people fire the generic
+alert, because recognition can never block or alter an alert. The privacy claim in full:
+no video leaves the browser; only the detection event and the matched resident id are
+sent. Telegram dispatch is live and happens off the request thread, and /alerts/status
+plus the badges on the dashboard and /watch show whether Telegram is configured and what
+happened to the last dispatch, sent, failed, or not configured. The path is covered by 83
+backend and 21 frontend tests, all passing.
+-->
 
 ---
 
