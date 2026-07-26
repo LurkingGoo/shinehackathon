@@ -30,6 +30,11 @@
 .toolbarMsg b { color: var(--brand); }
 .toolbarRight { display: flex; gap: 16px; align-items: center; }
 .live { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--sage); font-weight: 600; }
+/* Telegram alert-leg badge — a word always rides with the color (never color-only). */
+.tgBadge { font-size: 12.5px; font-weight: 700; padding: 5px 11px; border-radius: 999px; white-space: nowrap; }
+.tgOn { background: var(--sage-soft); color: var(--sage); }
+.tgOff { background: var(--panel-soft); color: var(--muted); }
+.tgFail { background: var(--red-soft); color: var(--red); }
 .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--sage); animation: pulse 1.6s infinite; }
 @keyframes pulse {
   0% { box-shadow: 0 0 0 0 rgba(111,143,106,.5); }

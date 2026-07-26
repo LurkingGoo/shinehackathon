@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CaseloadEntry, ResidentDetail } from "@/lib/types";
+import type { AlertStatus, CaseloadEntry, ResidentDetail } from "@/lib/types";
 import { dataClient } from "@/lib/data/client";
 import { CaseloadCard } from "./CaseloadCard";
 import { DrilldownPanel } from "./DrilldownPanel";
@@ -23,6 +23,7 @@ export function Dashboard() {
   const [flashId, setFlashId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [nearMiss, setNearMiss] = useState<string | null>(null);
+  const [alerts, setAlerts] = useState<AlertStatus | null>(null);
   const acuteRef = useRef<HTMLDivElement>(null);
   const nearMissTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -32,6 +33,15 @@ export function Dashboard() {
       .getRankedCaseload()
       .then((c) => setEntries(rank(c.entries)))
       .finally(() => setLoading(false));
+    dataClient.getAlertStatus().then(setAlerts).catch(() => setAlerts(null));
+  }, []);
+
+  // Refresh the alert-leg outcome shortly after an incident arrives — the
+  // Telegram dispatch resolves on a backend thread a beat behind the SSE event.
+  const refreshAlerts = useCallback(() => {
+    setTimeout(() => {
+      dataClient.getAlertStatus().then(setAlerts).catch(() => undefined);
+    }, 1500);
   }, []);
 
   // live incident channel (mock pub/sub now; SSE/WS later — same handler)
@@ -42,11 +52,12 @@ export function Dashboard() {
       setSelectedId(event.entry.id);
       setFlashId(event.entry.id);
       setTimeout(() => setFlashId(null), 1100);
+      refreshAlerts();
       requestAnimationFrame(() =>
         acuteRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
       );
     });
-  }, []);
+  }, [refreshAlerts]);
 
   const select = useCallback(async (id: string) => {
     setSelectedId(id);
@@ -79,6 +90,19 @@ export function Dashboard() {
     setDetail(null);
     setSelectedId(null);
   }, []);
+
+  // Alert-leg badge: configuration state, upgraded by the latest dispatch
+  // outcome so the caregiver-ping leg is never silently unverifiable.
+  const tgBadge = (() => {
+    if (!alerts) return null;
+    if (!alerts.telegram.configured)
+      return { cls: styles.tgOff, label: "Telegram: not configured" };
+    if (alerts.lastDispatch?.outcome === "failed")
+      return { cls: styles.tgFail, label: "Telegram: send failed" };
+    if (alerts.lastDispatch?.outcome === "sent")
+      return { cls: styles.tgOn, label: "Telegram: alert sent" };
+    return { cls: styles.tgOn, label: "Telegram: connected" };
+  })();
 
   const acute = entries.filter((e) => e.score.track === "acute");
   const chronic = entries.filter((e) => e.score.track !== "acute");
@@ -119,6 +143,18 @@ export function Dashboard() {
           <b>{needAttention}</b> of <b>{entries.length}</b> residents could use a check today.
         </div>
         <div className={styles.toolbarRight}>
+          {tgBadge && (
+            <span
+              className={`${styles.tgBadge} ${tgBadge.cls}`}
+              title={
+                alerts?.lastDispatch
+                  ? `last dispatch: ${alerts.lastDispatch.outcome} · ${alerts.lastDispatch.at}`
+                  : "no dispatch attempted yet"
+              }
+            >
+              {tgBadge.label}
+            </span>
+          )}
           <span className={styles.live}>
             <span className={styles.pulse} />
             Live · replaying data

@@ -75,4 +75,11 @@ isolation.
 
 ## Status
 
-Draft — logged for critique, nothing here implemented yet.
+Draft — logged for critique. **Actioned 2026-07-26:** the Telegram visibility
+gap is closed — `GET /alerts/status` reports configuration plus the outcome of
+the most recent dispatch (sent / failed / not-configured), the dashboard
+toolbar badges it ("Telegram: connected / alert sent / send failed / not
+configured"), and `/watch` shows the chip and logs each detection's actual
+Telegram outcome. All three chain-of-custody links are now visible per
+incident. Confidence-band retune and the face-recognition hypothesis remain
+open.

@@ -27,6 +27,7 @@
 }
 
 .stageBar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.chipRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 /* status chips — a word always rides with the color (never color-only) */
 .chip { font-size: 13px; font-weight: 700; padding: 7px 13px; border-radius: 999px; letter-spacing: 0.2px; }

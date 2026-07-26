@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { AlertStatus } from "@/lib/types";
 import { dataClient } from "@/lib/data/client";
 import {
   FallStateMachine,
@@ -54,6 +55,11 @@ export function WatchPanel() {
   const [log, setLog] = useState<LogEntry[]>([]);
   const [sending, setSending] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [alerts, setAlerts] = useState<AlertStatus | null>(null);
+
+  useEffect(() => {
+    dataClient.getAlertStatus().then(setAlerts).catch(() => setAlerts(null));
+  }, []);
 
   const pushLog = useCallback((text: string) => {
     const at = new Date().toLocaleTimeString([], {
@@ -76,6 +82,24 @@ export function WatchPanel() {
               )}%)`
             : "Test detection sent to the dashboard",
         );
+        // The Telegram dispatch resolves on a backend thread a beat later —
+        // fetch its actual outcome so the alert leg is never silent.
+        setTimeout(async () => {
+          try {
+            const status = await dataClient.getAlertStatus();
+            setAlerts(status);
+            const outcome = status.lastDispatch?.outcome;
+            pushLog(
+              outcome === "sent"
+                ? "Telegram alert delivered"
+                : outcome === "failed"
+                  ? "Telegram alert FAILED to send"
+                  : "Telegram not configured — no caregiver ping sent",
+            );
+          } catch {
+            /* status endpoint unreachable — leave the log as-is */
+          }
+        }, 1500);
       } catch {
         pushLog("Could not reach the scoring service — detection NOT sent");
       } finally {
@@ -236,7 +260,20 @@ export function WatchPanel() {
             )}
           </div>
           <div className={styles.stageBar}>
-            <span className={`${styles.chip} ${stateChip.cls}`}>{stateChip.label}</span>
+            <div className={styles.chipRow}>
+              <span className={`${styles.chip} ${stateChip.cls}`}>{stateChip.label}</span>
+              {alerts && (
+                <span
+                  className={`${styles.chip} ${
+                    alerts.telegram.configured ? styles.chipOk : styles.chipIdle
+                  }`}
+                >
+                  {alerts.telegram.configured
+                    ? "Telegram: connected"
+                    : "Telegram: not configured"}
+                </span>
+              )}
+            </div>
             {engineStatus === "running" ? (
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={stop}>
                 Stop camera

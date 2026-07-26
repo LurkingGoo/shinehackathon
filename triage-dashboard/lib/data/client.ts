@@ -12,6 +12,7 @@
  * ==========================================================================*/
 
 import type {
+  AlertStatus,
   IncidentEvent,
   IncidentTrace,
   RankedCaseload,
@@ -63,6 +64,12 @@ export interface DataClient {
     confidence?: number;
     note?: string;
   }): Promise<void>;
+  /**
+   * Alert-leg visibility: whether Telegram is configured and the outcome of
+   * the most recent dispatch (sent / failed / not-configured). Backs the
+   * status badge so the caregiver-ping leg is never silently unverifiable.
+   */
+  getAlertStatus(): Promise<AlertStatus>;
 }
 
 /* ------------------------------- base url -------------------------------- */
@@ -157,6 +164,10 @@ export const dataClient: DataClient = {
 
   getTrainingStats() {
     return getJSON<TrainingStats>("/api/training-stats");
+  },
+
+  getAlertStatus() {
+    return getJSON<AlertStatus>("/api/alerts/status");
   },
 
   async reportCameraFall(payload) {

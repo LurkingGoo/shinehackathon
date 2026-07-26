@@ -104,15 +104,47 @@ def simulate() -> IncidentEvent:
     return event
 
 
+# Outcome of the most recent alert dispatch, for /alerts/status (chain-of-custody
+# visibility, 2026-07-26 test notes): {"outcome", "residentId", "at"} or None.
+# Written by the dispatch thread; a plain dict swap is atomic enough for a status
+# read — no lock needed.
+_last_dispatch: dict | None = None
+
+
+def _record_dispatch(event: IncidentEvent, outcome: str) -> None:
+    global _last_dispatch
+    _last_dispatch = {
+        "outcome": outcome,
+        "residentId": event.entry.id,
+        "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+
+
 def _dispatch_alert(event: IncidentEvent) -> None:
     """Fire the Telegram fall alert off the request path. A no-op when Telegram
     isn't configured (is_configured False), and a daemon thread otherwise so a
-    slow/failed send never delays or breaks the incident response."""
+    slow/failed send never delays or breaks the incident response. Every path
+    records its outcome for /alerts/status — silence stays out of the UI."""
     if not telegram.is_configured():
+        _record_dispatch(event, "not-configured")
         return
-    threading.Thread(
-        target=telegram.send_incident_alert, args=(event,), daemon=True
-    ).start()
+
+    def _send() -> None:
+        ok = telegram.send_incident_alert(event)
+        _record_dispatch(event, "sent" if ok else "failed")
+
+    threading.Thread(target=_send, daemon=True).start()
+
+
+@app.get("/alerts/status")
+def alerts_status() -> dict:
+    """Alert-leg visibility: is Telegram configured, and what happened to the
+    most recent dispatch. Lets the dashboard show 'Telegram: connected / not
+    configured' instead of leaving the caregiver ping silently unverifiable."""
+    return {
+        "telegram": {"configured": telegram.is_configured()},
+        "lastDispatch": _last_dispatch,
+    }
 
 
 class CvDetectedRequest(BaseModel):

@@ -151,6 +151,21 @@ export interface TrainingStats {
   counts: { total: number; train: number; test: number };
 }
 
+/** ---- Alert-leg visibility (GET /api/alerts/status) ----
+ * Chain-of-custody surface (2026-07-26 test notes): whether the Telegram leg
+ * is configured, and what actually happened to the most recent dispatch —
+ * so a viewer never has to infer from silence that the caregiver ping did
+ * not run. Read-only presentation surface outside the score contract. */
+export interface AlertStatus {
+  telegram: { configured: boolean };
+  lastDispatch: {
+    outcome: "sent" | "failed" | "not-configured";
+    residentId: string;
+    /** ISO 8601 — when the dispatch attempt resolved. */
+    at: string;
+  } | null;
+}
+
 /** ---- Incident / re-rank event (pushed over the live channel) ----
  * Emitted when an acute event fires mid-shift. The UI pins `entry` to the top
  * and can open `detail` immediately without a second fetch.
