@@ -57,3 +57,11 @@ scoring-service/data/**
 # on line 22) — committed for reproducibility of the curated artifacts above.
 !scoring-service/scripts/
 !scoring-service/scripts/**
+
+# dashboard tooling (app code, NOT the vault-desk scripts/ on line 22)
+!triage-dashboard/scripts/
+!triage-dashboard/scripts/**
+
+# MediaPipe pose assets for /watch (ADR 0010): vendored binaries, never committed
+# — `npm run fetch-pose-assets` recreates them; runtime falls back to the CDN.
+triage-dashboard/public/mediapipe/

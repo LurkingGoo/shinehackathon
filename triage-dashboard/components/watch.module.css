@@ -1,0 +1,86 @@
+/* Warm Human, /watch camera page. Tokens come from app/globals.css. */
+
+.app { max-width: 1180px; margin: 0 auto; padding: 26px 26px 70px; }
+
+/* ---- header ---- */
+.top { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 18px; gap: 16px; flex-wrap: wrap; }
+.brandTitle { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.4px; }
+.brandSub { margin: 3px 0 0; color: var(--muted); font-size: 14px; max-width: 640px; }
+.backLink { font-size: 13px; font-weight: 600; color: var(--brand); text-decoration: none; white-space: nowrap; }
+.backLink:hover { text-decoration: underline; }
+
+/* ---- layout ---- */
+.grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); gap: 22px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+/* ---- stage ---- */
+.stage {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 18px;
+}
+.videoWrap { position: relative; border-radius: var(--radius-sm); overflow: hidden; background: #241d16; aspect-ratio: 16 / 9; }
+.video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.videoPlaceholder {
+  position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+  color: #d8cec2; font-size: 14px; padding: 24px;
+}
+
+.stageBar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+
+/* status chips — a word always rides with the color (never color-only) */
+.chip { font-size: 13px; font-weight: 700; padding: 7px 13px; border-radius: 999px; letter-spacing: 0.2px; }
+.chipIdle { background: var(--panel-soft); color: var(--muted); }
+.chipOk { background: var(--sage-soft); color: var(--sage); }
+.chipWatch { background: var(--sun-soft); color: var(--sun); }
+.chipAlarm { background: var(--red-soft); color: var(--red); animation: watchPulse 1s ease-in-out infinite alternate; }
+.chipCooldown { background: var(--brand-soft); color: var(--brand); }
+@keyframes watchPulse { from { opacity: 1; } to { opacity: 0.55; } }
+
+.btn {
+  border: 0; cursor: pointer; font-weight: 650; font-size: 14px;
+  padding: 11px 18px; border-radius: var(--radius-sm); background: var(--brand); color: #fff;
+  box-shadow: 0 4px 12px rgba(198,93,59,.28); transition: transform .15s;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+.btnGhost { background: var(--panel-soft); color: var(--ink); box-shadow: none; border: 1px solid var(--line); }
+
+/* stillness countdown */
+.stillMeter { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+.stillTrack { flex: 1; height: 10px; border-radius: 999px; background: var(--red-soft); overflow: hidden; }
+.stillFill { height: 100%; background: var(--red); border-radius: 999px; transition: width .15s linear; }
+.stillLabel { font-size: 13px; font-weight: 700; color: var(--red); white-space: nowrap; }
+
+.errorNote {
+  margin-top: 14px; padding: 12px 14px; border-radius: var(--radius-sm);
+  background: var(--red-soft); color: var(--red); font-size: 13.5px; font-weight: 600;
+}
+
+/* ---- side cards ---- */
+.side { display: grid; gap: 22px; }
+.card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 22px;
+}
+.cardTitle { margin: 0 0 14px; font-size: 17px; font-weight: 700; letter-spacing: -0.2px; }
+
+.stepList { margin: 0; padding: 0 0 0 20px; display: grid; gap: 10px; font-size: 14.5px; }
+.stepList b { color: var(--brand); }
+.stepActive { background: var(--sun-soft); border-radius: var(--radius-sm); padding: 6px 8px; margin-left: -8px; }
+
+.emptyLog { margin: 0; color: var(--muted); font-size: 14px; }
+.logList { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.logItem {
+  background: var(--panel-soft); border-radius: var(--radius-sm);
+  padding: 9px 12px; font-size: 13.5px; display: flex; gap: 10px; align-items: baseline;
+}
+.logAt { color: var(--muted); font-variant-numeric: tabular-nums; flex: 0 0 auto; font-size: 12.5px; }
+
+.btnTest { margin-top: 14px; width: 100%; }
+.testNote { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+
+/* honesty */
+.honesty { background: var(--brand-soft); }
+.honestyText { margin: 0; font-size: 13.5px; }
+.honestyText b { color: var(--brand); }

@@ -3,7 +3,7 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.5.0
+spec_version: 1.6.0
 last_updated: 2026-07-26
 tags: [features, scoring, reference]
 ---
@@ -79,7 +79,7 @@ after impact."`)
 
 ---
 
-## 1b. ACUTE source: camera pose heuristic (spec 1.4.0)
+## 1b. ACUTE source: camera pose heuristic (spec 1.4.0; browser half shipped 1.6.0)
 
 A second acute *source* feeding the SAME incident path (caseload preemption,
 SSE, alert dispatch): the browser MediaPipe pose heuristic (upright →
@@ -94,6 +94,18 @@ tests (`tests/test_cv.py`):
   rule as §1).
 - No fake waveform: `/incidents/trace` **404s** for a camera incident (there is
   no accelerometer trace to show).
+
+**Browser half (shipped 1.6.0, [[0010-browser-pose-assets]]).** The `/watch`
+dashboard page runs MediaPipe PoseLandmarker (lite) entirely in-browser —
+no frame leaves the device; assets are vendored by `npm run fetch-pose-assets`
+with a CDN fallback. Detection logic is the pure state machine
+`lib/pose/fallHeuristic.ts` (vitest-tested): upright → horizontal within
+**1.8 s** *(tune)* → continuous stillness (mean landmark motion < 0.012
+normalized units/frame *(tune)*) for **3.0 s** → fire, then a 10 s cooldown.
+Posture from torso lean vs vertical: upright < 35°, horizontal > 60° *(tune)*.
+A slower transition is a deliberate lie-down and never alarms. Confidence =
+0.55 + 0.30·(transition speed), capped 0.85 — the heuristic's own band, per
+the honesty rules above.
 
 ## 2. CHRONIC track: routine anomaly (CASAS, self-baselining)
 

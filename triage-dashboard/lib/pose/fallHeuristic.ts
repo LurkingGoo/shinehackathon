@@ -1,0 +1,233 @@
+/**
+ * Camera fall heuristic — the pure logic behind /watch (feature-spec §1b).
+ *
+ * MediaPipe supplies 33 normalized pose landmarks per frame; this module turns
+ * them into a posture classification and runs the fall state machine:
+ *
+ *   upright ──(goes horizontal within fallWindowMs)──▶ fall candidate
+ *   candidate ──(continuous stillness for stillMs)──▶ FIRE {stillnessS, confidence}
+ *   fired ──(cooldownMs)──▶ back to monitoring
+ *
+ * A slow transition (deliberately lying down) never arms the candidate.
+ * Confidence is this heuristic's OWN honest estimate (0.55–0.85 band from
+ * transition speed) — never the calibrated accelerometer detector's number.
+ *
+ * Deliberately DOM-free and MediaPipe-free so it is unit-testable
+ * (fallHeuristic.test.ts) with synthetic landmark sequences.
+ */
+
+export interface LandmarkPoint {
+  x: number;
+  y: number; // normalized image coords: y grows DOWNWARD
+  visibility?: number;
+}
+
+export type Posture = "upright" | "horizontal" | "transitional" | "no-person";
+
+export interface FrameMeasurement {
+  posture: Posture;
+  /** Torso lean vs vertical, degrees: 0 = standing, 90 = flat. Null when no person. */
+  torsoAngleDeg: number | null;
+  /** Mean normalized landmark displacement vs the previous frame; null without one. */
+  motion: number | null;
+  /** Mean torso-landmark visibility, 0..1. */
+  visibility: number;
+}
+
+export interface FallEvent {
+  stillnessS: number;
+  confidence: number;
+  note: string;
+}
+
+export interface FallHeuristicConfig {
+  uprightMaxDeg: number;
+  horizontalMinDeg: number;
+  minVisibility: number;
+  /** Max ms between last upright frame and hitting horizontal to count as a fall. */
+  fallWindowMs: number;
+  /** Continuous stillness required on the ground before firing. */
+  stillMs: number;
+  /** Motion below this (normalized units/frame) counts as still. */
+  stillEps: number;
+  cooldownMs: number;
+  confidenceBase: number;
+  confidenceSpeedGain: number;
+  confidenceMax: number;
+}
+
+export const DEFAULT_CONFIG: FallHeuristicConfig = {
+  uprightMaxDeg: 35,
+  horizontalMinDeg: 60,
+  minVisibility: 0.5,
+  fallWindowMs: 1800,
+  stillMs: 3000,
+  stillEps: 0.012,
+  cooldownMs: 10_000,
+  confidenceBase: 0.55,
+  confidenceSpeedGain: 0.3,
+  confidenceMax: 0.85,
+};
+
+// MediaPipe pose landmark indices.
+const L_SHOULDER = 11;
+const R_SHOULDER = 12;
+const L_HIP = 23;
+const R_HIP = 24;
+const TORSO = [L_SHOULDER, R_SHOULDER, L_HIP, R_HIP];
+
+function mid(a: LandmarkPoint, b: LandmarkPoint): [number, number] {
+  return [(a.x + b.x) / 2, (a.y + b.y) / 2];
+}
+
+export function measureFrame(
+  landmarks: LandmarkPoint[] | undefined,
+  prev?: LandmarkPoint[],
+  config: FallHeuristicConfig = DEFAULT_CONFIG,
+): FrameMeasurement {
+  if (!landmarks || landmarks.length <= Math.max(...TORSO)) {
+    return { posture: "no-person", torsoAngleDeg: null, motion: null, visibility: 0 };
+  }
+
+  const visibility =
+    TORSO.reduce((s, i) => s + (landmarks[i].visibility ?? 1), 0) / TORSO.length;
+  if (visibility < config.minVisibility) {
+    return { posture: "no-person", torsoAngleDeg: null, motion: null, visibility };
+  }
+
+  const [sx, sy] = mid(landmarks[L_SHOULDER], landmarks[R_SHOULDER]);
+  const [hx, hy] = mid(landmarks[L_HIP], landmarks[R_HIP]);
+  // Vector hips → shoulders; for a standing person it points UP (negative dy).
+  const dx = Math.abs(sx - hx);
+  const dyUp = hy - sy; // positive when shoulders are above hips
+  const torsoAngleDeg = (Math.atan2(dx, Math.max(dyUp, 0)) * 180) / Math.PI;
+
+  let motion: number | null = null;
+  if (prev && prev.length === landmarks.length) {
+    let sum = 0;
+    for (let i = 0; i < landmarks.length; i++) {
+      sum += Math.hypot(landmarks[i].x - prev[i].x, landmarks[i].y - prev[i].y);
+    }
+    motion = sum / landmarks.length;
+  }
+
+  const posture: Posture =
+    torsoAngleDeg < config.uprightMaxDeg
+      ? "upright"
+      : torsoAngleDeg > config.horizontalMinDeg
+        ? "horizontal"
+        : "transitional";
+
+  return { posture, torsoAngleDeg, motion, visibility };
+}
+
+export type WatchState =
+  | "idle" // no person in frame
+  | "monitoring" // person tracked, nothing alarming
+  | "fallen-still" // fall candidate on the ground, stillness clock running
+  | "cooldown"; // just fired; suppressing repeats
+
+export class FallStateMachine {
+  private cfg: FallHeuristicConfig;
+  private _state: WatchState = "idle";
+  private lastUprightTs: number | null = null;
+  private inHorizontal = false;
+  private candidate = false;
+  private transitionMs = 0;
+  private stillStartTs: number | null = null;
+  private lastTs = 0;
+  private cooldownUntil = 0;
+
+  constructor(config?: Partial<FallHeuristicConfig>) {
+    this.cfg = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  get state(): WatchState {
+    return this._state;
+  }
+
+  /** Milliseconds of continuous stillness accumulated on the ground (UI countdown). */
+  get stillnessMs(): number {
+    return this.stillStartTs === null ? 0 : this.lastTs - this.stillStartTs;
+  }
+
+  update(m: FrameMeasurement, timestampMs: number): FallEvent | null {
+    this.lastTs = timestampMs;
+
+    if (this._state === "cooldown") {
+      if (timestampMs < this.cooldownUntil) return null;
+      this._state = "monitoring";
+      this.resetGroundTracking();
+      this.lastUprightTs = null;
+    }
+
+    if (m.posture === "no-person") {
+      this._state = "idle";
+      this.resetGroundTracking();
+      this.lastUprightTs = null;
+      return null;
+    }
+
+    if (m.posture === "upright") {
+      this.lastUprightTs = timestampMs;
+      this._state = "monitoring";
+      this.resetGroundTracking();
+      return null;
+    }
+
+    if (m.posture === "transitional") {
+      this._state = "monitoring";
+      this.resetGroundTracking();
+      return null;
+    }
+
+    // horizontal
+    if (!this.inHorizontal) {
+      this.inHorizontal = true;
+      this.transitionMs =
+        this.lastUprightTs === null ? Infinity : timestampMs - this.lastUprightTs;
+      this.candidate = this.transitionMs <= this.cfg.fallWindowMs;
+      this.stillStartTs = null;
+    }
+
+    if (!this.candidate) {
+      this._state = "monitoring"; // deliberate lying down — never alarms
+      return null;
+    }
+
+    const isStill = m.motion !== null && m.motion < this.cfg.stillEps;
+    if (!isStill) {
+      this.stillStartTs = null;
+      this._state = "monitoring";
+      return null;
+    }
+
+    this.stillStartTs ??= timestampMs;
+    this._state = "fallen-still";
+    const stillnessMs = timestampMs - this.stillStartTs;
+    if (stillnessMs < this.cfg.stillMs) return null;
+
+    // FIRE — one event, then cooldown.
+    const speed = Math.max(0, 1 - this.transitionMs / this.cfg.fallWindowMs);
+    const confidence = Math.min(
+      this.cfg.confidenceMax,
+      this.cfg.confidenceBase + this.cfg.confidenceSpeedGain * speed,
+    );
+    const stillnessS = Math.round((stillnessMs / 1000) * 10) / 10;
+    const event: FallEvent = {
+      stillnessS,
+      confidence: Math.round(confidence * 100) / 100,
+      note: `pose heuristic: upright → horizontal in ${Math.round(this.transitionMs)} ms, still ${stillnessS}s`,
+    };
+    this._state = "cooldown";
+    this.cooldownUntil = timestampMs + this.cfg.cooldownMs;
+    this.resetGroundTracking();
+    return event;
+  }
+
+  private resetGroundTracking() {
+    this.inHorizontal = false;
+    this.candidate = false;
+    this.stillStartTs = null;
+  }
+}

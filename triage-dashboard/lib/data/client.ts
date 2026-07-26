@@ -52,6 +52,17 @@ export interface DataClient {
    * (convergence, splits, confusion matrices). Deterministic on the backend.
    */
   getTrainingStats(): Promise<TrainingStats>;
+  /**
+   * Camera acute source (/watch, feature-spec §1b): the browser pose heuristic
+   * reports a detected fall. Fires the SAME incident path as an accelerometer
+   * fall (caseload preemption, SSE, Telegram) — honestly labelled Camera (pose)
+   * with the heuristic's own confidence. Empty payload = backend demo defaults.
+   */
+  reportCameraFall(payload?: {
+    stillnessS?: number;
+    confidence?: number;
+    note?: string;
+  }): Promise<void>;
 }
 
 /* ------------------------------- base url -------------------------------- */
@@ -146,6 +157,16 @@ export const dataClient: DataClient = {
 
   getTrainingStats() {
     return getJSON<TrainingStats>("/api/training-stats");
+  },
+
+  async reportCameraFall(payload) {
+    const res = await fetch(`${BASE}/api/incidents/cv-detected`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload ?? {}),
+    });
+    if (!res.ok) throw new Error(`/api/incidents/cv-detected -> ${res.status}`);
+    // The IncidentEvent arrives via the SSE stream — no local fan-out.
   },
 
   async getIncidentTrace() {

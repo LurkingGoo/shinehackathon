@@ -104,6 +104,9 @@ export function Dashboard() {
             <a className={styles.docLink} href="/training">
               Model metrics <span aria-hidden>→</span>
             </a>
+            <a className={styles.docLink} href="/watch">
+              Camera watch <span aria-hidden>→</span>
+            </a>
             <a className={styles.docLink} href="/slides.pdf" target="_blank" rel="noopener">
               Slides <span aria-hidden>↗</span>
             </a>
