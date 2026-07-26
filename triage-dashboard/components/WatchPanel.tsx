@@ -11,6 +11,13 @@ import {
   type WatchState,
 } from "@/lib/pose/fallHeuristic";
 import type { PoseEngine } from "@/lib/pose/engine";
+import type { FaceEngine } from "@/lib/face/engine";
+import {
+  IdentityTracker,
+  bestMatch,
+  type EnrolledPerson,
+} from "@/lib/face/matcher";
+import { addEmbedding, loadGallery, removePerson } from "@/lib/face/gallery";
 import styles from "./watch.module.css";
 
 /**
@@ -64,6 +71,26 @@ export function WatchPanel() {
   const residentIdRef = useRef(residentId);
   residentIdRef.current = residentId;
 
+  // Face identity (ADR 0011, phases 3+4): on-device gallery + sticky binding.
+  const [gallery, setGallery] = useState<EnrolledPerson[]>([]);
+  const galleryRef = useRef<EnrolledPerson[]>([]);
+  galleryRef.current = gallery;
+  const [faceStatus, setFaceStatus] = useState<"off" | "loading" | "on" | "error">("off");
+  const [boundId, setBoundId] = useState<string | null>(null);
+  const boundIdRef = useRef(boundId);
+  boundIdRef.current = boundId;
+  const [enrollTarget, setEnrollTarget] = useState<string>("");
+  const [enrollBusy, setEnrollBusy] = useState(false);
+  const faceEngineRef = useRef<FaceEngine | null>(null);
+  const trackerRef = useRef(new IdentityTracker());
+  const faceBusyRef = useRef(false);
+  const lastFaceTickRef = useRef(0);
+  const postureRef = useRef<Posture>("no-person");
+
+  useEffect(() => {
+    setGallery(loadGallery());
+  }, []);
+
   useEffect(() => {
     dataClient.getAlertStatus().then(setAlerts).catch(() => setAlerts(null));
     dataClient
@@ -85,14 +112,20 @@ export function WatchPanel() {
     async (payload?: { stillnessS?: number; confidence?: number; note?: string }) => {
       setSending(true);
       try {
-        // Attach the selected identity (fail-open: "" sends no residentId and
-        // the backend uses its generic default). Read via ref so detections
-        // fired from the camera loop see the current selection.
-        const rid = residentIdRef.current || undefined;
+        // Identity precedence (ADR 0011): face binding first, manual selector
+        // second, generic default last. Read via refs so detections fired
+        // from the camera loop see current values. Always fail-open.
+        const rid = boundIdRef.current || residentIdRef.current || undefined;
         await dataClient.reportCameraFall(
           payload || rid ? { ...payload, residentId: rid } : undefined,
         );
-        const asWho = rid ? ` as ${residents.find((r) => r.id === rid)?.name ?? rid}` : "";
+        const asWho = rid
+          ? ` as ${
+              residents.find((r) => r.id === rid)?.name ??
+              galleryRef.current.find((p) => p.residentId === rid)?.label ??
+              rid
+            }`
+          : "";
         pushLog(
           payload
             ? `Fall detected${asWho} — sent to the dashboard (confidence ${Math.round(
@@ -131,6 +164,10 @@ export function WatchPanel() {
     cancelAnimationFrame(rafRef.current);
     engineRef.current?.close();
     engineRef.current = null;
+    faceEngineRef.current = null;
+    trackerRef.current.reset();
+    setBoundId(null);
+    setFaceStatus("off");
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     prevLandmarksRef.current = undefined;
@@ -197,6 +234,23 @@ export function WatchPanel() {
       setEngineStatus("running");
       pushLog(`Camera watching (pose model: ${engine.source})`);
 
+      // Face identity loads alongside, NON-FATAL (ADR 0011 fail-open): if it
+      // errors, fall detection continues and incidents stay generic/manual.
+      setFaceStatus("loading");
+      import("@/lib/face/engine")
+        .then((m) => m.createFaceEngine())
+        .then((fe) => {
+          faceEngineRef.current = fe;
+          trackerRef.current.reset();
+          setFaceStatus("on");
+          pushLog(`Face identity ready (models: ${fe.source})`);
+        })
+        .catch((err) => {
+          console.error("[watch] face engine failed:", err);
+          setFaceStatus("error");
+          pushLog("Face identity unavailable — incidents stay generic/manual");
+        });
+
       const loop = () => {
         const v = videoRef.current;
         const eng = engineRef.current;
@@ -206,10 +260,35 @@ export function WatchPanel() {
           const landmarks = eng.detect(v, now);
           const m = measureFrame(landmarks, prevLandmarksRef.current);
           prevLandmarksRef.current = landmarks;
+          postureRef.current = m.posture;
           const event = smRef.current.update(m, now);
           drawOverlay(landmarks);
           if (event) {
             void report(event);
+          }
+          // Identity tick (ADR 0011): low cadence, ONLY while upright — the
+          // binding is what carries the name through the fall, so nothing is
+          // ever recognized mid-fall. Decay is handled by the tracker.
+          const fe = faceEngineRef.current;
+          if (
+            fe &&
+            galleryRef.current.length > 0 &&
+            !faceBusyRef.current &&
+            now - lastFaceTickRef.current > 700 &&
+            m.posture === "upright"
+          ) {
+            lastFaceTickRef.current = now;
+            faceBusyRef.current = true;
+            fe.embed(v)
+              .then((desc) => {
+                const match = desc ? bestMatch(desc, galleryRef.current) : null;
+                const b = trackerRef.current.update(match, performance.now());
+                setBoundId(b?.residentId ?? null);
+              })
+              .catch(() => undefined)
+              .finally(() => {
+                faceBusyRef.current = false;
+              });
           }
           if (now - lastUiPushRef.current > 150) {
             lastUiPushRef.current = now;
@@ -234,6 +313,39 @@ export function WatchPanel() {
   }, [drawOverlay, pushLog, report, stop]);
 
   useEffect(() => stop, [stop]);
+
+  // Enrollment (phase 3): capture the current frame's descriptor for the
+  // chosen resident. Embeddings go to localStorage only — never uploaded.
+  const captureAngle = useCallback(async () => {
+    const fe = faceEngineRef.current;
+    const v = videoRef.current;
+    if (!fe || !v || !enrollTarget) return;
+    setEnrollBusy(true);
+    try {
+      const desc = await fe.embed(v);
+      if (!desc) {
+        pushLog("No face found — face the camera up close, then capture");
+        return;
+      }
+      const label = residents.find((r) => r.id === enrollTarget)?.name ?? enrollTarget;
+      setGallery(addEmbedding(enrollTarget, label, desc));
+      pushLog(`Captured face angle for ${label}`);
+    } finally {
+      setEnrollBusy(false);
+    }
+  }, [enrollTarget, residents, pushLog]);
+
+  const removeEnrolled = useCallback((rid: string) => {
+    setGallery(removePerson(rid));
+    trackerRef.current.reset();
+    setBoundId(null);
+  }, []);
+
+  const boundName = boundId
+    ? residents.find((r) => r.id === boundId)?.name ??
+      gallery.find((p) => p.residentId === boundId)?.label ??
+      boundId
+    : null;
 
   const stateChip = (() => {
     if (engineStatus !== "running")
@@ -289,6 +401,13 @@ export function WatchPanel() {
                   {alerts.telegram.configured
                     ? "Telegram: connected"
                     : "Telegram: not configured"}
+                </span>
+              )}
+              {engineStatus === "running" && gallery.length > 0 && (
+                <span
+                  className={`${styles.chip} ${boundName ? styles.chipOk : styles.chipIdle}`}
+                >
+                  {boundName ? `Identified: ${boundName}` : "Identity: unknown"}
                 </span>
               )}
             </div>
@@ -383,6 +502,65 @@ export function WatchPanel() {
             </p>
           </section>
 
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>Face enrollment (on-device)</h2>
+            <p className={styles.testNote}>
+              Enroll front, left, and right angles per person. Embeddings stay in
+              this browser&apos;s storage — no face image is kept, nothing is
+              uploaded. An identified person makes their fall a named alert;
+              anyone unenrolled still fires the generic alert.
+            </p>
+            <label className={styles.selLabel}>
+              Enroll as
+              <select
+                className={styles.residentSelect}
+                value={enrollTarget}
+                onChange={(e) => setEnrollTarget(e.target.value)}
+              >
+                <option value="">Choose a resident…</option>
+                {residents.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              className={`${styles.btn} ${styles.btnTest}`}
+              onClick={() => void captureAngle()}
+              disabled={
+                enrollBusy || !enrollTarget || faceStatus !== "on" || engineStatus !== "running"
+              }
+            >
+              {faceStatus === "on"
+                ? enrollBusy
+                  ? "Capturing…"
+                  : "Capture this angle"
+                : engineStatus !== "running"
+                  ? "Start the camera to enroll"
+                  : faceStatus === "loading"
+                    ? "Face models loading…"
+                    : "Face identity unavailable"}
+            </button>
+            {gallery.length > 0 && (
+              <ul className={styles.logList} style={{ marginTop: 12 }}>
+                {gallery.map((p) => (
+                  <li key={p.residentId} className={styles.logItem}>
+                    <span className={styles.logAt}>{p.embeddings.length} angle{p.embeddings.length === 1 ? "" : "s"}</span>
+                    {p.label}
+                    <button
+                      className={styles.removeBtn}
+                      onClick={() => removeEnrolled(p.residentId)}
+                      aria-label={`Forget ${p.label}`}
+                    >
+                      forget
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
           <section className={`${styles.card} ${styles.honesty}`}>
             <h2 className={styles.cardTitle}>Honest labelling</h2>
             <p className={styles.honestyText}>
@@ -391,7 +569,8 @@ export function WatchPanel() {
               <b>Camera&nbsp;(pose)</b> and its own confidence estimate, never the
               96.2% figure. Video never leaves this browser
               {assetSource ? ` (model assets: ${assetSource})` : ""}; only the
-              detection event is sent.
+              detection event and the matched resident id are sent. Face
+              embeddings from enrollment stay in this browser&apos;s storage.
             </p>
           </section>
         </aside>

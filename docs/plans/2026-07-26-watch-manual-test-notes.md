@@ -81,5 +81,25 @@ the most recent dispatch (sent / failed / not-configured), the dashboard
 toolbar badges it ("Telegram: connected / alert sent / send failed / not
 configured"), and `/watch` shows the chip and logs each detection's actual
 Telegram outcome. All three chain-of-custody links are now visible per
-incident. Confidence-band retune and the face-recognition hypothesis remain
-open.
+incident. Confidence-band retune remains open.
+
+**Actioned 2026-07-27:** face identity shipped (phases 0–5 of
+[[2026-07-26-face-identity-phases]], ADR 0011). What a fake camera cannot
+test needs a REAL-WEBCAM REHEARSAL on the demo laptop:
+
+1. `git pull`, start both services, open `/watch`, Start camera. Expect the
+   log lines "Camera watching (pose model: local)" and "Face identity ready
+   (models: local)" (run `npm run fetch-pose-assets` if either says cdn).
+2. Enroll yourself as a resident: pick a name under "Enroll as", capture
+   three angles (front, left profile, right profile), each close to the
+   camera. The card lists "3 angles".
+3. Walk back into frame upright — the chip should flip to "Identified:
+   <name>" within a couple of seconds.
+4. Fall (fast drop, hold still 3 s). Expect: log "Fall detected as <name>",
+   the dashboard pins THAT resident, the Telegram ping names them, and the
+   log follows up with the delivery outcome.
+5. Note the matcher behavior for the retune: how quickly it identified you,
+   whether the identity survived the fall (it should — the binding has a
+   30 s no-sighting grace), and any wrong-person flips (raise
+   `rebindHits` / lower `maxDistance` in `lib/face/matcher.ts` if so).
+6. "forget" your enrollment afterwards if the laptop is shared.

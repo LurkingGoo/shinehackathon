@@ -37,7 +37,32 @@ for (const f of await readdir(wasmSrc)) {
   }
 }
 
-// 2. pose model — downloaded once from Google's published model URL.
+// 2. face-identity models (ADR 0011) — they SHIP inside @vladmandic/face-api,
+// so this is a pure copy: tiny detector + 68-landmark + recognition net.
+const faceOut = path.join(outDir, "face");
+await mkdir(faceOut, { recursive: true });
+const faceSrc = path.join(
+  path.dirname(require.resolve("@vladmandic/face-api")),
+  "..",
+  "model",
+);
+const FACE_MODELS = [
+  "tiny_face_detector_model",
+  "face_landmark_68_model",
+  "face_recognition_model",
+];
+for (const m of FACE_MODELS) {
+  for (const suffix of ["-weights_manifest.json", ".bin"]) {
+    const f = `${m}${suffix}`;
+    const dest = path.join(faceOut, f);
+    if (!existsSync(dest)) {
+      await copyFile(path.join(faceSrc, f), dest);
+      console.log(`copied  face/${f}`);
+    }
+  }
+}
+
+// 3. pose model — downloaded once from Google's published model URL.
 if (existsSync(modelOut) && (await stat(modelOut)).size > 1_000_000) {
   console.log("model already present — skipping download");
 } else {
