@@ -27,7 +27,7 @@ echo Starting scoring service on http://localhost:8000 ...
 start "triage-scoring-service" cmd /k "cd /d "%~dp0scoring-service" && python -m pip install -q -r requirements.txt && python -m uvicorn app.main:app --port 8000"
 
 echo Starting dashboard on http://localhost:3000 ...
-start "triage-dashboard" cmd /k "cd /d "%~dp0triage-dashboard" && (if not exist node_modules npm install) && npm run dev"
+start "triage-dashboard" cmd /k "cd /d "%~dp0triage-dashboard" && (if not exist node_modules npm install) && (npm run fetch-pose-assets || echo pose assets skipped - /watch will use the CDN) && npm run dev"
 
 echo.
 echo   ----------------------------------------------

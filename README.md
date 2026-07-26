@@ -44,6 +44,12 @@ npm run dev
 Open http://localhost:3000, click a resident to drill down, and press
 **Simulate incident** to fire a fall and watch the list re-rank live.
 
+**Camera fall detection:** open http://localhost:3000/watch, allow the
+webcam, and fall (fast, then hold still ~3 s) — the incident fires into the
+same pipeline. Pose estimation runs entirely in the browser; no video is
+uploaded. `npm run fetch-pose-assets` (run automatically by the start
+scripts) vendors the model for offline use; otherwise it loads from the CDN.
+
 No database, no secrets, no `.env` needed. The demo runs on a synthetic
 fall/near-miss fallback when the licensed datasets are absent (they are
 git-ignored), so everything works straight from a fresh clone.
@@ -76,6 +82,7 @@ Details, the Vercel alternative, and SSE notes: [`DEPLOY.md`](DEPLOY.md).
 ## Tests
 
 ```bash
-cd scoring-service && python -m pytest        # backend
-cd triage-dashboard && npm run typecheck      # frontend
+cd scoring-service && python -m pytest        # backend (75 tests)
+cd triage-dashboard && npm run typecheck      # frontend types
+cd triage-dashboard && npm test               # fall-heuristic unit tests (vitest)
 ```

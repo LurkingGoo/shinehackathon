@@ -38,6 +38,9 @@ echo "▶ dashboard — starting on :3000 ..."
 (
   cd "$ROOT/triage-dashboard"
   [ -d node_modules ] || npm install
+  # /watch pose assets (offline demo insurance) — never blocks startup;
+  # without them the page falls back to the CDN at runtime.
+  npm run fetch-pose-assets || echo "⚠ pose assets fetch failed — /watch will use the CDN."
   exec npm run dev
 ) &
 WEB_PID=$!
