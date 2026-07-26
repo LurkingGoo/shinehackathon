@@ -233,9 +233,15 @@ def set_acute_trace(smv: np.ndarray, fs: float = FS) -> None:
 _cv_override: dict | None = None
 
 
+# Enrolled-identity carry (ADR 0011): a camera incident may NAME the resident.
+# Resolved here, fail-open — an unknown/absent id keeps the default identity.
+_cv_resident = None  # AcuteResident | None
+
+
 def set_cv_incident(stillness_s: float = 8.0, confidence: float = 0.7,
-                    note: str | None = None) -> None:
-    global _cv_override
+                    note: str | None = None,
+                    resident_id: str | None = None) -> None:
+    global _cv_override, _cv_resident
     conf = float(np.clip(confidence, 0.0, 1.0))
     still = max(0.0, float(stillness_s))
     _cv_override = {
@@ -245,11 +251,34 @@ def set_cv_incident(stillness_s: float = 8.0, confidence: float = 0.7,
         "stillness_s": still,
         "rationale": note or f"Camera: upright → horizontal, still {still:.0f}s",
     }
+    _cv_resident = _resolve_cv_resident(resident_id)
+
+
+def _resolve_cv_resident(resident_id: str | None):
+    """Map an enrolled residentId onto the roster. Fail open: None or an
+    unknown id resolves to the default acute identity (ACUTE)."""
+    if not resident_id or resident_id == ACUTE.id:
+        return None
+    for r in CHRONIC:
+        if r.id == resident_id:
+            return AcuteResident(
+                id=r.id, name=r.name, age=r.age, unit=r.unit,
+                sensor="Camera (pose)", sensor_class="Vision — browser pose heuristic",
+                updated_min_ago=0, recency="just now",
+            )
+    return None
+
+
+def acute_identity():
+    """Who the active acute row belongs to: the camera-named resident while a
+    named camera incident is active, else the default (r-tan)."""
+    return _cv_resident if (_cv_override is not None and _cv_resident) else ACUTE
 
 
 def clear_cv_incident() -> None:
-    global _cv_override
+    global _cv_override, _cv_resident
     _cv_override = None
+    _cv_resident = None
 
 
 def _cv_score() -> tuple[RiskScore, list, str, str]:
@@ -329,14 +358,16 @@ def _chronic_detail(r: ChronicResident) -> ResidentDetail:
 
 
 def _acute_entry(rank: int) -> CaseloadEntry:
+    who = acute_identity()
     score, _f, _a, _r = _acute_score()
-    return CaseloadEntry(id=ACUTE.id, name=ACUTE.name, age=ACUTE.age,
-                         unit=ACUTE.unit, rank=rank, score=score)
+    return CaseloadEntry(id=who.id, name=who.name, age=who.age,
+                         unit=who.unit, rank=rank, score=score)
 
 
 def _acute_detail() -> ResidentDetail:
+    who = acute_identity()
     score, feats, action, _r = _acute_score()
-    d = ResidentDetail(id=ACUTE.id, name=ACUTE.name, age=ACUTE.age, unit=ACUTE.unit,
+    d = ResidentDetail(id=who.id, name=who.name, age=who.age, unit=who.unit,
                        score=score, features=feats, recommended_action=action,
                        briefing="")
     return d.model_copy(update={"briefing": deterministic_briefing(d)})
@@ -368,8 +399,12 @@ def incident_active() -> bool:
 def build_ranked_caseload() -> RankedCaseload:
     """Order: acute first (while an incident is active), then chronic by
     COMPUTED risk desc (the ranking rule)."""
-    ranked = sorted(CHRONIC, key=lambda r: _chronic_score(r)[0].risk, reverse=True)
     offset = 1 if incident_active() else 0
+    # A camera-named resident moves to the acute row — drop their chronic row
+    # so they never appear twice (ADR 0011 identity carry).
+    acute_id = acute_identity().id if offset else None
+    roster = [r for r in CHRONIC if r.id != acute_id]
+    ranked = sorted(roster, key=lambda r: _chronic_score(r)[0].risk, reverse=True)
     entries = [_chronic_entry(r, i + 1 + offset) for i, r in enumerate(ranked)]
     if offset:
         entries.insert(0, _acute_entry(1))
@@ -377,7 +412,9 @@ def build_ranked_caseload() -> RankedCaseload:
 
 
 def detail_by_id(rid: str) -> ResidentDetail | None:
-    if rid == ACUTE.id:
+    # The active acute identity (default r-tan, or the camera-named resident)
+    # serves the acute detail; everyone else serves their chronic detail.
+    if rid == acute_identity().id and (rid == ACUTE.id or incident_active()):
         return _acute_detail()
     for r in CHRONIC:
         if r.id == rid:

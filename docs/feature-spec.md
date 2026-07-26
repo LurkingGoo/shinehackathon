@@ -3,7 +3,7 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.6.0
+spec_version: 1.7.0
 last_updated: 2026-07-26
 tags: [features, scoring, reference]
 ---
@@ -94,6 +94,16 @@ tests (`tests/test_cv.py`):
   rule as §1).
 - No fake waveform: `/incidents/trace` **404s** for a camera incident (there is
   no accelerometer trace to show).
+
+**Named identity (spec 1.7.0, [[0011-enrolled-face-identity]]).** The event
+body accepts an optional `residentId`; a known id makes THAT resident the
+acute row across every surface (caseload, SSE, Telegram, `/alerts/status`),
+and an absent or unknown id falls back to the generic default — recognition
+can never block or alter an alert. Identity comes from opt-in on-device
+enrollment (front + both profiles → embeddings in localStorage, matched only
+while the person is upright, carried through the pose track). Amended privacy
+claim: no video leaves the browser; only the detection event and the matched
+resident id are sent.
 
 **Browser half (shipped 1.6.0, [[0010-browser-pose-assets]]).** The `/watch`
 dashboard page runs MediaPipe PoseLandmarker (lite) entirely in-browser —

@@ -27,6 +27,7 @@ change a decision, add a new ADR that supersedes it (link both ways).
 | [[0008-two-tier-curated-data]] | Two-tier curated data: committed real-data artifacts baked offline | Accepted |
 | [[0009-illustrative-classifier]] | Illustrative classifier: /training-stats motivates the shipped detector | Accepted |
 | [[0010-browser-pose-assets]] | In-browser MediaPipe pose for the camera track; assets fetched, not committed | Accepted |
+| [[0011-enrolled-face-identity]] | Enrolled on-device face identity for camera incidents; amends the 0010 privacy claim | Accepted |
 
 ## Template
 

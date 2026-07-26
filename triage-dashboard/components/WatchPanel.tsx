@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AlertStatus } from "@/lib/types";
+import type { AlertStatus, CaseloadEntry } from "@/lib/types";
 import { dataClient } from "@/lib/data/client";
 import {
   FallStateMachine,
@@ -56,9 +56,20 @@ export function WatchPanel() {
   const [sending, setSending] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<AlertStatus | null>(null);
+  // Identity selector (ADR 0011, phase 1): which caseload resident a detection
+  // is reported as. "" = generic default. Phase 4's face binding will set this
+  // automatically; until then it is the manual (and demo-insurance) path.
+  const [residents, setResidents] = useState<CaseloadEntry[]>([]);
+  const [residentId, setResidentId] = useState<string>("");
+  const residentIdRef = useRef(residentId);
+  residentIdRef.current = residentId;
 
   useEffect(() => {
     dataClient.getAlertStatus().then(setAlerts).catch(() => setAlerts(null));
+    dataClient
+      .getRankedCaseload()
+      .then((c) => setResidents(c.entries))
+      .catch(() => setResidents([]));
   }, []);
 
   const pushLog = useCallback((text: string) => {
@@ -74,13 +85,20 @@ export function WatchPanel() {
     async (payload?: { stillnessS?: number; confidence?: number; note?: string }) => {
       setSending(true);
       try {
-        await dataClient.reportCameraFall(payload);
+        // Attach the selected identity (fail-open: "" sends no residentId and
+        // the backend uses its generic default). Read via ref so detections
+        // fired from the camera loop see the current selection.
+        const rid = residentIdRef.current || undefined;
+        await dataClient.reportCameraFall(
+          payload || rid ? { ...payload, residentId: rid } : undefined,
+        );
+        const asWho = rid ? ` as ${residents.find((r) => r.id === rid)?.name ?? rid}` : "";
         pushLog(
           payload
-            ? `Fall detected — sent to the dashboard (confidence ${Math.round(
+            ? `Fall detected${asWho} — sent to the dashboard (confidence ${Math.round(
                 (payload.confidence ?? 0) * 100,
               )}%)`
-            : "Test detection sent to the dashboard",
+            : `Test detection${asWho} sent to the dashboard`,
         );
         // The Telegram dispatch resolves on a backend thread a beat later —
         // fetch its actual outcome so the alert leg is never silent.
@@ -106,7 +124,7 @@ export function WatchPanel() {
         setSending(false);
       }
     },
-    [pushLog],
+    [pushLog, residents],
   );
 
   const stop = useCallback(() => {
@@ -337,6 +355,21 @@ export function WatchPanel() {
                 ))}
               </ul>
             )}
+            <label className={styles.selLabel}>
+              Report as
+              <select
+                className={styles.residentSelect}
+                value={residentId}
+                onChange={(e) => setResidentId(e.target.value)}
+              >
+                <option value="">Default resident (Tan Ah Moi)</option>
+                {residents.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button
               className={`${styles.btn} ${styles.btnGhost} ${styles.btnTest}`}
               onClick={() => void report()}

@@ -155,6 +155,9 @@ class CvDetectedRequest(BaseModel):
     stillness_s: float = 8.0
     confidence: float = 0.7
     note: str | None = None
+    # Enrolled identity (ADR 0011): which caseload resident this fall belongs
+    # to. Optional and fail-open — absent/unknown keeps the default identity.
+    resident_id: str | None = None
 
 
 @app.post("/incidents/cv-detected", response_model=IncidentEvent)
@@ -166,7 +169,7 @@ def cv_detected(body: CvDetectedRequest | None = None) -> IncidentEvent:
     = the browser's heuristic estimate (NOT the calibrated 96% detector), and no
     accelerometer waveform is exposed (/incidents/trace 404s for it)."""
     b = body or CvDetectedRequest()
-    fixtures.set_cv_incident(b.stillness_s, b.confidence, b.note)
+    fixtures.set_cv_incident(b.stillness_s, b.confidence, b.note, b.resident_id)
     fixtures.mark_incident()
     event = fixtures.build_incident_event()
     hub.publish(event)

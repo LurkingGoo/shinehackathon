@@ -99,6 +99,72 @@ def test_accelerometer_sim_clears_camera_override():
             fixtures.clear_incident()
 
 
+def test_cv_named_resident_becomes_the_acute_row():
+    """Phase-1 identity plumbing (ADR 0011): a known residentId makes THAT
+    resident the acute row on every surface, exactly once in the caseload."""
+    with _client() as c:
+        try:
+            ev = c.post("/incidents/cv-detected",
+                        json={"stillnessS": 8.0, "confidence": 0.7,
+                              "residentId": "r-devi"}).json()
+            assert ev["entry"]["id"] == "r-devi"
+            assert ev["entry"]["name"] == "Devi Nair"
+            assert ev["entry"]["score"]["sensor"] == "Camera (pose)"
+
+            entries = c.get("/caseload").json()["entries"]
+            assert entries[0]["id"] == "r-devi"
+            assert entries[0]["score"]["track"] == "acute"
+            assert [e["id"] for e in entries].count("r-devi") == 1
+
+            detail = c.get("/residents/r-devi").json()
+            assert detail["score"]["sensor"] == "Camera (pose)"
+            assert detail["name"] == "Devi Nair"
+            assert "Devi Nair" in detail["briefing"]
+        finally:
+            fixtures.clear_incident()
+
+
+def test_cv_unknown_resident_falls_back_to_default():
+    """Fail-open rule: an unknown id can never block the alert — it produces
+    exactly the generic incident."""
+    with _client() as c:
+        try:
+            ev = c.post("/incidents/cv-detected",
+                        json={"residentId": "r-nobody"}).json()
+            assert ev["entry"]["id"] == "r-tan"
+            assert ev["entry"]["score"]["sensor"] == "Camera (pose)"
+        finally:
+            fixtures.clear_incident()
+
+
+def test_cv_named_resident_returns_to_chronic_after_clear():
+    with _client() as c:
+        try:
+            c.post("/incidents/cv-detected", json={"residentId": "r-devi"})
+            c.post("/incidents/clear")
+            entries = c.get("/caseload").json()["entries"]
+            devi = [e for e in entries if e["id"] == "r-devi"]
+            assert len(devi) == 1
+            assert devi[0]["score"]["track"] == "chronic"
+        finally:
+            fixtures.clear_incident()
+
+
+def test_cv_named_identity_does_not_leak_into_accel_simulate():
+    """After a named camera incident, an accelerometer simulate is r-tan again
+    (set_acute_trace clears the camera override AND its identity)."""
+    import os
+    with _client() as c:
+        try:
+            os.environ.pop("SISFALL_TRACE", None)
+            c.post("/incidents/cv-detected", json={"residentId": "r-devi"})
+            ev = c.post("/incidents/simulate").json()
+            assert ev["entry"]["id"] == "r-tan"
+            assert ev["entry"]["score"]["sensor"] == "Accelerometer"
+        finally:
+            fixtures.clear_incident()
+
+
 def test_cv_detected_dispatches_alert_when_configured(monkeypatch):
     import threading
 

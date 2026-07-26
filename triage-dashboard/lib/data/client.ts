@@ -63,6 +63,9 @@ export interface DataClient {
     stillnessS?: number;
     confidence?: number;
     note?: string;
+    /** Enrolled identity (ADR 0011). Optional and fail-open: absent or
+     * unknown ids produce the generic incident. */
+    residentId?: string;
   }): Promise<void>;
   /**
    * Alert-leg visibility: whether Telegram is configured and the outcome of
