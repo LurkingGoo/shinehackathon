@@ -47,6 +47,10 @@ class RiskScore(_Base):
 class CaseloadEntry(Resident):
     score: RiskScore
     rank: int
+    # Last-motion area from the resident's ambient (PIR/door) track — alert
+    # context, not a camera localization claim (ADR 0012). Optional: additive
+    # to the contract, absent for consumers that predate it.
+    zone: str | None = None
 
 
 class RankedCaseload(_Base):

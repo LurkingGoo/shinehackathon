@@ -160,6 +160,24 @@ export function WatchPanel() {
     [pushLog, residents],
   );
 
+  // Long-lie escalation (ADR 0012): the state machine saw no recovery
+  // escalateAfterMs after the fall — fire the STILL DOWN message through the
+  // same identity resolution. Fail-open like everything else on this path.
+  const escalate = useCallback(
+    async (stillDownS: number) => {
+      const rid = boundIdRef.current || residentIdRef.current || undefined;
+      try {
+        await dataClient.reportStillDown({ stillDownS, residentId: rid });
+        pushLog(
+          `Still down ${stillDownS.toFixed(0)}s after the alert — escalation sent`,
+        );
+      } catch {
+        pushLog("Escalation could not reach the scoring service");
+      }
+    },
+    [pushLog],
+  );
+
   const stop = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
     engineRef.current?.close();
@@ -264,7 +282,8 @@ export function WatchPanel() {
           const event = smRef.current.update(m, now);
           drawOverlay(landmarks);
           if (event) {
-            void report(event);
+            if (event.kind === "still-down") void escalate(event.stillDownS);
+            else void report(event);
           }
           // Identity tick (ADR 0011): low cadence, ONLY while upright — the
           // binding is what carries the name through the fall, so nothing is
@@ -310,7 +329,7 @@ export function WatchPanel() {
           : "Could not start the camera engine. Check the connection (the pose model loads from a CDN on first run) and try again.",
       );
     }
-  }, [drawOverlay, pushLog, report, stop]);
+  }, [drawOverlay, escalate, pushLog, report, stop]);
 
   useEffect(() => stop, [stop]);
 

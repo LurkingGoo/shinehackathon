@@ -3,7 +3,7 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.7.1
+spec_version: 1.8.0
 last_updated: 2026-07-27
 tags: [features, scoring, reference]
 ---
@@ -94,6 +94,18 @@ tests (`tests/test_cv.py`):
   rule as §1).
 - No fake waveform: `/incidents/trace` **404s** for a camera incident (there is
   no accelerometer trace to show).
+
+**Long-lie escalation, acknowledgement, zone (spec 1.8.0, [[0012-escalation-ack-zone]]).**
+Post-fire, the browser state machine keeps watching: still on the ground
+**45 s** *(tune)* after the alert → ONE `still-down` event →
+`POST /incidents/escalate` → the "STILL DOWN" Telegram message (any upright
+frame cancels; escalation is a message, never a new incident). The fall alert
+carries an inline **"I am responding"** button; a getUpdates poller records
+`{by, at}`, surfaced as `acknowledged` on `/alerts/status` and a dashboard
+badge, cleared per incident. `CaseloadEntry` gains optional `zone` (the
+resident's ambient last-motion area); the alert location line is
+`{unit} · last motion: {zone}` — PIR context, never a camera localization
+claim.
 
 **Named identity (spec 1.7.0, [[0011-enrolled-face-identity]]).** The event
 body accepts an optional `residentId`; a known id makes THAT resident the

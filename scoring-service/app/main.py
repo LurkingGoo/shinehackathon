@@ -42,6 +42,14 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+def _start_ack_poller() -> None:
+    # ADR 0012: lazy daemon thread long-polling getUpdates for the alert's
+    # "I am responding" button. No-op unless Telegram is configured; disabled
+    # by SHINEHACKATHON_TELEGRAM_ACK_POLL=0 (tests set this).
+    telegram.start_ack_poller()
+
+
 @app.get("/health")
 def health() -> dict:
     return {"ok": True, "subscribers": hub.subscriber_count}
@@ -125,6 +133,7 @@ def _dispatch_alert(event: IncidentEvent) -> None:
     isn't configured (is_configured False), and a daemon thread otherwise so a
     slow/failed send never delays or breaks the incident response. Every path
     records its outcome for /alerts/status — silence stays out of the UI."""
+    telegram.clear_ack()  # a new incident starts an unacknowledged alert leg
     if not telegram.is_configured():
         _record_dispatch(event, "not-configured")
         return
@@ -144,6 +153,9 @@ def alerts_status() -> dict:
     return {
         "telegram": {"configured": telegram.is_configured()},
         "lastDispatch": _last_dispatch,
+        # ADR 0012: {by, at} once a caregiver taps "I am responding" on the
+        # alert; null until then, cleared on each new incident.
+        "acknowledged": telegram.get_ack(),
     }
 
 
@@ -175,6 +187,38 @@ def cv_detected(body: CvDetectedRequest | None = None) -> IncidentEvent:
     hub.publish(event)
     _dispatch_alert(event)
     return event
+
+
+class EscalateRequest(BaseModel):
+    """Body the browser posts when the fallen person is STILL down (ADR 0012).
+    The camera is the only component that knows nobody got up, so the browser
+    decides and this endpoint dispatches."""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    still_down_s: float = 45.0
+    resident_id: str | None = None
+
+
+@app.post("/incidents/escalate")
+def escalate(body: EscalateRequest | None = None) -> dict:
+    """Long-lie escalation: a second, sharper Telegram message when the camera
+    sees no recovery after the fall alert. Escalation is a message, not a new
+    incident — the active incident and caseload are untouched. 404 while the
+    caseload is calm (nothing to escalate), mirroring /incidents/trace."""
+    if not fixtures.incident_active():
+        raise HTTPException(status_code=404, detail="no active incident")
+    b = body or EscalateRequest()
+    event = fixtures.build_incident_event()
+
+    if not telegram.is_configured():
+        _record_dispatch(event, "not-configured")
+        return {"dispatched": False, "reason": "not-configured"}
+
+    def _send() -> None:
+        ok = telegram.send_escalation_alert(event, b.still_down_s)
+        _record_dispatch(event, "sent" if ok else "failed")
+
+    threading.Thread(target=_send, daemon=True).start()
+    return {"dispatched": True}
 
 
 @app.post("/incidents/simulate-nearmiss")

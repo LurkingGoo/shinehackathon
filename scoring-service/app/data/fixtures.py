@@ -54,6 +54,9 @@ class ChronicResident:
     days_of_history: int
     data_quality: float
     inputs: list[CFI] = field(default_factory=list)
+    # Last-motion area from the ambient track (ADR 0012) — alert context,
+    # consistent with the resident's chronic features shown on their row.
+    zone: str = "Living room"
 
 
 CHRONIC: list[ChronicResident] = [
@@ -67,6 +70,7 @@ CHRONIC: list[ChronicResident] = [
             CFI("Last confirmed motion", "Bedroom, 22 min ago", 0.19, anomaly=0.35),
             CFI("Front door", "Not opened today", 0.11, "typ. 08:10", anomaly=0.6),
         ],
+        zone="Bedroom",
     ),
     ChronicResident(
         "r-wong", "Wong Lai Keng", 85, "Blk 108 #11-330", "Door + PIR",
@@ -76,6 +80,7 @@ CHRONIC: list[ChronicResident] = [
             CFI("Bathroom visits", "0 today", 0.22, "typ. 2 by 10:00", anomaly=0.55),
             CFI("Motion variance", "3.1σ low", 0.11, anomaly=0.6),
         ],
+        zone="Bedroom",
     ),
     ChronicResident(
         "r-lim", "Lim Boon Huat", 74, "Blk 115 #03-120", "PIR motion",
@@ -87,6 +92,7 @@ CHRONIC: list[ChronicResident] = [
             CFI("Sleep fragmentation", "High", 0.09, anomaly=0.6),
             CFI("Daytime activity", "Normal", 0.04, anomaly=0.1),
         ],
+        zone="Bedroom",
     ),
     ChronicResident(
         "r-devi", "Devi Nair", 80, "Blk 110 #07-45", "Door sensor",
@@ -95,6 +101,7 @@ CHRONIC: list[ChronicResident] = [
             CFI("Front door", "07:50 (on time)", 0.0, "typ. 07:45", anomaly=0.0),
             CFI("Kitchen activity", "Normal", 0.0, anomaly=0.0),
         ],
+        zone="Kitchen",
     ),
     ChronicResident(
         "r-goh", "Goh Cheng Watt", 77, "Blk 112 #09-88", "PIR motion",
@@ -264,7 +271,7 @@ def _resolve_cv_resident(resident_id: str | None):
             return AcuteResident(
                 id=r.id, name=r.name, age=r.age, unit=r.unit,
                 sensor="Camera (pose)", sensor_class="Vision — browser pose heuristic",
-                updated_min_ago=0, recency="just now",
+                updated_min_ago=0, recency="just now", zone=r.zone,
             )
     return None
 
@@ -311,11 +318,12 @@ class AcuteResident:
     sensor_class: str
     updated_min_ago: int
     recency: str
+    zone: str = "Living room"
 
 
 ACUTE = AcuteResident(
     "r-tan", "Tan Ah Moi", 82, "Blk 108 #04-210", "Accelerometer",
-    "Wearable bangle", 0, "just now",
+    "Wearable bangle", 0, "just now", zone="Living room",
 )
 
 
@@ -347,7 +355,7 @@ def _acute_score() -> tuple[RiskScore, list, str, str]:
 def _chronic_entry(r: ChronicResident, rank: int) -> CaseloadEntry:
     score, _f, _a, _r = _chronic_score(r)
     return CaseloadEntry(id=r.id, name=r.name, age=r.age, unit=r.unit,
-                         rank=rank, score=score)
+                         rank=rank, score=score, zone=r.zone)
 
 
 def _chronic_detail(r: ChronicResident) -> ResidentDetail:
@@ -361,7 +369,7 @@ def _acute_entry(rank: int) -> CaseloadEntry:
     who = acute_identity()
     score, _f, _a, _r = _acute_score()
     return CaseloadEntry(id=who.id, name=who.name, age=who.age,
-                         unit=who.unit, rank=rank, score=score)
+                         unit=who.unit, rank=rank, score=score, zone=who.zone)
 
 
 def _acute_detail() -> ResidentDetail:

@@ -35,10 +35,23 @@ export interface FrameMeasurement {
 }
 
 export interface FallEvent {
+  kind: "fall";
   stillnessS: number;
   confidence: number;
   note: string;
 }
+
+/**
+ * Long-lie escalation (ADR 0012): fired ONCE per fall when the person is
+ * still on the ground `escalateAfterMs` after the fall event. Any upright
+ * frame (they got up) or lost tracking cancels it.
+ */
+export interface StillDownEvent {
+  kind: "still-down";
+  stillDownS: number;
+}
+
+export type WatchEvent = FallEvent | StillDownEvent;
 
 export interface FallHeuristicConfig {
   uprightMaxDeg: number;
@@ -54,6 +67,8 @@ export interface FallHeuristicConfig {
   confidenceBase: number;
   confidenceSpeedGain: number;
   confidenceMax: number;
+  /** Post-fire: still on the ground this long after the alert → escalate. */
+  escalateAfterMs: number;
 }
 
 export const DEFAULT_CONFIG: FallHeuristicConfig = {
@@ -77,6 +92,9 @@ export const DEFAULT_CONFIG: FallHeuristicConfig = {
   confidenceBase: 0.55,
   confidenceSpeedGain: 0.3,
   confidenceMax: 0.85,
+  // 45s (tune): long enough to mean "not getting up", short enough to demo.
+  // Must exceed cooldownMs — the tracker survives the cooldown transition.
+  escalateAfterMs: 45_000,
 };
 
 // MediaPipe pose landmark indices.
@@ -147,6 +165,10 @@ export class FallStateMachine {
   private stillStartTs: number | null = null;
   private lastTs = 0;
   private cooldownUntil = 0;
+  // Post-fire long-lie tracker (ADR 0012) — independent of the main state so
+  // it survives the cooldown → monitoring transition (escalateAfterMs > cooldownMs).
+  private firedAt: number | null = null;
+  private escalated = false;
 
   constructor(config?: Partial<FallHeuristicConfig>) {
     this.cfg = { ...DEFAULT_CONFIG, ...config };
@@ -161,8 +183,23 @@ export class FallStateMachine {
     return this.stillStartTs === null ? 0 : this.lastTs - this.stillStartTs;
   }
 
-  update(m: FrameMeasurement, timestampMs: number): FallEvent | null {
+  update(m: FrameMeasurement, timestampMs: number): WatchEvent | null {
     this.lastTs = timestampMs;
+
+    // Post-fire long-lie check (ADR 0012), before any state handling: getting
+    // up (or losing the person) cancels; still down at the deadline escalates
+    // ONCE. Movement on the ground does not cancel — down is down.
+    if (this.firedAt !== null && !this.escalated) {
+      if (m.posture === "upright" || m.posture === "no-person") {
+        this.firedAt = null; // recovered, or nobody to escalate for
+      } else if (timestampMs - this.firedAt >= this.cfg.escalateAfterMs) {
+        this.escalated = true;
+        return {
+          kind: "still-down",
+          stillDownS: Math.round((timestampMs - this.firedAt) / 100) / 10,
+        };
+      }
+    }
 
     if (this._state === "cooldown") {
       if (timestampMs < this.cooldownUntil) return null;
@@ -225,12 +262,15 @@ export class FallStateMachine {
     );
     const stillnessS = Math.round((stillnessMs / 1000) * 10) / 10;
     const event: FallEvent = {
+      kind: "fall",
       stillnessS,
       confidence: Math.round(confidence * 100) / 100,
       note: `pose heuristic: upright → horizontal in ${Math.round(this.transitionMs)} ms, still ${stillnessS}s`,
     };
     this._state = "cooldown";
     this.cooldownUntil = timestampMs + this.cfg.cooldownMs;
+    this.firedAt = timestampMs;
+    this.escalated = false;
     this.resetGroundTracking();
     return event;
   }

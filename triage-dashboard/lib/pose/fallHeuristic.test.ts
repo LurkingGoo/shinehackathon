@@ -3,6 +3,7 @@ import {
   DEFAULT_CONFIG,
   FallStateMachine,
   measureFrame,
+  type FallEvent,
   type FrameMeasurement,
   type LandmarkPoint,
 } from "./fallHeuristic";
@@ -137,7 +138,7 @@ describe("FallStateMachine", () => {
     const sm = new FallStateMachine();
     const { events } = drive(sm, 1_000, fastFallFrames());
     expect(events).toHaveLength(1);
-    const { stillnessS, confidence } = events[0].ev;
+    const { stillnessS, confidence } = events[0].ev as FallEvent;
     expect(stillnessS).toBeGreaterThanOrEqual(3.0);
     expect(stillnessS).toBeLessThan(4.0);
     expect(confidence).toBeGreaterThanOrEqual(0.55);
@@ -155,7 +156,7 @@ describe("FallStateMachine", () => {
     ];
     const { events } = drive(sm, 1_000, frames);
     expect(events).toHaveLength(1);
-    const { confidence } = events[0].ev;
+    const { confidence } = events[0].ev as FallEvent;
     expect(confidence).toBeGreaterThanOrEqual(0.55);
     expect(confidence).toBeLessThan(0.65); // slow descent honestly scores low
   });
@@ -214,7 +215,7 @@ describe("FallStateMachine", () => {
 
   it("a faster drop earns higher confidence than a slower one", () => {
     const fast = new FallStateMachine();
-    const fastEv = drive(fast, 0, fastFallFrames()).events[0].ev;
+    const fastEv = drive(fast, 0, fastFallFrames()).events[0].ev as FallEvent;
 
     const slow = new FallStateMachine();
     const slowFrames = [
@@ -223,9 +224,38 @@ describe("FallStateMachine", () => {
       ...Array.from({ length: 16 }, () => M("transitional", 0.08)),
       ...Array.from({ length: 40 }, () => M("horizontal", 0.001)),
     ];
-    const slowEv = drive(slow, 0, slowFrames).events[0].ev;
+    const slowEv = drive(slow, 0, slowFrames).events[0].ev as FallEvent;
 
     expect(fastEv.confidence).toBeGreaterThan(slowEv.confidence);
+  });
+
+  it("escalates ONCE when the person is still down escalateAfterMs after the fall", () => {
+    // Short escalation window so the test drives seconds, not 45 s of frames.
+    const sm = new FallStateMachine({ escalateAfterMs: 5_000 });
+    const frames = [
+      ...fastFallFrames(), // fires the fall ~4.1 s in
+      // stays on the ground well past the 5 s escalation window
+      ...Array.from({ length: 80 }, () => M("horizontal", 0.001)),
+    ];
+    const { events } = drive(sm, 1_000, frames);
+    expect(events).toHaveLength(2);
+    expect(events[0].ev.kind).toBe("fall");
+    expect(events[1].ev.kind).toBe("still-down");
+    const still = events[1].ev as { kind: string; stillDownS: number };
+    expect(still.stillDownS).toBeGreaterThanOrEqual(5.0);
+    expect(still.stillDownS).toBeLessThan(6.0);
+  });
+
+  it("never escalates when the person gets up after the alert", () => {
+    const sm = new FallStateMachine({ escalateAfterMs: 5_000 });
+    const frames = [
+      ...fastFallFrames(),
+      ...Array.from({ length: 20 }, () => M("horizontal", 0.001)), // 2 s down
+      ...Array.from({ length: 100 }, () => M("upright")), // recovered
+    ];
+    const { events } = drive(sm, 1_000, frames);
+    expect(events).toHaveLength(1);
+    expect(events[0].ev.kind).toBe("fall");
   });
 
   it("stillness progress is exposed for the UI countdown", () => {

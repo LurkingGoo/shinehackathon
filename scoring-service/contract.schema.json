@@ -27,6 +27,18 @@
             "rank": {
               "title": "Rank",
               "type": "integer"
+            },
+            "zone": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Zone"
             }
           },
           "required": [
@@ -271,6 +283,18 @@
             "rank": {
               "title": "Rank",
               "type": "integer"
+            },
+            "zone": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Zone"
             }
           },
           "required": [

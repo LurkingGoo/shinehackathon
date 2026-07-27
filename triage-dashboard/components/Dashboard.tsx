@@ -44,6 +44,15 @@ export function Dashboard() {
     }, 1500);
   }, []);
 
+  // Acknowledgement arrives out-of-band (a caregiver taps the Telegram
+  // button, ADR 0012) — poll so the badge reflects it within seconds.
+  useEffect(() => {
+    const id = setInterval(() => {
+      dataClient.getAlertStatus().then(setAlerts).catch(() => undefined);
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
+
   // live incident channel (mock pub/sub now; SSE/WS later — same handler)
   useEffect(() => {
     return dataClient.subscribeToIncidents((event) => {
@@ -153,6 +162,14 @@ export function Dashboard() {
               }
             >
               {tgBadge.label}
+            </span>
+          )}
+          {alerts?.acknowledged && (
+            <span
+              className={`${styles.tgBadge} ${styles.tgOn}`}
+              title={`acknowledged at ${alerts.acknowledged.at}`}
+            >
+              ✓ {alerts.acknowledged.by} responding
             </span>
           )}
           <span className={styles.live}>

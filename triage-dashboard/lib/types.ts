@@ -67,6 +67,11 @@ export interface CaseloadEntry extends Resident {
   score: RiskScore;
   /** 1-based position after ordering (acute first, then chronic by risk desc). */
   rank: number;
+  /**
+   * Last-motion area from the resident's ambient (PIR/door) track — alert
+   * context, not a camera localization claim (ADR 0012). Optional: additive.
+   */
+  zone?: string;
 }
 
 /** ---- Ranked-list payload (GET /api/caseload) ---- */
@@ -164,6 +169,11 @@ export interface AlertStatus {
     /** ISO 8601 — when the dispatch attempt resolved. */
     at: string;
   } | null;
+  /**
+   * Caregiver tap on the alert's "I am responding" button (ADR 0012).
+   * Null until acknowledged; cleared when a new incident dispatches.
+   */
+  acknowledged?: { by: string; at: string } | null;
 }
 
 /** ---- Incident / re-rank event (pushed over the live channel) ----

@@ -68,6 +68,15 @@ export interface DataClient {
     residentId?: string;
   }): Promise<void>;
   /**
+   * Long-lie escalation (ADR 0012): the camera saw no recovery
+   * `stillDownS` seconds after the fall alert. Fires the STILL DOWN
+   * Telegram message; never creates a new incident.
+   */
+  reportStillDown(payload: {
+    stillDownS: number;
+    residentId?: string;
+  }): Promise<void>;
+  /**
    * Alert-leg visibility: whether Telegram is configured and the outcome of
    * the most recent dispatch (sent / failed / not-configured). Backs the
    * status badge so the caregiver-ping leg is never silently unverifiable.
@@ -181,6 +190,15 @@ export const dataClient: DataClient = {
     });
     if (!res.ok) throw new Error(`/api/incidents/cv-detected -> ${res.status}`);
     // The IncidentEvent arrives via the SSE stream — no local fan-out.
+  },
+
+  async reportStillDown(payload) {
+    const res = await fetch(`${BASE}/api/incidents/escalate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`/api/incidents/escalate -> ${res.status}`);
   },
 
   async getIncidentTrace() {
