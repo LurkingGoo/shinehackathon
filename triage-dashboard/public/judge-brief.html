@@ -157,9 +157,9 @@
   <h3>How we found the five residents</h3>
   <p>The dashboard shows a caseload of five (Rajoo, Wong, Lim, Devi, and Goh), each ranked by need. Four are calm. The system pushed <strong>Rajoo to the top (0.65)</strong> on its own: we handed it 220 days and asked it to find the day the routine broke. It picked <strong>2011-02-19</strong>, the day his own pattern fell apart, with a long kitchen gap, an early door, and fewer night trips. We never marked that day as anomalous.</p>
   <h3>The camera: a second way to catch the fall</h3>
-  <p><strong>How the camera sees a fall.</strong> The <code class="inline">/watch</code> page runs MediaPipe pose estimation entirely in the browser. The detection logic is a pure state machine in <code class="inline">fallHeuristic.ts</code>, covered by 12 unit tests that replay synthetic landmark sequences, so the rule is testable without a camera. The rule is ordered:</p>
+  <p><strong>How the camera sees a fall.</strong> The <code class="inline">/watch</code> page runs MediaPipe pose estimation entirely in the browser. The detection logic is a pure state machine in <code class="inline">fallHeuristic.ts</code>, covered by 14 unit tests that replay synthetic landmark sequences, so the rule is testable without a camera. The rule is ordered:</p>
   <ul>
-    <li>A person we have tracked upright goes horizontal within 1.8 seconds.</li>
+    <li>A person we have tracked upright goes horizontal within 3 seconds.</li>
     <li>They then stay still for 3.0 seconds, and the alert fires.</li>
     <li>A slower transition is a deliberate lie-down and never alarms; after firing, a 10 second cooldown holds.</li>
   </ul>
