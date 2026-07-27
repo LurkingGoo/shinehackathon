@@ -156,24 +156,51 @@ def clear_ack() -> None:
 
 def _handle_update(update: dict) -> bool:
     """Process one getUpdates entry. Pure enough to test without a network:
-    the Bot API side effects (answer/edit) go through _api_call, which is a
-    no-op unless configured. Returns True when an ack was recorded."""
+    the Bot API side effects (answer/edit/reply) go through _api_call, which
+    is a no-op unless configured. Returns True when an ack was recorded.
+
+    First responder wins: a second tap is answered with who already has it
+    and changes nothing — the caregivers see ONE owner, not the last tap."""
     global _ack
     cq = update.get("callback_query")
     if not cq or cq.get("data") != "ack":
         return False
     who = (cq.get("from") or {}).get("first_name") or "caregiver"
+
+    if _ack is not None:
+        _api_call("answerCallbackQuery", {
+            "callback_query_id": cq.get("id"),
+            "text": f"Already acknowledged by {_ack['by']}.",
+        })
+        return False
+
     _ack = {"by": who, "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
-    # Best-effort niceties: confirm the tap, strip the button so it reads done.
+    # Confirm the tap privately, then make the ack VISIBLE in the chat: the
+    # alert itself gains a status line (edit also drops the button), and a
+    # quiet reply pins who took it under the alert for the whole group.
     _api_call("answerCallbackQuery", {
         "callback_query_id": cq.get("id"), "text": f"Noted, {who} — on it."
     })
     msg = cq.get("message") or {}
     if msg.get("message_id"):
-        _api_call("editMessageReplyMarkup", {
+        stamp = time.strftime("%H:%M", time.localtime())
+        if msg.get("text"):
+            _api_call("editMessageText", {
+                "chat_id": os.environ.get(_CHAT_ENV),
+                "message_id": msg["message_id"],
+                "text": f"{msg['text']}\n\n✅ {who} is responding — acknowledged {stamp}",
+            })
+        else:  # no text in the callback payload — at least strip the button
+            _api_call("editMessageReplyMarkup", {
+                "chat_id": os.environ.get(_CHAT_ENV),
+                "message_id": msg["message_id"],
+                "reply_markup": {"inline_keyboard": []},
+            })
+        _api_call("sendMessage", {
             "chat_id": os.environ.get(_CHAT_ENV),
-            "message_id": msg["message_id"],
-            "reply_markup": {"inline_keyboard": []},
+            "reply_to_message_id": msg["message_id"],
+            "text": f"✅ {who} is responding.",
+            "disable_notification": True,
         })
     return True
 

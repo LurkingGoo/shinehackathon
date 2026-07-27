@@ -3,7 +3,7 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.8.0
+spec_version: 1.8.1
 last_updated: 2026-07-27
 tags: [features, scoring, reference]
 ---
@@ -102,7 +102,11 @@ Post-fire, the browser state machine keeps watching: still on the ground
 frame cancels; escalation is a message, never a new incident). The fall alert
 carries an inline **"I am responding"** button; a getUpdates poller records
 `{by, at}`, surfaced as `acknowledged` on `/alerts/status` and a dashboard
-badge, cleared per incident. `CaseloadEntry` gains optional `zone` (the
+badge, cleared per incident. The ack is chat-visible (1.8.1): the alert
+message is edited to append "✅ <name> is responding — acknowledged HH:MM"
+(the edit also drops the button) and a quiet reply pins the responder under
+the alert. First responder wins — a second tap is answered with who already
+has it and changes nothing. `CaseloadEntry` gains optional `zone` (the
 resident's ambient last-motion area); the alert location line is
 `{unit} · last motion: {zone}` — PIR context, never a camera localization
 claim.

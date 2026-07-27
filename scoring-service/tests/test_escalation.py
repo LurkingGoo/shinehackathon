@@ -123,6 +123,49 @@ def test_ack_recorded_from_callback_update(monkeypatch):
     assert ack and ack["by"] == "Mei Ling" and ack["at"]
 
 
+def test_ack_edits_alert_and_replies_visibly(monkeypatch):
+    """The ack must be visible in the chat: the alert message gains a status
+    line (edit drops the button) and a quiet reply names the responder."""
+    monkeypatch.setenv("SHINEHACKATHON_TELEGRAM_BOT_TOKEN", "TESTTOKEN123")
+    monkeypatch.setenv("SHINEHACKATHON_TELEGRAM_CHAT_ID", "999")
+    telegram.clear_ack()
+    calls = []
+    monkeypatch.setattr(
+        "app.alerts.telegram._api_call",
+        lambda method, payload, timeout=None: calls.append((method, payload)) or {"ok": True},
+    )
+    telegram._handle_update({
+        "update_id": 11,
+        "callback_query": {
+            "id": "cbq2", "data": "ack",
+            "from": {"first_name": "Mei Ling"},
+            "message": {"message_id": 42, "text": "FALL ALERT — Rajoo"},
+        },
+    })
+    methods = [m for m, _ in calls]
+    assert "answerCallbackQuery" in methods
+    edit = next(p for m, p in calls if m == "editMessageText")
+    assert edit["message_id"] == 42
+    assert "Mei Ling is responding" in edit["text"]
+    assert edit["text"].startswith("FALL ALERT — Rajoo")  # original preserved
+    reply = next(p for m, p in calls if m == "sendMessage")
+    assert reply["reply_to_message_id"] == 42
+    assert "Mei Ling is responding" in reply["text"]
+
+
+def test_second_ack_does_not_steal_ownership(monkeypatch):
+    monkeypatch.delenv("SHINEHACKATHON_TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("SHINEHACKATHON_TELEGRAM_CHAT_ID", raising=False)
+    telegram.clear_ack()
+    first = {"update_id": 12, "callback_query": {
+        "id": "a", "data": "ack", "from": {"first_name": "Ana"}}}
+    second = {"update_id": 13, "callback_query": {
+        "id": "b", "data": "ack", "from": {"first_name": "Ben"}}}
+    assert telegram._handle_update(first) is True
+    assert telegram._handle_update(second) is False
+    assert telegram.get_ack()["by"] == "Ana"
+
+
 def test_non_ack_updates_ignored():
     telegram.clear_ack()
     assert telegram._handle_update({"update_id": 8, "message": {"text": "hi"}}) is False
