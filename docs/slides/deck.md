@@ -111,20 +111,14 @@ checks the sequence, so a slammed door or a bag set down hard cannot fake it.
 # We measured it on **all 4,505**
 
 <div class="stat red"><b>96.2%</b><span>of 1,798 real falls detected · SisFall</span></div>
-<div class="stat sun"><b>35.2% → 18.8%</b><span>false alarms: young adults → elderly movement</span></div>
+<div class="stat sun"><b>18.8%</b><span>false alarms on elderly movement · half the young-adult rate</span></div>
 
-We wrote the dip, spike, stillness rule first, then swept **144** threshold
-combinations over all 4,505 recordings and kept the knee: **96.2%** of the 1,798
-real falls caught. False alarms split by body, 35.2% on young adults against
-**18.8%** on the elderly, roughly half. Elderly falls came in at **84.0%**, all 75
-from a single volunteer, so we hold that figure lightly.
+We swept **144** threshold combinations over all 4,505 recordings and kept the
+best trade-off. Nothing was filtered out, and nothing was trained: the numbers
+come from counting an experiment.
 
-<figure>
-
-![w:520](assets/chip-top-row.png)
-
-<figcaption>The other track: rank 1 carries 220 real days of one elderly resident. The system found the broken day on its own</figcaption>
-</figure>
+*Elderly falls came in at 84.0%, all 75 from a single volunteer,
+so we hold that figure lightly.*
 
 <!--
 The 96.2 percent comes from counting an experiment rather than from a claim. We wrote the
@@ -152,16 +146,51 @@ that this morning broke this person's pattern.
 
 ---
 
+###### The other half of the caseload
+
+# 220 days taught us **his normal**
+
+<figure>
+
+![w:820](assets/chip-top-row.png)
+
+<figcaption>Straight from the product: rank 1 carries the 220 real days. The system found the broken day on its own</figcaption>
+</figure>
+
+The **routine track** ranks the calm caseload. From 220 days of one real home it
+learned that resident's own rhythm: when the kitchen first wakes, how many night
+trips, when the door first opens. On **2011-02-19**, a date inside that recording,
+the rhythm broke, and the system pushed him to **rank 1 (0.65)** on its own. We
+never marked that day. No training, no population average: his history is the baseline.
+
+<!--
+This is the half of the product that is not about falls. The routine track ranks the
+calm caseload, and it works by self-baselining: from 220 days of one real CASAS home
+the system learns that resident's own rhythm, when the kitchen first wakes, how many
+night trips he makes, when the front door first opens. Then it scores every new day
+as a deviation from that rhythm. We handed it the 220 days and asked it to find the
+day the routine broke. It picked 2011-02-19, a date inside the historical recording:
+a 16-hour kitchen gap, an early door, fewer night trips. We never marked that day as
+anomalous. There is no training run and no population average anywhere in this track;
+the resident's own history is the baseline, which is why it carries to Singapore
+unchanged. This same track is also the safety net: a fall the bangle or the camera
+misses still surfaces the slow way, because hours of stillness push that resident up
+this ranking by morning.
+-->
+
+---
+
 ###### The counter-experiment
 
 # We trained a model **anyway**
 
-- We fit a logistic regression on **500** real SisFall recordings, four magnitude features each. **250 falls and 250 ordinary activities on purpose**: SisFall itself is imbalanced, and an even table keeps every accuracy figure readable at face value. The table is committed, so a fresh clone re-runs the experiment offline.
-- On the held-out **125** recordings it reaches **80.0%** accuracy, 77.9% precision and 84.1% recall. Re-splits move it only 78.5 to 80.0%, and growing the training slice from 38 to 375 recordings moves it only 78.4 to 80.0%: **the size is not the ceiling, the features are.**
-- One fit takes **0.050 seconds**, so the `/training` page replays the real recorded gradient-descent run live.
+**The gap is the finding.** The model tops out at **80.0%**; the shipped detector
+reads the same physics at **96.2%**. The 16.2-point gap is the evidence that the
+temporal order, free-fall then impact then stillness, is what magnitudes alone cannot see.
 
-*The 16.2-point gap to the shipped detector's 96.2% is the evidence that the
-temporal order, free-fall then impact then stillness, is what magnitudes alone cannot see.*
+- We fit a logistic regression on **500** real SisFall recordings, four magnitude features each. **250 falls and 250 ordinary activities on purpose**: an even table keeps accuracy readable at face value, and the committed table re-runs the experiment offline on any machine.
+- On the held-out **125** recordings: 80.0% accuracy, 77.9% precision, 84.1% recall. Re-splits move it only 78.5 to 80.0%, and growing the training slice from 38 to 375 recordings moves it only 78.4 to 80.0%: **the size is not the ceiling, the features are.**
+- One fit takes **0.050 seconds**, so the `/training` page replays the real recorded run live.
 
 <!--
 The obvious question is why we did not train a model, so we trained one and put the whole
@@ -227,7 +256,7 @@ The system ranks and explains.
 
 # The camera knows a fall from a **lie-down**
 
-- On `/watch`, MediaPipe pose runs entirely in the browser. Upright, then horizontal within **3 s**, then **3 s** of stillness fires the same incident path. A slower transition is a deliberate lie-down and never alarms.
+- **A camera catches the fall the bangle misses**: left on the nightstand, or never worn. Pose estimation runs entirely in the browser on `/watch`; upright, then horizontal within **3 s**, then **3 s** of stillness fires the same alert as the bangle. A slower transition is a deliberate lie-down and never alarms.
 - Camera incidents carry the label **Camera (pose)** and the heuristic's own 0.55 to 0.85 confidence band. The 96.2% figure belongs to the accelerometer track alone.
 - Enrolled face identity is opt-in and on-device, so the caseload row and the alert are **named** and say where to look: *last motion: Bedroom*. Unmatched people fire the generic alert; no video leaves the browser.
 
@@ -254,7 +283,7 @@ block or alter an alert.
 - A detected fall sends a **named** Telegram alert: who fell, the unit, and the last-motion area to check first.
 - **No recovery within 45 s sends STILL DOWN.** Standing up cancels it, and it fires once per fall.
 - A caregiver taps **I am responding**: the alert is stamped with who took it, the first tap wins, and the dashboard shows the name within 5 seconds.
-- With no token configured the alert leg is a silent no-op. Detection never waits on it.
+- With no bot configured the alert leg quietly does nothing. Detection never waits on it.
 
 <!--
 The alert leg is the part most systems leave silent, so we built it to answer back. A
@@ -308,7 +337,7 @@ Telegram ping are the same incident path. `/training` replays the trained-model 
 
 - It shrinks time to detection. It does not promise to catch every event.
 - The senior false-alarm rate is **measured** rather than guessed, because it came in at 18.8% on real elderly recordings, lower than young adults. What stays thin is elderly *fall* data, since our falls come from one volunteer, and a lab fall is not the same as a home fall.
-- A missed fall (or a bangle left on the nightstand) degrades to the ambient track, where hours of stillness still surface that resident by morning.
+- A missed fall (or a bangle left on the nightstand) degrades to the routine track, where hours of stillness still surface that resident by morning.
 - An irregular life earns wide baselines. The system says so through *low confidence* instead of hiding it.
 
 <!--
@@ -333,7 +362,7 @@ through low confidence instead of hiding.
 
 - **Escalation beyond the app.** The STILL DOWN follow-up and the I-am-responding acknowledgement are built and live. A pilot adds what sits past the phone: automated welfare calls, and the handoff to the MOH/AIC line when nobody acknowledges.
 - **A morning brief per flagged resident.** Auto-drafted wording, grounded strictly in the deterministic features. The drafting layer never touches a score.
-- **One One Care cluster to start.** Measured on two numbers: time to detection, and caseworker minutes saved per shift.
+- **A single One Care cluster to start.** Measured on two numbers: time to detection, and caseworker minutes saved per shift.
 
 ---
 
