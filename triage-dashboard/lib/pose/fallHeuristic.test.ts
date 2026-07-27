@@ -67,6 +67,18 @@ describe("measureFrame", () => {
     );
   });
 
+  it("pins the 48° horizontal boundary: 46° is transitional, 50° is horizontal", () => {
+    // angle = atan2(dx, dyUp); hip (0.5, 0.6), shoulders 0.1 above.
+    const at = (deg: number) =>
+      poseArray([0.5 + Math.tan((deg * Math.PI) / 180) * 0.1, 0.5], [0.5, 0.6]);
+    const below = measureFrame(at(46));
+    expect(below.torsoAngleDeg!).toBeCloseTo(46, 0);
+    expect(below.posture).toBe("transitional"); // dead band — never arms
+    const above = measureFrame(at(50));
+    expect(above.torsoAngleDeg!).toBeCloseTo(50, 0);
+    expect(above.posture).toBe("horizontal");
+  });
+
   it("computes motion as displacement against the previous frame", () => {
     const still = measureFrame(upright(), upright());
     expect(still.motion).not.toBeNull();
@@ -131,6 +143,21 @@ describe("FallStateMachine", () => {
     expect(confidence).toBeGreaterThanOrEqual(0.55);
     expect(confidence).toBeLessThanOrEqual(0.85);
     expect(sm.state).toBe("cooldown");
+  });
+
+  it("fires on a mimicked self-protecting fall (~2.5 s down), at lower confidence", () => {
+    const sm = new FallStateMachine();
+    const frames = [
+      ...Array.from({ length: 5 }, () => M("upright")),
+      // 2.5 s controlled descent — inside the widened 3 s window
+      ...Array.from({ length: 25 }, () => M("transitional", 0.03)),
+      ...Array.from({ length: 35 }, () => M("horizontal", 0.001)),
+    ];
+    const { events } = drive(sm, 1_000, frames);
+    expect(events).toHaveLength(1);
+    const { confidence } = events[0].ev;
+    expect(confidence).toBeGreaterThanOrEqual(0.55);
+    expect(confidence).toBeLessThan(0.65); // slow descent honestly scores low
   });
 
   it("never fires on a slow, deliberate lie-down", () => {

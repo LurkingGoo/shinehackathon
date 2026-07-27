@@ -65,7 +65,12 @@ export const DEFAULT_CONFIG: FallHeuristicConfig = {
   // Loosened alongside horizontalMinDeg: a person low/prone on the floor
   // is more likely to be partially out of frame or occluded.
   minVisibility: 0.4,
-  fallWindowMs: 1800,
+  // Widened 1800 → 3000 for the demo: a person MIMICKING a fall protects
+  // themselves (knee first, hand down) and reaches the floor in ~2-2.5s —
+  // the old 1.8s window rejected it as a lie-down. A deliberate lie-down
+  // still takes longer than 3s; the slower descent honestly earns a lower
+  // confidence via confidenceSpeedGain.
+  fallWindowMs: 3000,
   stillMs: 3000,
   stillEps: 0.012,
   cooldownMs: 10_000,

@@ -3,8 +3,8 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.7.0
-last_updated: 2026-07-26
+spec_version: 1.7.1
+last_updated: 2026-07-27
 tags: [features, scoring, reference]
 ---
 
@@ -110,9 +110,16 @@ dashboard page runs MediaPipe PoseLandmarker (lite) entirely in-browser —
 no frame leaves the device; assets are vendored by `npm run fetch-pose-assets`
 with a CDN fallback. Detection logic is the pure state machine
 `lib/pose/fallHeuristic.ts` (vitest-tested): upright → horizontal within
-**1.8 s** *(tune)* → continuous stillness (mean landmark motion < 0.012
+**3.0 s** *(tune; widened from 1.8 s in 1.7.1 — a person mimicking a fall
+self-protects and reaches the floor in ~2–2.5 s, which the old window
+rejected as a lie-down; the slower descent honestly earns lower confidence)*
+→ continuous stillness (mean landmark motion < 0.012
 normalized units/frame *(tune)*) for **3.0 s** → fire, then a 10 s cooldown.
-Posture from torso lean vs vertical: upright < 35°, horizontal > 60° *(tune)*.
+Posture from torso lean vs vertical: upright < 35°, horizontal > 48° *(tune;
+lowered from 60° in 1.7.1 — a screen-mounted webcam foreshortens a real drop
+into the 45–55° band; torso-visibility floor loosened 0.5 → 0.4 alongside).
+The transitional dead band is now 35–48°: rehearsal must include
+false-positive checks (bend-over, crouch, shoe-tie held still ≥ 3 s).
 A slower transition is a deliberate lie-down and never alarms. Confidence =
 0.55 + 0.30·(transition speed), capped 0.85 — the heuristic's own band, per
 the honesty rules above.
