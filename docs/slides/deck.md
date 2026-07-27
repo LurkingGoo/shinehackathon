@@ -49,18 +49,35 @@ deploys senior alert wearables at 26,800-resident scale.*
 
 ---
 
-###### How it is built
+###### The two datasets
 
-# The three **layers**
+# Why these two **recordings**
 
-![bare w:1050](assets/architecture.svg)
+<div class="stat sun"><b>4,505</b><span>real recordings · 1,798 falls · 38 people · SisFall</span></div>
+<div class="stat sage"><b>220 days</b><span>one senior, living alone · CASAS Aruba</span></div>
 
-*The home senses. The service scores. The caseworker decides.*
+*One teaches the detector what a fall is in physics.
+The other teaches the system what one person's normal life is in rhythm.*
 
-*The math is Python, so the service computes and the browser only displays. The API call carries the JSON between them.*
+Both run on the same cheap sensor class a worn bangle carries, the **ADXL345**
+accelerometer, so what the detector sees in the data is what it would see in a home.
+Both are checksum-pinned in a committed lock file, and every number reproduces
+from one script.
 
 <!--
-Why two processes and not one? The scoring is Python: the detector, the calibration, and the dataset loaders, all built on numpy and scipy. The browser runs JavaScript and cannot run that math. So the service computes the numbers and returns them as JSON, and the browser only displays them. The API call is the browser asking the service for the scores it cannot compute itself.
+SisFall and CASAS do two different jobs. SisFall gives us 4,505 real recordings, 1,798
+of them genuine falls, from 38 different people, sensors strapped to real bodies hitting
+real floors. It was recorded on the ADXL345, the same cheap accelerometer class a worn
+bangle carries, so the detector learns to see exactly what it would see in a real home.
+CASAS Aruba covers 220 days, roughly seven months, of one real elderly person living
+alone, with every motion sensor and every door event logged. SisFall teaches the detector
+what a fall is in physics: the dip, the impact, the stillness. CASAS teaches the system
+what one person's ordinary life is in rhythm, so it can notice the morning that rhythm
+breaks. No third dataset would add what these two do not already carry. The two tracks
+stay separate all the way down: the calibration you are about to see only ever touches
+SisFall. CASAS is never tuned against a target. From those 220 days we compute each
+resident's own baseline and score every new day as a deviation from that person's rhythm,
+so the routine track learns without any training and without any population average.
 -->
 
 ---
@@ -89,90 +106,35 @@ checks the sequence, so a slammed door or a bag set down hard cannot fake it.
 
 ---
 
-###### The two datasets
-
-# Why these two **recordings**
-
-<div class="stat sun"><b>4,505</b><span>real recordings · 1,798 falls · 38 people · SisFall</span></div>
-<div class="stat sage"><b>220 days</b><span>one senior, living alone · CASAS Aruba</span></div>
-
-*One teaches the detector what a fall is in physics.
-The other teaches the system what one person's normal life is in rhythm.*
-
-Both run on the same cheap sensor class a worn bangle carries, the **ADXL345**
-accelerometer, so what the detector sees in the data is what it would see in a home.
-
-<!--
-SisFall and CASAS do two different jobs. SisFall gives us 4,505 real recordings, 1,798
-of them genuine falls, from 38 different people, sensors strapped to real bodies hitting
-real floors. It was recorded on the ADXL345, the same cheap accelerometer class a worn
-bangle carries, so the detector learns to see exactly what it would see in a real home.
-CASAS Aruba covers 220 days, roughly seven months, of one real elderly person living
-alone, with every motion sensor and every door event logged. SisFall teaches the detector
-what a fall is in physics: the dip, the impact, the stillness. CASAS teaches the system
-what one person's ordinary life is in rhythm, so it can notice the morning that rhythm
-breaks. No third dataset would add what these two do not already carry. The two tracks
-stay separate all the way down: the calibration you are about to see only ever touches
-SisFall. CASAS is never tuned against a target. From those 220 days we compute each
-resident's own baseline and score every new day as a deviation from that person's rhythm,
-so the routine track learns without any training and without any population average.
--->
-
----
-
-###### Where the number comes from
-
-# How we got our **number**
-
-- We wrote the detector first, the dip, spike, stillness rule.
-- Then we ran it over all **4,505** recordings and **counted**: falls caught, and ordinary activities that false-fired.
-- Then we swept **144** threshold combinations and kept the operating point that caught **96.2%** of the falls.
-
-*The number comes from counting an experiment. We measured a detector
-and did not train a model, so it carries to Singapore with no local data.*
-
-<!--
-96.2 percent is not a guess and is not borrowed. We wrote the detector first: the rule that
-looks for a free-fall dip, then an impact, then stillness, in that order. We ran that rule
-over all 4,505 recordings, one at a time, and counted. Every real fall it caught, we
-tallied. Every ordinary activity it mistook for a fall, we tallied too. Then we recalibrated:
-we swept 144 threshold combinations, four free-fall cutoffs, four impact cutoffs, three dip
-durations, three impact windows. Every combination ran over all 4,505 recordings and produced
-a confusion matrix, and we kept the operating point that caught the most falls at the lowest
-false-alarm rate: free-fall below 0.8 g, impact above 2.3 g, a dip of at least 40 ms, impact
-within 500 ms. That caught 96.2 percent of the falls. That step only measured and tuned the
-detector; it never filtered or
-sorted a single recording or person out of the set. The number comes from counting an
-experiment rather than from a claim. It also carries to Singapore: we were never learning a
-population, we were measuring a detector against physics.
-Physics is the same in Jurong as in a lab in Antioquia, so the detector carries over with
-no local training data. That is why we do not train a model.
--->
-
----
-
 ###### What the numbers say
 
-# We ran it on **real recordings**
+# We measured it on **all 4,505**
 
 <div class="stat red"><b>96.2%</b><span>of 1,798 real falls detected · SisFall</span></div>
 <div class="stat sun"><b>35.2% → 18.8%</b><span>false alarms: young adults → elderly movement</span></div>
-<div class="stat sage"><b>220 days</b><span>one real home · CASAS Aruba</span></div>
 
-The detector caught 96.2% of the 1,798 real falls. The false alarms split by body: 35.2% on young adults
-hurling themselves into lab falls, but **18.8%** on the elderly participants, roughly
-half, because older movement is slower and less abrupt. On elderly falls the detector
-caught **84.0%**, though all 75 come from a single volunteer, so we hold that figure
-lightly. Nothing is trained here, because the thresholds came straight out of the data.
+We wrote the dip, spike, stillness rule first, then swept **144** threshold
+combinations over all 4,505 recordings and kept the knee: **96.2%** of the 1,798
+real falls caught. False alarms split by body, 35.2% on young adults against
+**18.8%** on the elderly, roughly half. Elderly falls came in at **84.0%**, all 75
+from a single volunteer, so we hold that figure lightly.
 
 <figure>
 
-![w:760](assets/chip-top-row.png)
+![w:520](assets/chip-top-row.png)
 
-<figcaption>Rank 1 carries 220 real days of one elderly resident. The system found the broken day on its own</figcaption>
+<figcaption>The other track: rank 1 carries 220 real days of one elderly resident. The system found the broken day on its own</figcaption>
 </figure>
 
 <!--
+The 96.2 percent comes from counting an experiment rather than from a claim. We wrote the
+detector first: free-fall dip, then impact, then stillness, in that order. We ran it over
+all 4,505 recordings and counted, then swept 144 threshold combinations, four free-fall
+cutoffs, four impact cutoffs, three dip durations, three impact windows, and kept the
+operating point at the knee: free-fall below 0.8 g, impact above 2.3 g, a dip of at least
+40 ms, impact within 500 ms. Nothing was filtered or sorted out of the set. We were never
+learning a population, we were measuring a detector against physics, and physics is the
+same in Jurong as in a lab in Antioquia, so it carries with no local training data.
 Each of the three numbers answers a different worry. The 96.2 percent of 1,798 real falls
 is the detector catching the thing it exists to catch. The middle number is false alarms.
 On young adults throwing themselves into lab falls it fires 35.2 percent of the time;
@@ -194,8 +156,8 @@ that this morning broke this person's pattern.
 
 # We trained a model **anyway**
 
-- We fit a logistic regression on a curated table of **500** real SisFall recordings, 250 falls and 250 ordinary activities, four magnitude features per recording.
-- On the held-out **125** recordings it reaches **80.0%** accuracy, 77.9% precision and 84.1% recall. Re-fits at 60/40, 70/30 and 80/20 move accuracy only between 78.5% and 80.0%.
+- We fit a logistic regression on **500** real SisFall recordings, four magnitude features each. **250 falls and 250 ordinary activities on purpose**: SisFall itself is imbalanced, and an even table keeps every accuracy figure readable at face value. The table is committed, so a fresh clone re-runs the experiment offline.
+- On the held-out **125** recordings it reaches **80.0%** accuracy, 77.9% precision and 84.1% recall. Re-splits move it only 78.5 to 80.0%, and growing the training slice from 38 to 375 recordings moves it only 78.4 to 80.0%: **the size is not the ceiling, the features are.**
 - One fit takes **0.050 seconds**, so the `/training` page replays the real recorded gradient-descent run live.
 
 *The 16.2-point gap to the shipped detector's 96.2% is the evidence that the
@@ -203,13 +165,20 @@ temporal order, free-fall then impact then stillness, is what magnitudes alone c
 
 <!--
 The obvious question is why we did not train a model, so we trained one and put the whole
-run on the /training page, "How the model was trained". We built a curated table of 500
-real SisFall recordings, 250 falls and 250 ordinary activities, and gave a logistic
-regression the four magnitude features a summary can carry. On the held-out 125 recordings
-it reaches 80.0 percent accuracy, 77.9 percent precision and 84.1 percent recall. We then
-re-fit at 60/40, 70/30 and 80/20 splits, and accuracy only moves between 78.5 and 80.0
-percent, so the ceiling is a property of the features rather than an artifact of one
-split. One fit takes 0.050 seconds, which is why the page can replay the actual recorded
+run on the /training page, "How the model was trained". The table is built by the same
+loaders and the same detector code the live service runs, so every row is a real
+recording, nothing resampled. Both numbers in "500" are deliberate. The balance: SisFall
+is 1,798 falls against 2,707 ordinary activities, and a model fit on that imbalance can
+score well by leaning toward the majority class, so we evened the classes at 250 each to
+keep accuracy readable at face value. The size: the table is committed to the repository
+at a few hundred kilobytes, so a fresh clone re-runs the whole experiment offline and
+reproduces every number to the digit. And we checked 500 is enough before settling on it.
+On the held-out 125 recordings the model reaches 80.0 percent accuracy, 77.9 percent
+precision and 84.1 percent recall. We re-fit at 60/40, 70/30 and 80/20 splits and accuracy
+only moves between 78.5 and 80.0 percent; we re-fit on growing slices from 38 to 375
+recordings and it moves between 78.4 and 80.0. If 337 more recordings buy 1.6 points,
+4,000 more will not close a 16.2-point gap. The ceiling is a property of the features
+rather than of the sample. One fit takes 0.050 seconds, which is why the page can replay the actual recorded
 gradient-descent run in front of you; every number on it is measured, nothing is
 simulated. The shipped detector reaches 96.2 percent on the same physics because it reads
 the order of events, the free-fall, then the impact, then the stillness. The 16.2-point
@@ -254,6 +223,55 @@ The system ranks and explains.
 
 ---
 
+###### Then we added a second acute source
+
+# The camera knows a fall from a **lie-down**
+
+- On `/watch`, MediaPipe pose runs entirely in the browser. Upright, then horizontal within **3 s**, then **3 s** of stillness fires the same incident path. A slower transition is a deliberate lie-down and never alarms.
+- Camera incidents carry the label **Camera (pose)** and the heuristic's own 0.55 to 0.85 confidence band. The 96.2% figure belongs to the accelerometer track alone.
+- Enrolled face identity is opt-in and on-device, so the caseload row and the alert are **named** and say where to look: *last motion: Bedroom*. Unmatched people fire the generic alert; no video leaves the browser.
+
+<!--
+The camera is the second acute source, and it is opt-in. MediaPipe pose runs entirely in
+the browser; no frame leaves the device. Upright, then horizontal within 3 seconds, then
+3 seconds of stillness fires the same incident path as the bangle. A slower transition is
+a deliberate lie-down and never alarms. The honesty rules hold: the incident is labelled
+Camera (pose) with the heuristic's own confidence band, never the 96.2 percent, which
+belongs to the accelerometer track. Identity is enrolled on-device: front, left and right
+angles stored as embeddings in the browser, no image kept, nothing uploaded. Matching runs
+only while the person is upright and the binding carries the name through the fall, so the
+row and the ping are named, and the alert adds the resident's last-motion area from the
+ambient track. Unmatched people fire the generic alert, because recognition can never
+block or alter an alert.
+-->
+
+---
+
+###### Then we closed the loop
+
+# The alert **answers back**
+
+- A detected fall sends a **named** Telegram alert: who fell, the unit, and the last-motion area to check first.
+- **No recovery within 45 s sends STILL DOWN.** Standing up cancels it, and it fires once per fall.
+- A caregiver taps **I am responding**: the alert is stamped with who took it, the first tap wins, and the dashboard shows the name within 5 seconds.
+- With no token configured the alert leg is a silent no-op. Detection never waits on it.
+
+<!--
+The alert leg is the part most systems leave silent, so we built it to answer back. A
+detected fall sends a named Telegram alert with the unit and the last-motion area, so the
+caregiver knows who, where, and which room to check first. Then the long lie, the problem
+we started from: if nobody rises 45 seconds after the alert, a STILL DOWN message follows.
+Standing up cancels it, and it fires once per fall. The button closes the loop the other
+way: a caregiver taps I am responding, the alert message itself is stamped with who took
+it, the first tap wins so the group always sees one owner, and the dashboard badge shows
+the name within 5 seconds. /alerts/status reports whether Telegram is configured and how
+the last dispatch ended, so a silent alert leg is impossible. And with no token configured
+the whole leg is a safe no-op: detection never waits on a notification. The path is
+covered by 96 backend and 25 frontend tests, all passing.
+-->
+
+---
+
 ###### The demo beat
 
 # A fall **preempts everything**
@@ -279,8 +297,8 @@ The system ranks and explains.
 </figure>
 </div>
 
-*Two more live beats: `/watch` fires a named camera fall that answers back,
-and `/training` replays the trained-model run.*
+*The camera and the alert loop you just saw run live too: `/watch` and the
+Telegram ping are the same incident path. `/training` replays the trained-model run.*
 
 ---
 
@@ -345,17 +363,17 @@ is already validated on **4,505 real recordings** and a **220-day real home**.
 
 ###### Backup · for Q&A
 
-# Where the **data goes**
+# The three **layers**
 
-*What each dataset teaches is earlier in the deck. This is the provenance behind those numbers.*
+![bare w:1050](assets/architecture.svg)
 
-| Dataset | Source | Provenance |
-|---|---|---|
-| **SisFall** | Universidad de Antioquia | 4,505 recordings, 1,798 real falls, checksum-pinned |
-| **CASAS Aruba** | Washington State University | 220-day single-resident home log, checksum-pinned |
+*The home senses. The service scores. The caseworker decides.*
 
-Nothing is trained on either dataset. Both are provenance-pinned with
-checksums in a committed lock file, and every number reproduces from one script.
+*The math is Python, so the service computes and the browser only displays. The API call carries the JSON between them.*
+
+<!--
+Why two processes and not one? The scoring is Python: the detector, the calibration, and the dataset loaders, all built on numpy and scipy. The browser runs JavaScript and cannot run that math. So the service computes the numbers and returns them as JSON, and the browser only displays them. The API call is the browser asking the service for the scores it cannot compute itself.
+-->
 
 ---
 
@@ -402,43 +420,6 @@ step 2; a second button injects a dropped phone the detector ignores. Everything
 | Wearable: raw accelerometer, BLE | **Bangle.js 2**, Kionix KX022, open firmware | ≈S$130 |
 | Room presence · door events | **Aqara P1** motion · contact, 5-yr battery | ≈US$20 · 15 |
 | Singapore precedent | **GovTech WAAS** (iWOW, 2025): 170 blocks · 26,800 seniors | govt tender |
-
----
-
-###### Backup · for Q&A
-
-# The camera layer, **named and opt-in**
-
-- On `/watch`, MediaPipe pose runs entirely in the browser. Upright, then horizontal within **3 s**, then **3 s** of stillness fires the same incident path. A slower transition is a deliberate lie-down and never alarms.
-- Every camera incident carries the label **Camera (pose)** and the heuristic's own 0.55 to 0.85 confidence band. The 96.2% figure belongs to the accelerometer track alone.
-- Enrolled face identity is opt-in and on-device, matched only while the person is upright, so the caseload row and the Telegram ping are **named** and the alert says where to look: *last motion: Bedroom*. Unmatched people fire the generic alert.
-- **The alert answers back.** No recovery 45 s after the alert sends STILL DOWN; a caregiver taps **I am responding** and the alert is stamped with who took it.
-- No video leaves the browser; only the detection event and the matched resident id are sent.
-
-<!--
-The camera layer is the second acute source, and it is opt-in. On the /watch page,
-MediaPipe pose runs entirely in the browser; no frame leaves the device. A person upright,
-then horizontal within 3 seconds, then 3 seconds of stillness, fires the same incident
-path as the bangle, the caseload preemption, the live stream, and the Telegram ping. A
-slower transition is a deliberate lie-down and never alarms. We keep the honesty rules:
-the incident is labelled Camera (pose) and carries the heuristic's own 0.55 to 0.85
-confidence band, never the 96.2 percent figure, which belongs to the accelerometer track
-alone. Identity is enrolled and on-device: front, left and right angles are stored as
-embeddings in the browser's storage, no image is kept and nothing is uploaded. Matching
-runs only while the person is upright, and the binding carries the name through the fall,
-so the dashboard row and the Telegram ping are named, and the alert also says where in
-the flat to look: the resident's last-motion area from the ambient track rides with the
-unit. Unmatched people fire the generic
-alert, because recognition can never block or alter an alert. The alert leg answers back:
-if nobody rises 45 seconds after the alert, a STILL DOWN message follows, and a caregiver
-who taps I am responding stamps the alert with their name, first tap wins, and the
-dashboard shows it within 5 seconds. The privacy claim in full:
-no video leaves the browser; only the detection event and the matched resident id are
-sent. Telegram dispatch is live and happens off the request thread, and /alerts/status
-plus the badges on the dashboard and /watch show whether Telegram is configured and what
-happened to the last dispatch, sent, failed, or not configured. The path is covered by 96
-backend and 25 frontend tests, all passing.
--->
 
 ---
 
