@@ -18,12 +18,18 @@ def deterministic_briefing(d: ResidentDetail) -> str:
     top = d.features[0] if d.features else None
     conf = round(d.score.confidence * 100)
     if d.score.track == "acute":
-        stillness = d.features[1].value if len(d.features) > 1 else "sustained"
-        impact = top.value if top else "an impact"
+        stillness = d.features[1].value if len(d.features) > 1 else "sustained stillness"
+        # Camera incidents lead with a Posture arc ("upright → horizontal"),
+        # accelerometer incidents with an impact magnitude — the same template
+        # produced "a upright → horizontal impact ... of no movement" nonsense.
+        if top and top.label == "Posture":
+            arc = f"went {top.value}, then {stillness}"
+        else:
+            impact = top.value if top else "an impact"
+            arc = f"a {impact} impact then {stillness} of no movement"
         return (
-            f"{d.name} ({d.age}) may have fallen — a {impact} impact then "
-            f"{stillness} of no movement, {d.score.recency}. Please reach her "
-            f"first. Confidence {conf}%."
+            f"{d.name} ({d.age}) may have fallen — {arc}, {d.score.recency}. "
+            f"Please reach them first. Confidence {conf}%."
         )
     if not top:
         return f"{d.name} ({d.age}) — no contributing signals. Confidence {conf}%."
