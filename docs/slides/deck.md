@@ -279,7 +279,7 @@ The system ranks and explains.
 </figure>
 </div>
 
-*Two more live beats: `/watch` fires a named camera fall into the same path,
+*Two more live beats: `/watch` fires a named camera fall that answers back,
 and `/training` replays the trained-model run.*
 
 ---
@@ -313,7 +313,7 @@ through low confidence instead of hiding.
 
 # What a pilot would **prove**
 
-- **Escalation that completes the loop.** Automated welfare calls, and a handoff to the MOH/AIC line when a fall goes unacknowledged.
+- **Escalation beyond the app.** The STILL DOWN follow-up and the I-am-responding acknowledgement are built and live. A pilot adds what sits past the phone: automated welfare calls, and the handoff to the MOH/AIC line when nobody acknowledges.
 - **A morning brief per flagged resident.** Auto-drafted wording, grounded strictly in the deterministic features. The drafting layer never touches a score.
 - **One One Care cluster to start.** Measured on two numbers: time to detection, and caseworker minutes saved per shift.
 
@@ -409,15 +409,16 @@ step 2; a second button injects a dropped phone the detector ignores. Everything
 
 # The camera layer, **named and opt-in**
 
-- On `/watch`, MediaPipe pose runs entirely in the browser. Upright, then horizontal within **1.8 s**, then **3.0 s** of stillness fires the same incident path. A slower transition is a deliberate lie-down and never alarms.
+- On `/watch`, MediaPipe pose runs entirely in the browser. Upright, then horizontal within **3 s**, then **3 s** of stillness fires the same incident path. A slower transition is a deliberate lie-down and never alarms.
 - Every camera incident carries the label **Camera (pose)** and the heuristic's own 0.55 to 0.85 confidence band. The 96.2% figure belongs to the accelerometer track alone.
-- Enrolled face identity is opt-in and on-device, matched only while the person is upright, so the caseload row and the Telegram ping are **named**. Unmatched people fire the generic alert.
-- No video leaves the browser; only the detection event and the matched resident id are sent. `/alerts/status` shows whether Telegram is configured and what happened to the last dispatch.
+- Enrolled face identity is opt-in and on-device, matched only while the person is upright, so the caseload row and the Telegram ping are **named** and the alert says where to look: *last motion: Bedroom*. Unmatched people fire the generic alert.
+- **The alert answers back.** No recovery 45 s after the alert sends STILL DOWN; a caregiver taps **I am responding** and the alert is stamped with who took it.
+- No video leaves the browser; only the detection event and the matched resident id are sent.
 
 <!--
 The camera layer is the second acute source, and it is opt-in. On the /watch page,
 MediaPipe pose runs entirely in the browser; no frame leaves the device. A person upright,
-then horizontal within 1.8 seconds, then 3.0 seconds of stillness, fires the same incident
+then horizontal within 3 seconds, then 3 seconds of stillness, fires the same incident
 path as the bangle, the caseload preemption, the live stream, and the Telegram ping. A
 slower transition is a deliberate lie-down and never alarms. We keep the honesty rules:
 the incident is labelled Camera (pose) and carries the heuristic's own 0.55 to 0.85
@@ -425,13 +426,18 @@ confidence band, never the 96.2 percent figure, which belongs to the acceleromet
 alone. Identity is enrolled and on-device: front, left and right angles are stored as
 embeddings in the browser's storage, no image is kept and nothing is uploaded. Matching
 runs only while the person is upright, and the binding carries the name through the fall,
-so the dashboard row and the Telegram ping are named. Unmatched people fire the generic
-alert, because recognition can never block or alter an alert. The privacy claim in full:
+so the dashboard row and the Telegram ping are named, and the alert also says where in
+the flat to look: the resident's last-motion area from the ambient track rides with the
+unit. Unmatched people fire the generic
+alert, because recognition can never block or alter an alert. The alert leg answers back:
+if nobody rises 45 seconds after the alert, a STILL DOWN message follows, and a caregiver
+who taps I am responding stamps the alert with their name, first tap wins, and the
+dashboard shows it within 5 seconds. The privacy claim in full:
 no video leaves the browser; only the detection event and the matched resident id are
 sent. Telegram dispatch is live and happens off the request thread, and /alerts/status
 plus the badges on the dashboard and /watch show whether Telegram is configured and what
-happened to the last dispatch, sent, failed, or not configured. The path is covered by 83
-backend and 21 frontend tests, all passing.
+happened to the last dispatch, sent, failed, or not configured. The path is covered by 96
+backend and 25 frontend tests, all passing.
 -->
 
 ---
