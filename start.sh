@@ -37,7 +37,9 @@ SVC_PID=$!
 echo "▶ dashboard — starting on :3000 ..."
 (
   cd "$ROOT/triage-dashboard"
-  [ -d node_modules ] || npm install
+  # Unconditional: a pull can add deps while node_modules already exists
+  # (bit us 2026-07-27 — /watch 500 on the demo laptop). No-op when current.
+  npm install
   # /watch pose assets (offline demo insurance) — never blocks startup;
   # without them the page falls back to the CDN at runtime.
   npm run fetch-pose-assets || echo "⚠ pose assets fetch failed — /watch will use the CDN."

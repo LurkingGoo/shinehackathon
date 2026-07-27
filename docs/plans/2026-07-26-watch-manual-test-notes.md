@@ -128,3 +128,18 @@ imports `engine.ts` at module scope, so webpack fails to compile the whole
 route rather than degrading just face recognition — this is a different,
 harder failure than the known/documented `fetch-pose-assets` CDN fallback
 (that one degrades gracefully; this one 500s the page). Not yet fixed.
+
+**RESOLVED 2026-07-27 (desk follow-up) — diagnosis above is wrong.** The
+dependency IS in `triage-dashboard/package.json` (`@vladmandic/face-api
+^1.7.15`, landed in `cf923bd` alongside `engine.ts`), so the pulled tree was
+correct. The actual root cause: the laptop's `node_modules` predates
+`cf923bd`, and both start scripts guarded the install with
+"skip `npm install` if `node_modules` exists" — so the pull delivered new
+`package.json` deps that were never installed, and webpack failed module
+resolution. Fix shipped: `start.bat` / `start.sh` now run `npm install`
+unconditionally (no-op when current), which also guarantees the face models
+are present for `fetch-pose-assets` to vendor.
+
+**Unblock on the demo laptop:** `git pull`, then either re-run `start.bat` /
+`./start.sh`, or manually `cd triage-dashboard && npm install && npm run
+fetch-pose-assets && npm run dev`. Then resume the rehearsal at step 1.
