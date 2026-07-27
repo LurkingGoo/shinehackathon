@@ -103,3 +103,28 @@ test needs a REAL-WEBCAM REHEARSAL on the demo laptop:
    30 s no-sighting grace), and any wrong-person flips (raise
    `rebindHits` / lower `maxDistance` in `lib/face/matcher.ts` if so).
 6. "forget" your enrollment afterwards if the laptop is shared.
+
+**Blocked 2026-07-27:** the real-webcam rehearsal above cannot even start.
+`/watch` returns a hard 500 on a fresh `git pull` + `npm run dev` — confirmed
+via a headless Playwright navigation to `http://localhost:3000/watch`
+(not just a manual click-through):
+
+```
+Error: Module not found: Can't resolve '@vladmandic/face-api'
+  28 |
+  29 | export async function createFaceEngine(): Promise<FaceEngine> {
+> 30 |   const faceapi = await import("@vladmandic/face-api");
+     |                         ^
+
+Import trace for requested module:
+./components/WatchPanel.tsx
+  → ./lib/face/engine.ts:30:25
+```
+
+Root cause: `lib/face/engine.ts:30` (added with the ADR-0011 face-identity
+work) imports `@vladmandic/face-api` directly, but the package was never
+added to `triage-dashboard/package.json` dependencies. `WatchPanel.tsx`
+imports `engine.ts` at module scope, so webpack fails to compile the whole
+route rather than degrading just face recognition — this is a different,
+harder failure than the known/documented `fetch-pose-assets` CDN fallback
+(that one degrades gracefully; this one 500s the page). Not yet fixed.
