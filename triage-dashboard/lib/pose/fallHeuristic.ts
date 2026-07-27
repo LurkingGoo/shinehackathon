@@ -58,8 +58,13 @@ export interface FallHeuristicConfig {
 
 export const DEFAULT_CONFIG: FallHeuristicConfig = {
   uprightMaxDeg: 35,
-  horizontalMinDeg: 60,
-  minVisibility: 0.5,
+  // A webcam mounted above the screen sees a real drop at a foreshortened
+  // angle — 60deg missed drops that settled in the 45-55deg "transitional"
+  // band and never armed the candidate. Lowered so those still count.
+  horizontalMinDeg: 48,
+  // Loosened alongside horizontalMinDeg: a person low/prone on the floor
+  // is more likely to be partially out of frame or occluded.
+  minVisibility: 0.4,
   fallWindowMs: 1800,
   stillMs: 3000,
   stillEps: 0.012,
