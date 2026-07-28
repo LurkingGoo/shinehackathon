@@ -52,7 +52,8 @@ export function CaseloadCard({
           {entry.name} <span>· {entry.age}</span>
         </div>
         <div className={styles.meta}>
-          {entry.unit} · {score.recency} · {score.sensor}
+          {entry.unit} · {entry.zone ? `${entry.zone} · ` : ""}
+          {score.recency} · {score.sensor}
         </div>
         <div
           className={[

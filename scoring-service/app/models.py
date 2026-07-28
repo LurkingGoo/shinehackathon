@@ -63,6 +63,9 @@ class ResidentDetail(Resident):
     features: list[RiskFeature]
     recommended_action: str
     briefing: str
+    # Same ambient last-motion area as CaseloadEntry.zone (ADR 0013), so the
+    # drilldown can render a keyed-in location. Optional: additive.
+    zone: str | None = None
 
 
 class IncidentEvent(_Base):

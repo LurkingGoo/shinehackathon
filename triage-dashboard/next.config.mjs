@@ -11,6 +11,9 @@ const nextConfig = {
   async rewrites() {
     return [
       { source: "/api/caseload", destination: `${SCORING_SERVICE}/caseload` },
+      // registry (ADR 0013) — the :id/location rewrite must precede :id
+      { source: "/api/residents", destination: `${SCORING_SERVICE}/residents` },
+      { source: "/api/residents/:id/location", destination: `${SCORING_SERVICE}/residents/:id/location` },
       { source: "/api/residents/:id", destination: `${SCORING_SERVICE}/residents/:id` },
       { source: "/api/incidents/stream", destination: `${SCORING_SERVICE}/incidents/stream` },
       { source: "/api/incidents/simulate", destination: `${SCORING_SERVICE}/incidents/simulate` },

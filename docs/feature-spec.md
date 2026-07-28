@@ -3,8 +3,8 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.8.1
-last_updated: 2026-07-27
+spec_version: 1.9.0
+last_updated: 2026-07-28
 tags: [features, scoring, reference]
 ---
 
@@ -241,3 +241,15 @@ rationale → recommendedAction` and cannot affect any resident's score:
   when `SHINEHACKATHON_TELEGRAM_BOT_TOKEN` / `_CHAT_ID` are unset; best-effort
   otherwise (a failed send never delays or alters the incident). Secrets live
   in env vars only (vault rule 8).
+- **Runtime resident registry (spec 1.9.0, [[0013-runtime-resident-registry]])**
+  — `POST /residents` (register a person by name; joins the chronic roster
+  with a nominal input set scored by the real pipeline — calm risk,
+  honestly-low confidence from a day-old baseline) and
+  `POST /residents/{id}/location` (key in `zone` and/or an address composed
+  from `unit` > `block`+`unitNumber` > `block` > GPS `lat`/`lon`; empty `zone`
+  reverts to the fixture default). Nothing keyed in → zone defaults to
+  "Living room". `ResidentDetail` gains optional `zone` (additive, mirroring
+  `CaseloadEntry.zone` from 1.8.0). Registrants + overrides persist in
+  `data/residents.json` (demo state, gitignored) across service restarts.
+  No scoring rule changed — the registry only edits who is on the roster and
+  where they are.

@@ -327,6 +327,163 @@ ACUTE = AcuteResident(
 )
 
 
+# ------------------ runtime resident registry (ADR 0013) ------------------- #
+DEFAULT_ZONE = "Living room"
+REGISTRY_PATH = Path(__file__).resolve().parents[2] / "data" / "residents.json"
+
+# Fixture locations snapshotted before any keyed-in override, so an empty
+# keyed-in zone reverts to the resident's own default.
+_DEFAULT_LOCATIONS: dict[str, tuple[str, str]] = {
+    r.id: (r.unit, r.zone) for r in [*CHRONIC, ACUTE]
+}
+_registered_ids: list[str] = []
+
+
+def _roster() -> list:
+    return [*CHRONIC, ACUTE]
+
+
+def compose_unit(unit: str | None = None, block: str | None = None,
+                 unit_number: str | None = None, lat: float | None = None,
+                 lon: float | None = None) -> str | None:
+    """The address string from whichever parts were keyed in; None when none
+    were. GPS is the browser-geolocation form — raw coordinates, honestly
+    unresolved (no reverse geocoding: the demo runs offline)."""
+    if unit:
+        return unit
+    if block and unit_number:
+        return f"Blk {block} #{unit_number}"
+    if block:
+        return f"Blk {block}"
+    if lat is not None and lon is not None:
+        return f"GPS {lat:.4f}, {lon:.4f}"
+    return None
+
+
+def _slug_id(name: str) -> str:
+    s = "-".join("".join(c if c.isalnum() else " " for c in name.lower()).split())
+    base = f"r-{s or 'resident'}"
+    rid, n, ids = base, 2, {r.id for r in _roster()}
+    while rid in ids:
+        rid, n = f"{base}-{n}", n + 1
+    return rid
+
+
+def _make_registrant(rid: str, name: str, age: int, unit: str | None,
+                     zone: str | None) -> ChronicResident:
+    # Nominal inputs through the real pipeline: calm risk, and confidence is
+    # honestly low because a day-old baseline IS immature (chronic.py
+    # baseline_maturity — low confidence here is the truth, not a bug).
+    return ChronicResident(
+        rid, name, age, unit or "Address not set",
+        "PIR motion", "CASAS ambient (just registered)", 0, "just now",
+        days_of_history=1, data_quality=0.6,
+        inputs=[CFI("Activity pattern", "Nominal (new baseline)", 0.0, anomaly=0.0)],
+        zone=zone or DEFAULT_ZONE,
+    )
+
+
+def register_resident(name: str, age: int | None = None, zone: str | None = None,
+                      unit: str | None = None, block: str | None = None,
+                      unit_number: str | None = None, lat: float | None = None,
+                      lon: float | None = None) -> ChronicResident:
+    """Operator-registered person (ADR 0013): joins the chronic roster, so the
+    caseload, drilldown, Report-as/Enroll-as selectors, camera identity carry
+    and the Telegram alert all pick them up. Zone falls back to DEFAULT_ZONE."""
+    r = _make_registrant(
+        _slug_id(name), name, int(age) if age else 70,
+        compose_unit(unit, block, unit_number, lat, lon), zone,
+    )
+    CHRONIC.append(r)
+    _registered_ids.append(r.id)
+    _save_registry()
+    return r
+
+
+def set_resident_location(rid: str, zone: str | None = None, unit: str | None = None,
+                          block: str | None = None, unit_number: str | None = None,
+                          lat: float | None = None, lon: float | None = None):
+    """Key in a location for any roster resident (chronic or acute). Fields not
+    keyed in stay untouched; zone='' reverts to the fixture default. Returns
+    the updated resident, or None for an unknown id."""
+    for r in _roster():
+        if r.id != rid:
+            continue
+        if zone == "":
+            r.zone = _DEFAULT_LOCATIONS.get(rid, ("", DEFAULT_ZONE))[1]
+        elif zone is not None:
+            r.zone = zone
+        new_unit = compose_unit(unit, block, unit_number, lat, lon)
+        if new_unit:
+            r.unit = new_unit
+        _save_registry()
+        return r
+    return None
+
+
+def reset_registry() -> None:
+    """Back to the stock roster: drop registrants, restore fixture locations,
+    remove the persistence artifact. Deliberately NOT part of /incidents/clear
+    — that resets the incident beat, not the roster."""
+    global _registered_ids
+    drop = set(_registered_ids)
+    CHRONIC[:] = [r for r in CHRONIC if r.id not in drop]
+    _registered_ids = []
+    for r in _roster():
+        if r.id in _DEFAULT_LOCATIONS:
+            r.unit, r.zone = _DEFAULT_LOCATIONS[r.id]
+    if REGISTRY_PATH.exists():
+        REGISTRY_PATH.unlink()
+
+
+def _save_registry() -> None:
+    registered = [
+        {"id": r.id, "name": r.name, "age": r.age, "unit": r.unit, "zone": r.zone}
+        for r in CHRONIC if r.id in set(_registered_ids)
+    ]
+    overrides = {}
+    for r in _roster():
+        default = _DEFAULT_LOCATIONS.get(r.id)
+        if default and (r.unit, r.zone) != default:
+            overrides[r.id] = {"unit": r.unit, "zone": r.zone}
+    REGISTRY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    REGISTRY_PATH.write_text(
+        json.dumps({"registered": registered, "overrides": overrides}, indent=2),
+        encoding="utf-8",
+    )
+
+
+def _load_registry() -> None:
+    """Rehydrate registrants + keyed-in locations across service restarts
+    (the rehearsal ritual restarts both services). A missing or corrupt
+    artifact must never break startup — the stock roster stands."""
+    if not REGISTRY_PATH.exists():
+        return
+    try:
+        data = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    ids = {r.id for r in _roster()}
+    for p in data.get("registered", []):
+        rid = p.get("id")
+        if not rid or rid in ids:
+            continue
+        CHRONIC.append(_make_registrant(
+            rid, p.get("name", rid), int(p.get("age", 70)),
+            p.get("unit"), p.get("zone"),
+        ))
+        _registered_ids.append(rid)
+        ids.add(rid)
+    for rid, loc in data.get("overrides", {}).items():
+        for r in _roster():
+            if r.id == rid:
+                r.zone = loc.get("zone") or r.zone
+                r.unit = loc.get("unit") or r.unit
+
+
+_load_registry()
+
+
 # --------------------------- build contract objects ----------------------- #
 def _chronic_score(r: ChronicResident) -> tuple[RiskScore, list, str, str]:
     parts = pipeline.score_chronic(
@@ -361,7 +518,8 @@ def _chronic_entry(r: ChronicResident, rank: int) -> CaseloadEntry:
 def _chronic_detail(r: ChronicResident) -> ResidentDetail:
     score, feats, action, _r = _chronic_score(r)
     d = ResidentDetail(id=r.id, name=r.name, age=r.age, unit=r.unit, score=score,
-                       features=feats, recommended_action=action, briefing="")
+                       features=feats, recommended_action=action, briefing="",
+                       zone=r.zone)
     return d.model_copy(update={"briefing": deterministic_briefing(d)})
 
 
@@ -377,7 +535,7 @@ def _acute_detail() -> ResidentDetail:
     score, feats, action, _r = _acute_score()
     d = ResidentDetail(id=who.id, name=who.name, age=who.age, unit=who.unit,
                        score=score, features=feats, recommended_action=action,
-                       briefing="")
+                       briefing="", zone=who.zone)
     return d.model_copy(update={"briefing": deterministic_briefing(d)})
 
 

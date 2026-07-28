@@ -91,13 +91,29 @@ export function WatchPanel() {
     setGallery(loadGallery());
   }, []);
 
+  // People & locations (ADR 0013): key in a location for a roster resident,
+  // or register a new person by name. Synced through the caseload refetch.
+  const [locTarget, setLocTarget] = useState<string>("new");
+  const [newName, setNewName] = useState("");
+  const [zoneInput, setZoneInput] = useState("");
+  const [blockInput, setBlockInput] = useState("");
+  const [unitNoInput, setUnitNoInput] = useState("");
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [locBusy, setLocBusy] = useState(false);
+
+  const refreshResidents = useCallback(
+    () =>
+      dataClient
+        .getRankedCaseload()
+        .then((c) => setResidents(c.entries))
+        .catch(() => undefined),
+    [],
+  );
+
   useEffect(() => {
     dataClient.getAlertStatus().then(setAlerts).catch(() => setAlerts(null));
-    dataClient
-      .getRankedCaseload()
-      .then((c) => setResidents(c.entries))
-      .catch(() => setResidents([]));
-  }, []);
+    void refreshResidents();
+  }, [refreshResidents]);
 
   const pushLog = useCallback((text: string) => {
     const at = new Date().toLocaleTimeString([], {
@@ -177,6 +193,66 @@ export function WatchPanel() {
     },
     [pushLog],
   );
+
+  // "Use my location": browser geolocation, no reverse geocoding (the demo
+  // runs offline) — the backend renders raw coordinates as `GPS lat, lon`
+  // unless a block/unit is also keyed in.
+  const captureLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      pushLog("Location service unavailable in this browser");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setCoords({ lat: p.coords.latitude, lon: p.coords.longitude });
+        pushLog("Current location captured from the browser");
+      },
+      () => pushLog("Location permission denied — key in the address instead"),
+    );
+  }, [pushLog]);
+
+  const saveLocation = useCallback(async () => {
+    const loc = {
+      zone: zoneInput.trim() || undefined,
+      block: blockInput.trim() || undefined,
+      unitNumber: unitNoInput.trim() || undefined,
+      lat: coords?.lat,
+      lon: coords?.lon,
+    };
+    setLocBusy(true);
+    try {
+      if (locTarget === "new") {
+        const name = newName.trim();
+        if (!name) {
+          pushLog("Give the new person a name first");
+          return;
+        }
+        const entry = await dataClient.registerResident({ name, ...loc });
+        setResidentId(entry.id); // detections now report as the new person
+        setNewName("");
+        pushLog(
+          `${entry.name} registered — ${entry.unit}${entry.zone ? ` · ${entry.zone}` : ""}`,
+        );
+      } else {
+        await dataClient.setResidentLocation(locTarget, loc);
+        const who = residents.find((r) => r.id === locTarget)?.name ?? locTarget;
+        pushLog(
+          loc.zone || loc.block || loc.unitNumber || coords
+            ? `Location saved for ${who}`
+            : `No location keyed in — ${who} keeps the default`,
+        );
+      }
+      setCoords(null);
+      await refreshResidents();
+    } catch {
+      pushLog("Could not reach the scoring service — location NOT saved");
+    } finally {
+      setLocBusy(false);
+    }
+  }, [
+    locTarget, newName, zoneInput, blockInput, unitNoInput, coords,
+    residents, pushLog, refreshResidents,
+  ]);
 
   const stop = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
@@ -519,6 +595,97 @@ export function WatchPanel() {
               Demo insurance: fires the same camera-incident endpoint with default
               values when nobody can physically fall.
             </p>
+          </section>
+
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>People &amp; locations</h2>
+            <p className={styles.testNote}>
+              Key in where a resident is, or register a new person by name.
+              Syncs to the dashboard and the Telegram alert. Nothing keyed in
+              means the default location (Living room) stands.
+            </p>
+            <label className={styles.selLabel}>
+              Who
+              <select
+                className={styles.residentSelect}
+                value={locTarget}
+                onChange={(e) => setLocTarget(e.target.value)}
+              >
+                <option value="new">➕ Register a new person…</option>
+                {residents.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {locTarget === "new" && (
+              <label className={styles.selLabel}>
+                Name
+                <input
+                  className={styles.textInput}
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="e.g. your own name"
+                />
+              </label>
+            )}
+            <label className={styles.selLabel}>
+              Zone (in-flat area)
+              <input
+                className={styles.textInput}
+                list="zone-suggestions"
+                value={zoneInput}
+                onChange={(e) => setZoneInput(e.target.value)}
+                placeholder="Living room (default)"
+              />
+              <datalist id="zone-suggestions">
+                <option value="Living room" />
+                <option value="Bedroom" />
+                <option value="Kitchen" />
+                <option value="Bathroom" />
+              </datalist>
+            </label>
+            <div className={styles.fieldRow}>
+              <label className={styles.selLabel}>
+                Block (optional)
+                <input
+                  className={styles.textInput}
+                  value={blockInput}
+                  onChange={(e) => setBlockInput(e.target.value)}
+                  placeholder="112"
+                />
+              </label>
+              <label className={styles.selLabel}>
+                Unit no. (optional)
+                <input
+                  className={styles.textInput}
+                  value={unitNoInput}
+                  onChange={(e) => setUnitNoInput(e.target.value)}
+                  placeholder="05-214"
+                />
+              </label>
+            </div>
+            <button
+              className={`${styles.btn} ${styles.btnGhost} ${styles.btnTest}`}
+              onClick={captureLocation}
+              disabled={locBusy}
+            >
+              {coords
+                ? `📍 GPS ${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)}`
+                : "📍 Use my current location"}
+            </button>
+            <button
+              className={`${styles.btn} ${styles.btnTest}`}
+              onClick={() => void saveLocation()}
+              disabled={locBusy || (locTarget === "new" && !newName.trim())}
+            >
+              {locBusy
+                ? "Saving…"
+                : locTarget === "new"
+                  ? "Register person"
+                  : "Save location"}
+            </button>
           </section>
 
           <section className={styles.card}>

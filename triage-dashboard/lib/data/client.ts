@@ -13,9 +13,12 @@
 
 import type {
   AlertStatus,
+  CaseloadEntry,
   IncidentEvent,
   IncidentTrace,
+  LocationPayload,
   RankedCaseload,
+  RegisterResidentPayload,
   ResidentDetail,
   TrainingStats,
 } from "@/lib/types";
@@ -76,6 +79,17 @@ export interface DataClient {
     stillDownS: number;
     residentId?: string;
   }): Promise<void>;
+  /**
+   * Runtime registry (ADR 0013): register a new person into the roster.
+   * Resolves with their scored caseload entry; an unkeyed location falls
+   * back to the default zone on the backend.
+   */
+  registerResident(payload: RegisterResidentPayload): Promise<CaseloadEntry>;
+  /**
+   * Runtime registry (ADR 0013): key in where an existing resident is.
+   * Fields not sent stay untouched; zone: "" reverts to the fixture default.
+   */
+  setResidentLocation(id: string, payload: LocationPayload): Promise<void>;
   /**
    * Alert-leg visibility: whether Telegram is configured and the outcome of
    * the most recent dispatch (sent / failed / not-configured). Backs the
@@ -172,6 +186,28 @@ export const dataClient: DataClient = {
   async clearIncident() {
     const res = await fetch(`${BASE}/api/incidents/clear`, { method: "POST" });
     if (!res.ok) throw new Error(`/api/incidents/clear -> ${res.status}`);
+  },
+
+  async registerResident(payload) {
+    const res = await fetch(`${BASE}/api/residents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`/api/residents -> ${res.status}`);
+    return (await res.json()) as CaseloadEntry;
+  },
+
+  async setResidentLocation(id, payload) {
+    const res = await fetch(
+      `${BASE}/api/residents/${encodeURIComponent(id)}/location`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    );
+    if (!res.ok) throw new Error(`/api/residents/${id}/location -> ${res.status}`);
   },
 
   getTrainingStats() {

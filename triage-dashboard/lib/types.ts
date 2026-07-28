@@ -97,6 +97,30 @@ export interface ResidentDetail extends Resident {
    * must come only from `score` + `features`. Never let the model invent cause.
    */
   briefing: string;
+  /**
+   * Same ambient last-motion area as CaseloadEntry.zone (ADR 0013), so the
+   * drill-down can render a keyed-in location. Optional: additive.
+   */
+  zone?: string;
+}
+
+/** ---- Runtime resident registry (ADR 0013) ----
+ * Keyed-in location parts. All optional; the backend composes the address
+ * from whichever parts arrive (unit > block+unitNumber > block > GPS) and an
+ * absent/empty zone falls back to the default ("Living room"). */
+export interface LocationPayload {
+  zone?: string;
+  unit?: string;
+  block?: string;
+  unitNumber?: string;
+  lat?: number;
+  lon?: number;
+}
+
+/** Operator registration (POST /api/residents): a new person by name. */
+export interface RegisterResidentPayload extends LocationPayload {
+  name: string;
+  age?: number;
 }
 
 /** ---- Incident signal trace (GET /api/incidents/trace) ----

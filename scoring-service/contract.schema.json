@@ -242,6 +242,18 @@
         "briefing": {
           "title": "Briefing",
           "type": "string"
+        },
+        "zone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Zone"
         }
       },
       "required": [
@@ -343,6 +355,18 @@
             "briefing": {
               "title": "Briefing",
               "type": "string"
+            },
+            "zone": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Zone"
             }
           },
           "required": [

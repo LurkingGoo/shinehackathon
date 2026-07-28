@@ -24,7 +24,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.alerts import telegram
 from app.data import fixtures, loaders
-from app.models import IncidentEvent, RankedCaseload, ResidentDetail
+from app.models import CaseloadEntry, IncidentEvent, RankedCaseload, ResidentDetail
 from app.replay.engine import hub
 
 app = FastAPI(title="triage scoring-service", version="0.1.0")
@@ -66,6 +66,65 @@ def resident(rid: str) -> ResidentDetail:
     if detail is None:
         raise HTTPException(status_code=404, detail=f"unknown resident: {rid}")
     return detail
+
+
+class RegisterResidentRequest(BaseModel):
+    """Operator registration (ADR 0013): a new person under their own name.
+    Everything but the name is optional — an unkeyed location falls back to
+    the default zone; the address composes from whichever parts arrive."""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    name: str
+    age: int | None = None
+    zone: str | None = None
+    unit: str | None = None
+    block: str | None = None
+    unit_number: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+
+
+class LocationRequest(BaseModel):
+    """Keyed-in location for an existing roster resident (ADR 0013). Fields
+    not sent stay untouched; zone='' reverts to the fixture default."""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    zone: str | None = None
+    unit: str | None = None
+    block: str | None = None
+    unit_number: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+
+
+@app.post("/residents", response_model=CaseloadEntry)
+def register_resident(body: RegisterResidentRequest) -> CaseloadEntry:
+    """Register a person into the chronic roster and return their scored
+    caseload entry. They immediately appear in /caseload (dashboard, Report-as
+    and Enroll-as selectors) and their name + zone flow into any alert."""
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="name must not be blank")
+    r = fixtures.register_resident(
+        name, age=body.age, zone=body.zone, unit=body.unit, block=body.block,
+        unit_number=body.unit_number, lat=body.lat, lon=body.lon,
+    )
+    for entry in fixtures.build_ranked_caseload().entries:
+        if entry.id == r.id:
+            return entry
+    raise HTTPException(status_code=500, detail="registered but not in caseload")
+
+
+@app.post("/residents/{rid}/location")
+def set_resident_location(rid: str, body: LocationRequest | None = None) -> dict:
+    """Key in where a resident is. POST (not PATCH) to match every other
+    mutation on this service. 404 for an unknown id."""
+    b = body or LocationRequest()
+    r = fixtures.set_resident_location(
+        rid, zone=b.zone, unit=b.unit, block=b.block,
+        unit_number=b.unit_number, lat=b.lat, lon=b.lon,
+    )
+    if r is None:
+        raise HTTPException(status_code=404, detail=f"unknown resident: {rid}")
+    return {"ok": True, "id": r.id, "zone": r.zone, "unit": r.unit}
 
 
 # Server-side rotation cursor: each POST /incidents/simulate advances it so the
