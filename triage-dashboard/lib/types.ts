@@ -234,6 +234,11 @@ export interface AlertStatus {
    * Null until acknowledged; cleared when a new incident dispatches.
    */
   acknowledged?: { by: string; at: string } | null;
+  /**
+   * ADR 0017 phase 5: outcome of the most recent replay-GIF follow-up
+   * (sent / failed / skipped / no-replay / not-configured). Optional.
+   */
+  replayAnimation?: { outcome: string; at: string } | null;
 }
 
 /** ---- Incident / re-rank event (pushed over the live channel) ----

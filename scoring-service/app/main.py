@@ -42,6 +42,9 @@ app.add_middleware(
     allow_origins=["http://localhost:3000"],
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
+    # ADR 0017: a direct (non-proxied) client must be able to read the
+    # replay nonce off the fall response.
+    expose_headers=["X-Incident-Id"],
 )
 
 
@@ -233,6 +236,9 @@ def alerts_status() -> dict:
         # ADR 0012: {by, at} once a caregiver taps "I am responding" on the
         # alert; null until then, cleared on each new incident.
         "acknowledged": telegram.get_ack(),
+        # ADR 0017 phase 5: outcome of the most recent replay-GIF follow-up
+        # (sent / failed / skipped / no-replay / not-configured).
+        "replayAnimation": _last_animation,
     }
 
 
@@ -337,18 +343,41 @@ def upload_replay(body: ReplayUploadRequest, request: Request) -> dict:
     return {"ok": True, "incidentId": body.incident_id, "frames": len(body.frames)}
 
 
+# Outcome of the most recent animation follow-up, surfaced on /alerts/status
+# so a missing GIF is never silently undiagnosable (gap check 2026-07-30).
+_last_animation: dict | None = None
+
+
+def _record_animation(outcome: str) -> None:
+    global _last_animation
+    _last_animation = {
+        "outcome": outcome,
+        "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+
+
 def _dispatch_replay_animation() -> None:
     """Phase 5 (ADR 0017): render the stored replay as a stick-figure GIF and
     send it as a quiet REPLY to the fall alert. This is the single sanctioned
     exit for the landmark data — to the same chat that already received the
     alert, as coordinates drawn into lines, never pixels. Entirely
     best-effort and off the request thread; a no-op unconfigured or when
-    Pillow is absent."""
+    Pillow is absent.
+
+    Race guards (gap check 2026-07-30): the caption is captured HERE on the
+    request thread — a Reset or second fall while the render thread runs can
+    never caption this GIF with another incident's rationale — and the reply
+    target is resolved only after THIS dispatch's alert leg settles, else
+    the GIF goes un-threaded rather than under a stale alert."""
     if not telegram.is_configured():
+        _record_animation("not-configured")
         return
     payload = fixtures.replay_payload()
     if payload is None:
+        _record_animation("no-replay")
         return
+    caption_rationale = fixtures.build_incident_event().entry.score.rationale
+    dispatch_before = _last_dispatch  # identity snapshot, not a copy
 
     def _send() -> None:
         try:
@@ -358,13 +387,27 @@ def _dispatch_replay_animation() -> None:
                 payload["frames"], payload["quantScale"]
             )
             if not gif:
+                _record_animation("skipped")
                 return
-            rationale = fixtures.build_incident_event().entry.score.rationale
-            telegram.send_replay_animation(
-                gif, f"How the fall happened — {rationale}\n"
-                     "(joint positions only, no pixels)",
+            deadline = time.monotonic() + 5.0
+            while time.monotonic() < deadline and _last_dispatch is dispatch_before:
+                time.sleep(0.2)
+            settled = _last_dispatch
+            reply_to = (
+                telegram.last_alert_message_id()
+                if settled is not dispatch_before
+                and settled and settled.get("outcome") == "sent"
+                else None
             )
+            ok = telegram.send_replay_animation(
+                gif,
+                f"How the fall happened: {caption_rationale}\n"
+                "(joint positions only, no pixels)",
+                reply_to=reply_to,
+            )
+            _record_animation("sent" if ok else "failed")
         except Exception as exc:  # never let the follow-up harm anything
+            _record_animation("failed")
             print(f"[replay] animation follow-up skipped: {type(exc).__name__}: {exc}")
 
     threading.Thread(target=_send, daemon=True).start()

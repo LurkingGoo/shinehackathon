@@ -502,7 +502,11 @@ export function WatchPanel() {
           drawOverlay(landmarks);
           if (event) {
             if (event.kind === "still-down") void escalate(event.stillDownS);
-            else void report(event, ringRef.current.freeze(now));
+            else {
+              const snap = ringRef.current.freeze(now);
+              ringRef.current.reset(); // a 2nd fall must not contain this one
+              void report(event, snap);
+            }
           }
           // Face tick: embeds run on cadence whenever the face engine is on —
           // the capture gate needs a live "face in view" signal even before
@@ -748,8 +752,11 @@ export function WatchPanel() {
             Telegram alert the caregiver receives is written from those fields
             alone. After a confirmed fall, and only then, we also send a
             fifteen-second stick-figure trace of the movement: pose joint
-            coordinates, never pixels, kept only as long as the incident
-            itself. Face enrollment is stored in this browser as number
+            coordinates, never pixels, kept by the service only as long as
+            the incident itself. The caregiver chat receives that trace
+            once, drawn as a stick-figure animation under the alert, and it
+            stays in the chat like any other message. Face enrollment is
+            stored in this browser as number
             embeddings, never as images, and the forget button removes them.
           </div>
         </section>

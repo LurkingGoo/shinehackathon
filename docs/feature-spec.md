@@ -3,7 +3,7 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.15.0
+spec_version: 1.15.1
 last_updated: 2026-07-30
 tags: [features, scoring, reference]
 ---
@@ -333,6 +333,19 @@ rationale → recommendedAction` and cannot affect any resident's score:
   sanctioned exit: same chat as the alert, coordinates drawn as lines,
   never pixels. Off-thread, best-effort, silent no-op unconfigured or
   without Pillow; the alert itself is never delayed and stays text-only.
+  **1.15.1 (gap check):** the drilldown player POLLS ~30 s for the
+  late-arriving upload (the SSE event beats the replay POST on the live
+  path); the GIF caption is captured on the request thread (a Reset or
+  second fall can never mislabel it) and threads under the alert only once
+  THIS dispatch settled, degrading to un-threaded
+  (`allow_sending_without_reply`) otherwise; its outcome surfaces as
+  `replayAnimation` on `/alerts/status`; the escalation message now carries
+  the (enriched) rationale; the ring resets at fire so a second fall never
+  contains the first; renderer keeps the TAIL on truncation; Pillow is a
+  declared dependency; the pytest suite strips the real bot credentials —
+  offline by construction (it was sending real alerts from any machine with
+  the demo env). Privacy copy names the chat as the trace's second,
+  persistent recipient.
 - **Enrollment capture gating (spec 1.10.0)** — the capture control sits
   directly under the camera feed and enables only when: camera running, face
   models ready, a target chosen, no capture in flight, under the 5-angle cap,

@@ -115,4 +115,7 @@ as the caption (never color-only).
 - Drilldown screenshots in the deck go stale at Phase 3 — re-rendered in
   Phase 4.
 - Optional Phase 5 (Telegram keyframe PNGs as a REPLY to the alert) is
-  design-sketched in the plan, not committed to.
+  design-sketched in the plan, not committed to. *(Shipped 2026-07-30,
+  upgraded to a full `sendAnimation` stick-figure GIF — spec 1.15.0. This
+  adds a second recipient for a RENDERING of the trace: the caregiver chat,
+  where it persists like any message. The privacy copy names it.)*

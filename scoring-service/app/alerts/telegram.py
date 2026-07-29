@@ -84,6 +84,7 @@ def format_escalation_message(event: IncidentEvent, still_down_s: float) -> str:
     return (
         f"⚠️ STILL DOWN — {e.name} ({e.age})\n"
         f"{_location_line(e)}\n"
+        f"{e.score.rationale}\n"
         f"No movement for {still_down_s:.0f}s since the fall alert.\n"
         f"→ If nobody has responded yet, escalate now."
     )
@@ -167,11 +168,19 @@ def _multipart_body(
     return b"\r\n".join(lines), boundary
 
 
-def send_replay_animation(gif: bytes, caption: str) -> bool:
+def last_alert_message_id() -> int | None:
+    return _last_alert_msg_id
+
+
+def send_replay_animation(gif: bytes, caption: str,
+                          reply_to: int | None = None) -> bool:
     """sendAnimation (ADR 0017 phase 5): the skeleton-replay GIF as a QUIET
     reply to the fall alert — the alert already pinged loudly; the moving
-    evidence follows a beat later. Same guarantees as every send: silent
-    no-op unconfigured, best-effort, the token never logged."""
+    evidence follows a beat later. The caller resolves `reply_to` (gap check
+    2026-07-30: reading the mutable global here could thread the GIF under
+    the WRONG alert); allow_sending_without_reply degrades a vanished target
+    to an un-threaded send instead of a hard 400. Same guarantees as every
+    send: silent no-op unconfigured, best-effort, the token never logged."""
     if not is_configured() or not gif:
         return False
     fields = {
@@ -179,8 +188,9 @@ def send_replay_animation(gif: bytes, caption: str) -> bool:
         "caption": caption,
         "disable_notification": "true",
     }
-    if _last_alert_msg_id:
-        fields["reply_to_message_id"] = str(_last_alert_msg_id)
+    if reply_to:
+        fields["reply_to_message_id"] = str(reply_to)
+        fields["allow_sending_without_reply"] = "true"
     body, boundary = _multipart_body(fields, "animation", "fall-replay.gif",
                                      gif, "image/gif")
     token = os.environ[_TOKEN_ENV]

@@ -335,6 +335,10 @@ def _apply_replay_facts(facts: dict | None) -> None:
     elif pa is False:
         frags.append("no arm protection")
         feats.append(("Protective response", "none seen", 0.1))
+    pim = facts.get("postImpactMovement")
+    if pim in ("slight", "moving"):  # "none" is already the Stillness feature
+        frags.append(f"{pim} movement after impact")
+        feats.append(("Post-impact movement", pim, 0.1))
     if not frags:
         return  # nothing usable — the default template stands, honestly
     still = _cv_override["stillness_s"]

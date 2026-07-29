@@ -84,7 +84,7 @@ Details, the Vercel alternative, and SSE notes: [`DEPLOY.md`](DEPLOY.md).
 ## Tests
 
 ```bash
-cd scoring-service && python -m pytest        # backend (75 tests)
+cd scoring-service && python -m pytest        # backend (143 tests, offline by construction)
 cd triage-dashboard && npm run typecheck      # frontend types
 cd triage-dashboard && npm test               # fall-heuristic unit tests (vitest)
 ```

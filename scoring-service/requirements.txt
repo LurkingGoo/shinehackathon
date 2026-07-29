@@ -5,6 +5,7 @@ sse-starlette>=2.0
 pydantic>=2.6
 numpy>=1.26
 pandas>=2.1
+pillow>=10.0         # skeleton-replay GIF renderer (ADR 0017 phase 5)
 
 # dev / test
 pytest>=8.0

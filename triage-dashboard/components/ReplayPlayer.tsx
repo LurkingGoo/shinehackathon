@@ -39,6 +39,8 @@ function factsCaption(facts: ReplayFactsPayload | null | undefined): string {
     bits.push(`${(facts.descentDurationMs / 1000).toFixed(1)}s descent`);
   if (facts.protectiveArm === false) bits.push("no arm protection");
   if (facts.protectiveArm === true) bits.push("arms broke the fall");
+  if (facts.postImpactMovement === "slight" || facts.postImpactMovement === "moving")
+    bits.push(`${facts.postImpactMovement} movement after impact`);
   return bits.length
     ? `${bits.join(" · ")} · joint positions only, no pixels`
     : "Replayed joint positions · no pixels were recorded";
@@ -59,20 +61,38 @@ export function ReplayPlayer() {
   rateRef.current = slow ? 0.25 : 1;
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // The drilldown auto-opens on the SSE event BEFORE the browser's replay
+  // upload lands (it fires after the alert POST + facts compute), so a
+  // fetch-once here would 404 and the player would never appear on the LIVE
+  // path (gap check 2026-07-30). Poll for up to ~30 s instead; the panel
+  // materializes the moment the trace attaches.
   useEffect(() => {
     let alive = true;
-    dataClient
-      .getIncidentReplay()
-      .then((r) => {
-        if (!alive || !r) return;
-        const decoded = decodeFrames(r.frames, r.quantScale);
-        setFrames(decoded);
-        setFacts((r.facts as ReplayFactsPayload | null) ?? null);
-        setPhases(findPhases(decoded));
-      })
-      .catch(() => {}); // a missing replay must never break the drilldown
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let attempts = 0;
+    const attempt = () => {
+      dataClient
+        .getIncidentReplay()
+        .then((r) => {
+          if (!alive) return;
+          if (r) {
+            const decoded = decodeFrames(r.frames, r.quantScale);
+            setFrames(decoded);
+            setFacts((r.facts as ReplayFactsPayload | null) ?? null);
+            setPhases(findPhases(decoded));
+            return;
+          }
+          if (++attempts < 20) timer = setTimeout(attempt, 1500);
+        })
+        .catch(() => {
+          // a missing replay must never break the drilldown
+          if (alive && ++attempts < 20) timer = setTimeout(attempt, 1500);
+        });
+    };
+    attempt();
     return () => {
       alive = false;
+      clearTimeout(timer);
     };
   }, []);
 

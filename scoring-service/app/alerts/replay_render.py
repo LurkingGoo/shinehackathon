@@ -50,7 +50,9 @@ def render_replay_gif(
     plays at the speed the fall actually happened."""
     if not _PIL or quant_scale <= 0:
         return None
-    decoded = [_decode(r, quant_scale) for r in frames[:max_frames]]
+    # Keep the TAIL: the fall lives at the end of the ring; truncating the
+    # head drops boring walking, truncating the tail would drop the impact.
+    decoded = [_decode(r, quant_scale) for r in frames[-max_frames:]]
     if sum(1 for _t, p in decoded if p) < 2:
         return None
 

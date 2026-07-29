@@ -269,23 +269,78 @@ def test_send_replay_animation_noop_unconfigured(monkeypatch):
 
 def test_upload_dispatches_animation_when_configured(monkeypatch):
     """The follow-up fires off-thread after a stored upload — assert the
-    render+send path is invoked with the stored frames, without a network."""
+    render+send path is invoked with the stored frames, threaded under the
+    settled alert, and surfaced on /alerts/status. No network anywhere."""
+    import time as _time
+
     sent: dict = {}
     monkeypatch.setenv("SHINEHACKATHON_TELEGRAM_BOT_TOKEN", "TESTTOKEN123")
     monkeypatch.setenv("SHINEHACKATHON_TELEGRAM_CHAT_ID", "999")
+    monkeypatch.setattr(telegram, "send_incident_alert", lambda ev: True)
     monkeypatch.setattr(
         telegram, "send_replay_animation",
-        lambda gif, caption: sent.update(gif=gif, caption=caption) or True,
+        lambda gif, caption, reply_to=None:
+            sent.update(gif=gif, caption=caption, reply_to=reply_to) or True,
     )
     with TestClient(app) as c:
         iid = _fire_cv(c)
         assert _upload(c, iid, frames=_moving_frames()).status_code == 200
-        deadline = __import__("time").monotonic() + 5
-        while not sent and __import__("time").monotonic() < deadline:
-            __import__("time").sleep(0.05)
-    assert sent, "animation follow-up never dispatched"
+        deadline = _time.monotonic() + 8
+        while not sent and _time.monotonic() < deadline:
+            _time.sleep(0.05)
+        assert sent, "animation follow-up never dispatched"
+        status = c.get("/alerts/status").json()
     assert sent["gif"][:6] in (b"GIF87a", b"GIF89a")
     assert "no pixels" in sent["caption"]
+    assert status["replayAnimation"]["outcome"] == "sent"
+
+
+def test_animation_caption_is_captured_before_the_thread_runs(monkeypatch):
+    """Race guard: the caption must belong to THIS incident even if the
+    incident is cleared while the render thread is still working."""
+    import time as _time
+
+    sent: dict = {}
+    monkeypatch.setenv("SHINEHACKATHON_TELEGRAM_BOT_TOKEN", "TESTTOKEN123")
+    monkeypatch.setenv("SHINEHACKATHON_TELEGRAM_CHAT_ID", "999")
+    monkeypatch.setattr(telegram, "send_incident_alert", lambda ev: True)
+
+    def slow_send(gif, caption, reply_to=None):
+        sent.update(caption=caption)
+        return True
+
+    monkeypatch.setattr(telegram, "send_replay_animation", slow_send)
+    with TestClient(app) as c:
+        iid = _fire_cv(c)
+        _upload_with_facts(c, iid, {"direction": "right", "descentDurationMs": 1900})
+        c.post("/incidents/clear")  # reset races the render thread
+        deadline = _time.monotonic() + 8
+        while not sent and _time.monotonic() < deadline:
+            _time.sleep(0.05)
+    assert sent, "animation follow-up never dispatched"
+    # the caption carries the CAMERA incident's enriched rationale, never the
+    # accelerometer rationale the cleared state would have produced
+    assert "rightward" in sent["caption"]
+    assert "free-fall" not in sent["caption"]
+
+
+def test_gif_bone_graph_matches_frontend_subset():
+    """The renderer's hand-mirrored bone graph must equal skeleton.ts's
+    REPLAY_BONES (parity guard — a drift draws arms attached to knees)."""
+    import re
+    from pathlib import Path
+
+    from app.alerts import replay_render
+
+    src = (Path(__file__).resolve().parents[2] / "triage-dashboard" / "lib"
+           / "pose" / "skeleton.ts").read_text(encoding="utf-8")
+    bones_src = src.split("REPLAY_LANDMARKS")[0]
+    bones = [(int(a), int(b)) for a, b in re.findall(r"\[(\d+),\s*(\d+)\]", bones_src)]
+    lm = re.search(r"REPLAY_LANDMARKS[^=]*=\s*\[([^\]]+)\]", src).group(1)
+    subset = [int(x) for x in re.findall(r"\d+", lm)]
+    idx = {m: i for i, m in enumerate(subset)}
+    expected = [(idx[a], idx[b]) for a, b in bones]
+    assert [tuple(p) for p in replay_render.BONES] == expected
 
 
 # --------------------------- orthogonal paths ------------------------------ #

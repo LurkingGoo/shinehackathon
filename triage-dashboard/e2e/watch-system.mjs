@@ -125,6 +125,19 @@ try {
   });
   const iid = cvRes.headers()["x-incident-id"];
   assert.ok(iid, "cv-detected did not return X-Incident-Id");
+
+  // LIVE ordering (gap check 2026-07-30): open the drilldown BEFORE the
+  // upload lands — exactly what happens in a real fall (the SSE event beats
+  // the replay POST). The player must appear via its poll, not a lucky
+  // mount-time fetch.
+  await page.goto(DASH, { waitUntil: "domcontentloaded" });
+  await page.getByText("Someone needs help right now").waitFor({ timeout: 10_000 });
+  await page.getByText("Tan Ah Moi").first().click();
+  assert.equal(
+    await page.getByText("How the fall happened").count(), 0,
+    "player appeared before any trace existed",
+  );
+
   const frames = Array.from({ length: 30 }, (_, i) => [i * 100, ...Array(39).fill(500)]);
   const up = await page.request.post(`${API}/incidents/replay`, {
     data: {
@@ -135,14 +148,11 @@ try {
   });
   assert.equal(up.status(), 200, "replay upload failed");
   assert.equal((await page.request.get(`${API}/incidents/replay`)).status(), 200);
-  step("camera incident + landmark trace uploaded (nonce accepted)");
+  step("camera incident live; trace uploaded AFTER the drilldown opened");
 
-  await page.goto(DASH, { waitUntil: "domcontentloaded" });
-  await page.getByText("Someone needs help right now").waitFor({ timeout: 10_000 });
-  await page.getByText("Tan Ah Moi").first().click();
-  await page.getByText("How the fall happened").waitFor({ timeout: 10_000 });
+  await page.getByText("How the fall happened").waitFor({ timeout: 20_000 });
   await page.getByText(/fell rightward/).first().waitFor({ timeout: 5_000 });
-  step("drilldown shows the skeleton replay + enriched rationale");
+  step("player materialized via its poll + enriched rationale shown");
   await page.screenshot({ path: `${SHOTS}/e2e-replay.png`, fullPage: true });
 
   // reset the beat: the replay must die with the incident

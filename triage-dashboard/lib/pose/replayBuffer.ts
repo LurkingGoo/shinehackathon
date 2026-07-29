@@ -40,8 +40,10 @@ export class ReplayRing {
     while (this.frames.length && this.frames[0].tMs < cutoff) this.frames.shift();
   }
 
-  /** Deep-copied window ending at nowMs — immune to later pushes. The ring
-   * keeps recording (a post-cooldown second fall gets a fresh window). */
+  /** Deep-copied window ending at nowMs — immune to later pushes. The
+   * caller resets the ring after freezing: the 15 s window outlives the
+   * 10 s cooldown, so without a reset a second fall's replay would contain
+   * the first fall's descent (gap check 2026-07-30). */
   freeze(nowMs: number): RingFrame[] {
     const cutoff = nowMs - REPLAY_WINDOW_MS;
     return this.frames
@@ -73,7 +75,10 @@ export function encodeFrames(frames: RingFrame[]): number[][] {
         row.push(
           Math.round(p.x * QUANT_SCALE),
           Math.round(p.y * QUANT_SCALE),
-          Math.round((p.visibility ?? 0) * 100),
+          // absent visibility = assume visible — the same ?? 1 default the
+          // fall heuristic uses; ?? 0 would ghost-fade the whole replay on
+          // tasks-vision builds that omit the field (gap check 2026-07-30)
+          Math.round((p.visibility ?? 1) * 100),
         );
     return row;
   });
