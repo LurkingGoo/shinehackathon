@@ -26,6 +26,8 @@ uvicorn app.main:app --reload --port 8000
 - `POST /incidents/cv-detected`     → camera/pose fall track; same incident path, honestly labelled
 - `POST /incidents/clear`           → demo reset to the calm chronic ranking
 - `GET  /incidents/trace`           → "what the sensor saw" waveform (404 while calm / for camera incidents)
+- `POST /incidents/replay`          → skeleton trace upload for the active camera incident (ADR 0017; nonce-guarded)
+- `GET  /incidents/replay`          → the camera's own drilldown signal (404 calm / accelerometer / before upload)
 - `GET  /training-stats`            → judge-metrics page: the illustrative classifier (never scores a resident)
 - `GET  /health`
 
@@ -60,6 +62,8 @@ pytest -q          # contract + scoring + live-channel
 - `tests/test_loaders.py`  — real SisFall/CASAS parsing + curated Tier-2 fallback.
 - `tests/test_cv.py`       — camera track: shared incident path, honest labels,
   no fake waveform (trace 404s).
+- `tests/test_replay.py`   — skeleton replay: nonce guard, incident-lifetime
+  retention, facts → rationale/features.
 - `tests/test_training.py` — deterministic judge-metrics payload.
 - `tests/test_telegram.py` — dispatcher no-ops unconfigured, never raises.
 

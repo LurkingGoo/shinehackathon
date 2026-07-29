@@ -184,3 +184,12 @@ attempted.
 
 Estimated effort: Phase 0 ~30 min · Phase 1 ~half day · Phase 2 ~half day ·
 Phase 3 ~half day · Phase 4 ~1 h · Phase 5 ~half day (optional).
+
+## Progress (2026-07-29)
+
+Phases 0–4 SHIPPED same-day (`bbf1277` → phase-4 commit): pytest 136 /
+vitest 76 / tsc clean; e2e 15/15 incl. the live replay beat + retention
+assertion; slides.pdf re-rendered. Outstanding from Phase 4: the deck's
+drilldown SCREENSHOTS still show the pre-replay panel — refresh them at
+rehearsal with a real on-camera fall (a synthetic trace draws a single dot,
+not a money shot). Phase 5 (Telegram keyframe PNG) remains optional-unstarted.

@@ -47,7 +47,9 @@ Open http://localhost:3000, click a resident to drill down, and press
 **Camera fall detection:** open http://localhost:3000/watch, allow the
 webcam, and fall (fast, then hold still ~3 s) — the incident fires into the
 same pipeline. Pose estimation runs entirely in the browser; no video is
-uploaded. `npm run fetch-pose-assets` (run automatically by the start
+uploaded (a confirmed fall sends a stick-figure joint trace — coordinates,
+never pixels — which the dashboard drilldown replays).
+`npm run fetch-pose-assets` (run automatically by the start
 scripts) vendors the model for offline use; otherwise it loads from the CDN.
 
 No database, no secrets, no `.env` needed. The demo runs on a synthetic
