@@ -96,11 +96,13 @@ export function decodeFrames(rows: number[][], quantScale = QUANT_SCALE): RingFr
 export function buildReplayUpload(
   frames: RingFrame[],
   incidentId: string,
+  facts?: ReplayUploadPayload["facts"],
 ): ReplayUploadPayload {
   return {
     incidentId,
     fps: REPLAY_FPS,
     quantScale: QUANT_SCALE,
     frames: encodeFrames(frames),
+    facts,
   };
 }

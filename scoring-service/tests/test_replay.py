@@ -151,6 +151,76 @@ def test_replay_never_persisted_to_disk():
     assert not fixtures.REGISTRY_PATH.exists()
 
 
+# ------------------------ facts → rationale (phase 2) ---------------------- #
+
+def _upload_with_facts(client, iid, facts):
+    return client.post("/incidents/replay", json={
+        "incidentId": iid, "fps": 10.0, "quantScale": 1000, "frames": FRAMES,
+        "facts": facts,
+    })
+
+
+def test_facts_enrich_rationale_and_features():
+    with TestClient(app) as c:
+        iid = _fire_cv(c)
+        r = _upload_with_facts(c, iid, {
+            "descentDurationMs": 1900, "direction": "right",
+            "protectiveArm": False, "postImpactMovement": "none",
+        })
+        assert r.status_code == 200
+        top = c.get("/caseload").json()["entries"][0]
+        rationale = top["score"]["rationale"]
+        assert "rightward" in rationale
+        assert "1.9" in rationale
+        assert "no arm protection" in rationale
+        detail = c.get(f"/residents/{top['id']}").json()
+        by_label = {f["label"]: f["value"] for f in detail["features"]}
+        # briefing guardrail: every rationale number traces to a feature value
+        assert by_label["Descent"] == "1.9s"
+        assert by_label["Fall direction"] == "rightward"
+        assert by_label["Protective response"] == "none seen"
+
+
+def test_partial_facts_compose_partially():
+    with TestClient(app) as c:
+        iid = _fire_cv(c)
+        _upload_with_facts(c, iid, {"direction": "left"})
+        rationale = c.get("/caseload").json()["entries"][0]["score"]["rationale"]
+        assert "leftward" in rationale
+        assert "descent" not in rationale
+        assert "arm" not in rationale
+
+
+def test_unknown_facts_leave_rationale_unchanged():
+    with TestClient(app) as c:
+        iid = _fire_cv(c)
+        before = c.get("/caseload").json()["entries"][0]["score"]["rationale"]
+        _upload_with_facts(c, iid, {
+            "descentDurationMs": None, "direction": "unknown",
+            "protectiveArm": None, "postImpactMovement": "unknown",
+        })
+        after = c.get("/caseload").json()["entries"][0]["score"]["rationale"]
+        assert after == before  # nothing usable → the honest default stands
+
+
+def test_no_facts_upload_leaves_rationale_unchanged():
+    with TestClient(app) as c:
+        iid = _fire_cv(c)
+        before = c.get("/caseload").json()["entries"][0]["score"]["rationale"]
+        _upload(c, iid)
+        assert c.get("/caseload").json()["entries"][0]["score"]["rationale"] == before
+
+
+def test_enriched_features_die_with_the_incident():
+    with TestClient(app) as c:
+        iid = _fire_cv(c)
+        _upload_with_facts(c, iid, {"direction": "right", "descentDurationMs": 1900})
+        c.post("/incidents/clear")
+        _fire_cv(c)  # fresh incident must NOT inherit the enrichment
+        rationale = c.get("/caseload").json()["entries"][0]["score"]["rationale"]
+        assert "rightward" not in rationale
+
+
 # --------------------------- orthogonal paths ------------------------------ #
 
 def test_replay_follows_incident_not_the_name():

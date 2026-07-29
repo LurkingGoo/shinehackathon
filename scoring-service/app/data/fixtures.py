@@ -297,7 +297,50 @@ def set_replay(incident_id: str, fps: float, quant_scale: int,
         "facts": facts,
         "receivedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     }
+    _apply_replay_facts(facts)
     return "stored"
+
+
+_DIRECTION_WORDS = {
+    "left": "leftward", "right": "rightward", "toward-camera": "toward the camera",
+}
+
+
+def _apply_replay_facts(facts: dict | None) -> None:
+    """Fold browser-computed replay facts (ADR 0017 phase 2) into the active
+    camera incident's DETERMINISTIC rationale, and stage matching feature
+    rows — every number the rationale states must trace to a feature
+    (feature-spec §0/§3, briefing guardrail). Deliberately NO SSE republish:
+    a second acute-detected frame would read as a new incident; the enriched
+    incident surfaces through the read-through /caseload + drilldown, and
+    the escalation message picks it up naturally."""
+    if not facts or _cv_override is None:
+        return
+    frags: list[str] = []
+    feats: list[tuple[str, str, float]] = []
+    word = _DIRECTION_WORDS.get(facts.get("direction") or "")
+    if word:
+        frags.append(f"fell {word}")
+        feats.append(("Fall direction", word, 0.15))
+    dur = facts.get("descentDurationMs")
+    if isinstance(dur, (int, float)) and dur > 0:
+        s = dur / 1000.0
+        frags.append(f"{s:.1f}s descent")
+        feats.append(("Descent", f"{s:.1f}s", 0.15))
+    pa = facts.get("protectiveArm")
+    if pa is True:
+        frags.append("arms broke the fall")
+        feats.append(("Protective response", "arms came out", 0.1))
+    elif pa is False:
+        frags.append("no arm protection")
+        feats.append(("Protective response", "none seen", 0.1))
+    if not frags:
+        return  # nothing usable — the default template stands, honestly
+    still = _cv_override["stillness_s"]
+    _cv_override["rationale"] = (
+        f"Camera: {', '.join(frags)}; still {still:.0f}s after impact"
+    )
+    _cv_override["replay_features"] = feats
 
 
 def replay_payload() -> dict | None:
@@ -348,6 +391,10 @@ def _cv_score() -> tuple[RiskScore, list, str, str]:
         RiskFeature(label="Stillness", value=f"{ov['stillness_s']:.0f}s no movement",
                     weight=0.4, baseline="< 2s normal"),
     ]
+    # Replay facts (ADR 0017 phase 2): the rows behind the enriched rationale
+    # — every number it states appears here, keeping the briefing guardrail.
+    for label, value, weight in ov.get("replay_features", []):
+        feats.append(RiskFeature(label=label, value=value, weight=weight, baseline=""))
     action = rationale.recommend_action("acute", "Pose", 1.0)
     score = RiskScore(
         track="acute", risk=1.0, confidence=ov["confidence"],

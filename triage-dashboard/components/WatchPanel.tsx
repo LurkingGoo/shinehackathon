@@ -38,6 +38,7 @@ import {
   buildReplayUpload,
   type RingFrame,
 } from "@/lib/pose/replayBuffer";
+import { computeReplayFacts } from "@/lib/pose/replayFacts";
 import styles from "./watch.module.css";
 
 /**
@@ -208,10 +209,14 @@ export function WatchPanel() {
           payload || rid ? { ...payload, residentId: rid } : undefined,
         );
         // Skeleton replay (ADR 0017): fire-and-forget AFTER the alert is in —
-        // this upload can never block, delay, or alter the alert path.
+        // this upload can never block, delay, or alter the alert path. Facts
+        // are computed here (post-alert, a few ms on ≤160 frames) so the
+        // rationale stays single-sourced from the detecting browser.
         if (replaySnap && replaySnap.length > 1 && incidentId) {
           void dataClient
-            .sendIncidentReplay(buildReplayUpload(replaySnap, incidentId))
+            .sendIncidentReplay(
+              buildReplayUpload(replaySnap, incidentId, computeReplayFacts(replaySnap)),
+            )
             .catch(() => pushLog("Replay upload failed — alert unaffected"));
         }
         const roster = rid ? residents.find((r) => r.id === rid) : undefined;
