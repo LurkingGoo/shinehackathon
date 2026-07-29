@@ -2,7 +2,7 @@
 type: plan
 date: 2026-07-29
 title: Skeleton replay — phased deployment plan
-status: proposed
+status: implementing
 tags: [watch, replay, privacy, drilldown, phases]
 ---
 

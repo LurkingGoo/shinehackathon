@@ -7,7 +7,7 @@ tags: [adr, camera, face-recognition, privacy, enrollment]
 ---
 
 # 0011. Enrolled on-device face identity for camera incidents
-- Status: Accepted
+- Status: Accepted — amended privacy claim superseded by [[0017-skeleton-replay-privacy-amendment]] (2026-07-29); the identity design stands
 - Date: 2026-07-26
 - Amends: [[0010-browser-pose-assets]] (privacy claim wording; asset policy unchanged)
 

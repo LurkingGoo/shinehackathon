@@ -7,7 +7,7 @@ tags: [adr, camera, pose, mediapipe]
 ---
 
 # 0010. In-browser MediaPipe pose for the camera track; assets fetched, not committed
-- Status: Accepted
+- Status: Accepted — privacy WORDING superseded by [[0017-skeleton-replay-privacy-amendment]] (2026-07-29); the architectural decision stands
 - Date: 2026-07-26
 
 ## Context
