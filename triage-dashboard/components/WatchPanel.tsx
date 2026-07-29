@@ -383,6 +383,8 @@ export function WatchPanel() {
                 // holds through a fall) from "a face we can't match" (a few
                 // of those unbind — likely a different person).
                 const match = desc ? bestMatch(desc, galleryRef.current) : null;
+                if (match) console.log(`[face] match ${match.residentId} d=${match.distance.toFixed(3)}`);
+                else if (desc) console.log("[face] face seen, no match");
                 const b = trackerRef.current.update(
                   match,
                   performance.now(),
