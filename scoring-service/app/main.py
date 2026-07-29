@@ -16,7 +16,10 @@ import os
 import threading
 import time
 
-from fastapi import FastAPI, HTTPException, Request
+from typing import Annotated
+
+from fastapi import FastAPI, HTTPException, Request, Response
+from pydantic import Field
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
@@ -267,7 +270,7 @@ class CvDetectedRequest(BaseModel):
 
 
 @app.post("/incidents/cv-detected", response_model=IncidentEvent)
-def cv_detected(body: CvDetectedRequest | None = None) -> IncidentEvent:
+def cv_detected(response: Response, body: CvDetectedRequest | None = None) -> IncidentEvent:
     """Camera / pose fall track (the /watch stretch). The browser MediaPipe
     heuristic (upright -> horizontal -> still) calls this to fire the SAME
     incident path as an accelerometer fall: it ranks into /caseload, streams over
@@ -277,10 +280,72 @@ def cv_detected(body: CvDetectedRequest | None = None) -> IncidentEvent:
     b = body or CvDetectedRequest()
     fixtures.set_cv_incident(b.stillness_s, b.confidence, b.note, b.resident_id)
     fixtures.mark_incident()
+    # ADR 0017: the per-incident nonce rides a HEADER (not the contract-guarded
+    # IncidentEvent body) — only the detecting browser needs it, to pair its
+    # follow-up replay upload with THIS incident and no other.
+    iid = fixtures.current_cv_incident_id()
+    if iid:
+        response.headers["X-Incident-Id"] = iid
     event = fixtures.build_incident_event()
     hub.publish(event)
     _dispatch_alert(event)
     return event
+
+
+class ReplayFacts(BaseModel):
+    """Browser-computed replay facts (ADR 0017, folded into the rationale in
+    phase 2). All optional — fail-open, like everything on the camera path."""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    descent_duration_ms: int | None = None
+    direction: str | None = None
+    protective_arm: bool | None = None
+    post_impact_movement: str | None = None
+
+
+class ReplayUploadRequest(BaseModel):
+    """The frozen landmark ring buffer (ADR 0017): quantized integer rows,
+    [tMs, then 13 joints x (x*1000, y*1000, visibility*100)]; a 1-length row
+    means no person was tracked that instant. Hard caps are the DoS guard."""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    incident_id: str
+    fps: float = Field(10.0, gt=0, le=120)
+    quant_scale: int = Field(1000, gt=0)
+    frames: list[Annotated[list[int], Field(max_length=99)]] = Field(max_length=200)
+    facts: ReplayFacts | None = None
+
+
+@app.post("/incidents/replay")
+def upload_replay(body: ReplayUploadRequest, request: Request) -> dict:
+    """Attach the skeleton trace to the active camera incident (ADR 0017).
+    404: nothing to attach to (calm / TTL / accelerometer incident).
+    409: nonce mismatch — the buffer belongs to a superseded incident; the
+    client must drop it, never retry. Never persisted, never dispatched."""
+    cl = request.headers.get("content-length")
+    if cl and cl.isdigit() and int(cl) > 1_500_000:
+        raise HTTPException(status_code=413, detail="replay too large")
+    outcome = fixtures.set_replay(
+        body.incident_id, body.fps, body.quant_scale, body.frames,
+        body.facts.model_dump(by_alias=True) if body.facts else None,
+    )
+    if outcome == "no-incident":
+        raise HTTPException(status_code=404, detail="no active camera incident")
+    if outcome == "stale":
+        raise HTTPException(
+            status_code=409, detail="stale replay for a superseded incident"
+        )
+    return {"ok": True, "incidentId": body.incident_id, "frames": len(body.frames)}
+
+
+@app.get("/incidents/replay")
+def get_replay() -> dict:
+    """The skeleton trace behind the active CAMERA incident — the camera's
+    native equivalent of /incidents/trace (each sensor drills into its own
+    raw signal). 404 while calm, for accelerometer incidents, and before the
+    browser's upload lands."""
+    payload = fixtures.replay_payload()
+    if payload is None:
+        raise HTTPException(status_code=404, detail="no replay for the active incident")
+    return payload
 
 
 class EscalateRequest(BaseModel):

@@ -244,11 +244,23 @@ _cv_override: dict | None = None
 # Resolved here, fail-open — an unknown/absent id keeps the default identity.
 _cv_resident = None  # AcuteResident | None
 
+# Skeleton replay (ADR 0017). PRIVACY INVARIANT: the landmark trace lives in
+# these module globals ONLY — exactly as long as the incident. It must never
+# be written to disk, the registry artifact, or logs, and never enter a
+# Telegram dispatch (until the explicit keyframe phase). The nonce
+# (_cv_incident_id) is what a stale upload is rejected against.
+_cv_counter: int = 0
+_cv_incident_id: str | None = None
+_replay: dict | None = None
+
 
 def set_cv_incident(stillness_s: float = 8.0, confidence: float = 0.7,
                     note: str | None = None,
                     resident_id: str | None = None) -> None:
-    global _cv_override, _cv_resident
+    global _cv_override, _cv_resident, _cv_counter, _cv_incident_id, _replay
+    _cv_counter += 1
+    _cv_incident_id = f"cv-{_cv_counter}"
+    _replay = None  # a new incident never inherits a previous fall's trace
     conf = float(np.clip(confidence, 0.0, 1.0))
     still = max(0.0, float(stillness_s))
     _cv_override = {
@@ -259,6 +271,41 @@ def set_cv_incident(stillness_s: float = 8.0, confidence: float = 0.7,
         "rationale": note or f"Camera: upright → horizontal, still {still:.0f}s",
     }
     _cv_resident = _resolve_cv_resident(resident_id)
+
+
+def current_cv_incident_id() -> str | None:
+    """The active camera incident's nonce (None while calm / accelerometer)."""
+    return _cv_incident_id if _cv_override is not None else None
+
+
+def set_replay(incident_id: str, fps: float, quant_scale: int,
+               frames: list, facts: dict | None = None) -> str:
+    """Attach the browser's landmark trace to the active camera incident.
+    Returns 'stored', 'stale' (nonce mismatch — the buffer belongs to a
+    superseded incident and must be dropped, never retried) or 'no-incident'
+    (calm, TTL-expired, or an accelerometer incident)."""
+    global _replay
+    if not incident_active() or _cv_override is None:
+        return "no-incident"
+    if incident_id != _cv_incident_id:
+        return "stale"
+    _replay = {
+        "incidentId": incident_id,
+        "fps": fps,
+        "quantScale": quant_scale,
+        "frames": frames,
+        "facts": facts,
+        "receivedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    }
+    return "stored"
+
+
+def replay_payload() -> dict | None:
+    """The stored replay, or None when calm / accelerometer incident /
+    not yet uploaded (the endpoint 404s — mirrors acute_trace_payload)."""
+    if not incident_active() or _cv_override is None or _replay is None:
+        return None
+    return _replay
 
 
 def _resolve_cv_resident(resident_id: str | None):
@@ -283,9 +330,11 @@ def acute_identity():
 
 
 def clear_cv_incident() -> None:
-    global _cv_override, _cv_resident
+    global _cv_override, _cv_resident, _cv_incident_id, _replay
     _cv_override = None
     _cv_resident = None
+    _cv_incident_id = None
+    _replay = None  # retention claim: the trace dies with the incident
 
 
 def _cv_score() -> tuple[RiskScore, list, str, str]:

@@ -149,6 +149,29 @@ export interface IncidentTrace {
   freefallMs: number;
 }
 
+/** ---- Skeleton replay (ADR 0017) ----
+ * Like IncidentTrace, a read-only presentation surface OUTSIDE the score
+ * contract (not parity-guarded). Frames are opaque quantized integer rows:
+ * [tMs, then 13 joints x (x*quantScale, y*quantScale, visibility*100)];
+ * a 1-length row means no person was tracked that instant. Coordinates
+ * only, never pixels; server retention = the incident's lifetime. */
+export interface ReplayUploadPayload {
+  /** The X-Incident-Id nonce from the fall POST — pairs this buffer with
+   * exactly one incident (a stale buffer is rejected 409, never retried). */
+  incidentId: string;
+  fps: number;
+  quantScale: number;
+  frames: number[][];
+}
+
+/** GET /api/incidents/replay — 404 while calm, for accelerometer incidents,
+ * and before the browser's upload lands. */
+export interface IncidentReplay extends ReplayUploadPayload {
+  receivedAt: string;
+  /** Browser-computed replay facts (phase 2); shape firms up there. */
+  facts?: unknown | null;
+}
+
 /** ---- Judge-metrics payload (GET /api/training-stats) ----
  * The ILLUSTRATIVE magnitude-feature logistic regression (ADR 0009). Every
  * number is measured from real deterministic GD runs on the curated SisFall

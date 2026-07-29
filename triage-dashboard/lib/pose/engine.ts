@@ -5,7 +5,9 @@
  * /mediapipe/* (populated by `npm run fetch-pose-assets`, gitignored) so a
  * pre-fetched laptop demos fully offline; fall back to the official CDN URLs
  * so a fresh clone still works with internet. All inference is in-browser —
- * no frame ever leaves the device.
+ * no frame ever leaves the device. (Since ADR 0017, a quantized LANDMARK
+ * trace does leave, once, after a confirmed fall — coordinates, never
+ * pixels; see lib/pose/replayBuffer.ts.)
  *
  * Kept free of detection logic: this module returns raw landmarks; the
  * unit-tested state machine in fallHeuristic.ts decides what they mean.

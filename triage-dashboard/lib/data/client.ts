@@ -15,10 +15,12 @@ import type {
   AlertStatus,
   CaseloadEntry,
   IncidentEvent,
+  IncidentReplay,
   IncidentTrace,
   LocationPayload,
   RankedCaseload,
   RegisterResidentPayload,
+  ReplayUploadPayload,
   ResidentDetail,
   TrainingStats,
 } from "@/lib/types";
@@ -69,7 +71,19 @@ export interface DataClient {
     /** Enrolled identity (ADR 0011). Optional and fail-open: absent or
      * unknown ids produce the generic incident. */
     residentId?: string;
-  }): Promise<void>;
+  }): Promise<string | null>;
+  /**
+   * Skeleton replay upload (ADR 0017): the frozen landmark ring buffer,
+   * fired AFTER the alert POST resolves — fail-open, never blocks or delays
+   * an alert. keepalive so navigating to the dashboard cannot abort it.
+   */
+  sendIncidentReplay(payload: ReplayUploadPayload): Promise<void>;
+  /**
+   * The skeleton trace behind the active CAMERA incident (the camera's
+   * native /incidents/trace). Resolves null while calm, for accelerometer
+   * incidents, and before the upload lands (the endpoint 404s).
+   */
+  getIncidentReplay(): Promise<IncidentReplay | null>;
   /**
    * Long-lie escalation (ADR 0012): the camera saw no recovery
    * `stillDownS` seconds after the fall alert. Fires the STILL DOWN
@@ -258,6 +272,26 @@ export const dataClient: DataClient = {
     });
     if (!res.ok) throw new Error(`/api/incidents/cv-detected -> ${res.status}`);
     // The IncidentEvent arrives via the SSE stream — no local fan-out.
+    // ADR 0017: the response header pairs a follow-up replay upload with
+    // exactly this incident.
+    return res.headers.get("x-incident-id");
+  },
+
+  async sendIncidentReplay(payload) {
+    const res = await fetch(`${BASE}/api/incidents/replay`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    });
+    if (!res.ok) throw new Error(`/api/incidents/replay -> ${res.status}`);
+  },
+
+  async getIncidentReplay() {
+    const res = await fetch(`${BASE}/api/incidents/replay`, { cache: "no-store" });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`/api/incidents/replay -> ${res.status}`);
+    return (await res.json()) as IncidentReplay;
   },
 
   async reportStillDown(payload) {

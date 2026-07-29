@@ -3,7 +3,7 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.12.1
+spec_version: 1.13.0
 last_updated: 2026-07-29
 tags: [features, scoring, reference]
 ---
@@ -118,8 +118,10 @@ and an absent or unknown id falls back to the generic default — recognition
 can never block or alter an alert. Identity comes from opt-in on-device
 enrollment (front + both profiles → embeddings in localStorage, matched only
 while the person is upright, carried through the pose track). Amended privacy
-claim: no video leaves the browser; only the detection event and the matched
-resident id are sent.
+claim (1.13.0, [[0017-skeleton-replay-privacy-amendment]]): pixels and face
+embeddings never leave the browser; the detection event, the matched resident
+id, and — after a confirmed fall only — a fifteen-second stick-figure
+LANDMARK trace are sent, the trace retained only as long as the incident.
 
 **Browser half (shipped 1.6.0, [[0010-browser-pose-assets]]).** The `/watch`
 dashboard page runs MediaPipe PoseLandmarker (lite) entirely in-browser —
@@ -294,6 +296,21 @@ rationale → recommendedAction` and cannot affect any resident's score:
   exactly one surface talks. The dashboard also refetches the caseload every
   30 s — the SSE stream has no replay, so an incident fired during a
   sleep/Wi-Fi blip now surfaces without a manual refresh.
+- **Skeleton replay, phase 1: capture + upload + lifecycle (spec 1.13.0,
+  [[0017-skeleton-replay-privacy-amendment]])** — the /watch camera loop
+  keeps a 15 s / ~10 fps ring of the 13-joint replay subset; on a confirmed
+  fall it is frozen synchronously and uploaded AFTER the alert POST
+  (fire-and-forget keepalive, ~25 KB quantized — never blocks an alert).
+  `POST /incidents/replay` attaches it to the active camera incident via the
+  `X-Incident-Id` nonce from the fall response (409 for a superseded
+  incident's buffer, 404 calm/accelerometer); `GET /incidents/replay` is the
+  camera's native `/incidents/trace` (404 calm / accelerometer / before
+  upload). Retention = the incident's lifetime exactly: cleared on Reset, on
+  any superseding incident, dead on TTL; never persisted, logged, or
+  dispatched. `/incidents/trace` still 404s for camera incidents — each
+  sensor drills into its own raw signal. Replay shapes live outside the
+  score contract (IncidentTrace precedent). Facts + player follow in
+  phases 2–3.
 - **Enrollment capture gating (spec 1.10.0)** — the capture control sits
   directly under the camera feed and enables only when: camera running, face
   models ready, a target chosen, no capture in flight, under the 5-angle cap,

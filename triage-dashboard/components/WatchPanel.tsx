@@ -32,24 +32,23 @@ import {
   speakAlert,
 } from "@/lib/audio/alerts";
 import { useRespeak } from "@/lib/audio/useRespeak";
+import { BONES } from "@/lib/pose/skeleton";
+import {
+  ReplayRing,
+  buildReplayUpload,
+  type RingFrame,
+} from "@/lib/pose/replayBuffer";
 import styles from "./watch.module.css";
 
 /**
  * /watch — the camera acute source (feature-spec §1b). MediaPipe pose runs
  * entirely in this browser; the unit-tested state machine (upright →
- * horizontal within 3 s → still 3 s) decides, and a detection POSTs
+ * horizontal within 3.5 s → still 3 s) decides, and a detection POSTs
  * through the data seam to fire the SAME incident path as an accelerometer
  * fall: caseload preemption, SSE re-rank, Telegram alert.
  */
 
 const STILL_TARGET_MS = 3000;
-
-// Minimal skeleton: torso box + limbs, MediaPipe pose indices.
-const BONES: Array<[number, number]> = [
-  [11, 12], [11, 23], [12, 24], [23, 24], // torso
-  [11, 13], [13, 15], [12, 14], [14, 16], // arms
-  [23, 25], [25, 27], [24, 26], [26, 28], // legs
-];
 
 type EngineStatus = "off" | "loading" | "running" | "error";
 
@@ -67,6 +66,8 @@ export function WatchPanel() {
   const prevLandmarksRef = useRef<LandmarkPoint[] | undefined>(undefined);
   const smRef = useRef(new FallStateMachine());
   const lastUiPushRef = useRef(0);
+  // Skeleton replay ring (ADR 0017): last 15 s of landmarks, frozen at fire.
+  const ringRef = useRef(new ReplayRing());
 
   const [engineStatus, setEngineStatus] = useState<EngineStatus>("off");
   const [assetSource, setAssetSource] = useState<"local" | "cdn" | null>(null);
@@ -193,16 +194,26 @@ export function WatchPanel() {
   );
 
   const report = useCallback(
-    async (payload?: { stillnessS?: number; confidence?: number; note?: string }) => {
+    async (
+      payload?: { stillnessS?: number; confidence?: number; note?: string },
+      replaySnap?: RingFrame[],
+    ) => {
       setSending(true);
       try {
         // Identity precedence (ADR 0011): face binding first, manual selector
         // second, generic default last. Read via refs so detections fired
         // from the camera loop see current values. Always fail-open.
         const rid = boundIdRef.current || residentIdRef.current || undefined;
-        await dataClient.reportCameraFall(
+        const incidentId = await dataClient.reportCameraFall(
           payload || rid ? { ...payload, residentId: rid } : undefined,
         );
+        // Skeleton replay (ADR 0017): fire-and-forget AFTER the alert is in —
+        // this upload can never block, delay, or alter the alert path.
+        if (replaySnap && replaySnap.length > 1 && incidentId) {
+          void dataClient
+            .sendIncidentReplay(buildReplayUpload(replaySnap, incidentId))
+            .catch(() => pushLog("Replay upload failed — alert unaffected"));
+        }
         const roster = rid ? residents.find((r) => r.id === rid) : undefined;
         const who = rid
           ? roster?.name ??
@@ -390,6 +401,7 @@ export function WatchPanel() {
     streamRef.current = null;
     prevLandmarksRef.current = undefined;
     smRef.current = new FallStateMachine();
+    ringRef.current.reset();
     if (videoRef.current) videoRef.current.srcObject = null;
     const canvas = canvasRef.current;
     canvas?.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
@@ -449,6 +461,7 @@ export function WatchPanel() {
       engineRef.current = engine;
       setAssetSource(engine.source);
       smRef.current = new FallStateMachine();
+      ringRef.current.reset();
       setEngineStatus("running");
       pushLog(`Camera watching (pose model: ${engine.source})`);
 
@@ -479,11 +492,12 @@ export function WatchPanel() {
           const m = measureFrame(landmarks, prevLandmarksRef.current);
           prevLandmarksRef.current = landmarks;
           postureRef.current = m.posture;
+          ringRef.current.push(landmarks, now); // replay ring (ADR 0017)
           const event = smRef.current.update(m, now);
           drawOverlay(landmarks);
           if (event) {
             if (event.kind === "still-down") void escalate(event.stillDownS);
-            else void report(event);
+            else void report(event, ringRef.current.freeze(now));
           }
           // Face tick: embeds run on cadence whenever the face engine is on —
           // the capture gate needs a live "face in view" signal even before
@@ -727,7 +741,10 @@ export function WatchPanel() {
             and it carries four fields: the fall timing, the seconds of
             stillness, a confidence estimate, and the matched resident id. The
             Telegram alert the caregiver receives is written from those fields
-            alone. Face enrollment is stored in this browser as number
+            alone. After a confirmed fall, and only then, we also send a
+            fifteen-second stick-figure trace of the movement: pose joint
+            coordinates, never pixels, kept only as long as the incident
+            itself. Face enrollment is stored in this browser as number
             embeddings, never as images, and the forget button removes them.
           </div>
         </section>
@@ -942,8 +959,9 @@ export function WatchPanel() {
               <b>Camera&nbsp;(pose)</b> and its own confidence estimate, never the
               96.2% figure. Video never leaves this browser
               {assetSource ? ` (model assets: ${assetSource})` : ""}; only the
-              detection event and the matched resident id are sent. Face
-              embeddings from enrollment stay in this browser&apos;s storage.
+              detection event, the matched resident id and — after a confirmed
+              fall — a stick-figure joint trace are sent. Face embeddings from
+              enrollment stay in this browser&apos;s storage.
             </p>
           </section>
         </aside>

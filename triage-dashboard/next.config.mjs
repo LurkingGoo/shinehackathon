@@ -19,6 +19,7 @@ const nextConfig = {
       { source: "/api/incidents/simulate", destination: `${SCORING_SERVICE}/incidents/simulate` },
       { source: "/api/incidents/simulate-nearmiss", destination: `${SCORING_SERVICE}/incidents/simulate-nearmiss` },
       { source: "/api/incidents/trace", destination: `${SCORING_SERVICE}/incidents/trace` },
+      { source: "/api/incidents/replay", destination: `${SCORING_SERVICE}/incidents/replay` },
       { source: "/api/incidents/clear", destination: `${SCORING_SERVICE}/incidents/clear` },
       { source: "/api/incidents/cv-detected", destination: `${SCORING_SERVICE}/incidents/cv-detected` },
       { source: "/api/incidents/escalate", destination: `${SCORING_SERVICE}/incidents/escalate` },
