@@ -192,4 +192,12 @@ vitest 76 / tsc clean; e2e 15/15 incl. the live replay beat + retention
 assertion; slides.pdf re-rendered. Outstanding from Phase 4: the deck's
 drilldown SCREENSHOTS still show the pre-replay panel — refresh them at
 rehearsal with a real on-camera fall (a synthetic trace draws a single dot,
-not a money shot). Phase 5 (Telegram keyframe PNG) remains optional-unstarted.
+not a money shot).
+
+**Phase 5 SHIPPED 2026-07-30, upgraded from keyframe PNGs to a full
+`sendAnimation` GIF** (the Bot API supports GIF/MP4 to 50 MB; a rendered
+trace is ~10 KB, so the whole replay travels, not three stills). Quiet
+reply to the alert, enriched-rationale caption, single-sanctioned-exit rule
+recorded in fixtures. Live Telegram delivery of the animation is
+deliberately unverified — first real on-camera fall at rehearsal proves it
+(the send path shares every guarantee with the text sends).

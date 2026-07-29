@@ -142,6 +142,62 @@ def send_escalation_alert(event: IncidentEvent, still_down_s: float) -> bool:
     return bool(body and body.get("ok"))
 
 
+def _multipart_body(
+    fields: dict[str, str], file_field: str, filename: str,
+    content: bytes, content_type: str,
+) -> tuple[bytes, str]:
+    """Hand-rolled multipart/form-data (the module's stdlib-only constraint —
+    no `requests`). Returns (body, boundary). Pure, so the encoding is
+    testable without a network."""
+    boundary = f"----shine{int(time.time() * 1000)}"
+    lines: list[bytes] = []
+    for k, v in fields.items():
+        lines += [
+            f"--{boundary}".encode(),
+            f'Content-Disposition: form-data; name="{k}"'.encode(),
+            b"", str(v).encode(),
+        ]
+    lines += [
+        f"--{boundary}".encode(),
+        (f'Content-Disposition: form-data; name="{file_field}"; '
+         f'filename="{filename}"').encode(),
+        f"Content-Type: {content_type}".encode(), b"", content,
+    ]
+    lines += [f"--{boundary}--".encode(), b""]
+    return b"\r\n".join(lines), boundary
+
+
+def send_replay_animation(gif: bytes, caption: str) -> bool:
+    """sendAnimation (ADR 0017 phase 5): the skeleton-replay GIF as a QUIET
+    reply to the fall alert — the alert already pinged loudly; the moving
+    evidence follows a beat later. Same guarantees as every send: silent
+    no-op unconfigured, best-effort, the token never logged."""
+    if not is_configured() or not gif:
+        return False
+    fields = {
+        "chat_id": os.environ[_CHAT_ENV],
+        "caption": caption,
+        "disable_notification": "true",
+    }
+    if _last_alert_msg_id:
+        fields["reply_to_message_id"] = str(_last_alert_msg_id)
+    body, boundary = _multipart_body(fields, "animation", "fall-replay.gif",
+                                     gif, "image/gif")
+    token = os.environ[_TOKEN_ENV]
+    req = Request(
+        f"https://api.telegram.org/bot{token}/sendAnimation",
+        data=body,
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+    )
+    try:
+        with urlopen(req, timeout=15.0) as resp:  # upload — longer than text
+            parsed = json.loads(resp.read().decode() or "{}")
+        return bool(parsed.get("ok"))
+    except Exception as exc:  # best-effort, token-free logging
+        print(f"[telegram] sendAnimation not delivered: {type(exc).__name__}: {exc}")
+        return False
+
+
 # ------------------------- acknowledgement poller ------------------------- #
 
 def get_ack() -> dict | None:

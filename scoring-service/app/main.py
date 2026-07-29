@@ -333,7 +333,41 @@ def upload_replay(body: ReplayUploadRequest, request: Request) -> dict:
         raise HTTPException(
             status_code=409, detail="stale replay for a superseded incident"
         )
+    _dispatch_replay_animation()
     return {"ok": True, "incidentId": body.incident_id, "frames": len(body.frames)}
+
+
+def _dispatch_replay_animation() -> None:
+    """Phase 5 (ADR 0017): render the stored replay as a stick-figure GIF and
+    send it as a quiet REPLY to the fall alert. This is the single sanctioned
+    exit for the landmark data — to the same chat that already received the
+    alert, as coordinates drawn into lines, never pixels. Entirely
+    best-effort and off the request thread; a no-op unconfigured or when
+    Pillow is absent."""
+    if not telegram.is_configured():
+        return
+    payload = fixtures.replay_payload()
+    if payload is None:
+        return
+
+    def _send() -> None:
+        try:
+            from app.alerts import replay_render
+
+            gif = replay_render.render_replay_gif(
+                payload["frames"], payload["quantScale"]
+            )
+            if not gif:
+                return
+            rationale = fixtures.build_incident_event().entry.score.rationale
+            telegram.send_replay_animation(
+                gif, f"How the fall happened — {rationale}\n"
+                     "(joint positions only, no pixels)",
+            )
+        except Exception as exc:  # never let the follow-up harm anything
+            print(f"[replay] animation follow-up skipped: {type(exc).__name__}: {exc}")
+
+    threading.Thread(target=_send, daemon=True).start()
 
 
 @app.get("/incidents/replay")

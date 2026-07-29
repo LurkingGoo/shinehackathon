@@ -246,9 +246,10 @@ _cv_resident = None  # AcuteResident | None
 
 # Skeleton replay (ADR 0017). PRIVACY INVARIANT: the landmark trace lives in
 # these module globals ONLY — exactly as long as the incident. It must never
-# be written to disk, the registry artifact, or logs, and never enter a
-# Telegram dispatch (until the explicit keyframe phase). The nonce
-# (_cv_incident_id) is what a stale upload is rejected against.
+# be written to disk, the registry artifact, or logs. Its single sanctioned
+# exit is main._dispatch_replay_animation (phase 5): a stick-figure GIF to
+# the SAME chat the alert went to, coordinates drawn as lines, never pixels.
+# The nonce (_cv_incident_id) is what a stale upload is rejected against.
 _cv_counter: int = 0
 _cv_incident_id: str | None = None
 _replay: dict | None = None

@@ -3,8 +3,8 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.14.0
-last_updated: 2026-07-29
+spec_version: 1.15.0
+last_updated: 2026-07-30
 tags: [features, scoring, reference]
 ---
 
@@ -324,6 +324,15 @@ rationale → recommendedAction` and cannot affect any resident's score:
   in the waveform's color language, low-visibility joints faded, null
   frames shown as "person not tracked" — the replay shows what the model
   saw. Facts render as the caption (never color-only).
+  **1.15.0 (phase 5):** the replay follows the alert INTO the chat — after a
+  stored upload the service renders the trace as a stick-figure GIF
+  (Pillow, frame durations from the real timestamps, low-visibility joints
+  faded, ~10 KB typical) and sends it via Bot API `sendAnimation` as a
+  QUIET reply to the fall alert, captioned with the enriched rationale plus
+  "(joint positions only, no pixels)". This is the landmark data's single
+  sanctioned exit: same chat as the alert, coordinates drawn as lines,
+  never pixels. Off-thread, best-effort, silent no-op unconfigured or
+  without Pillow; the alert itself is never delayed and stays text-only.
 - **Enrollment capture gating (spec 1.10.0)** — the capture control sits
   directly under the camera feed and enables only when: camera running, face
   models ready, a target chosen, no capture in flight, under the 5-angle cap,

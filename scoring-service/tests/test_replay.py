@@ -221,6 +221,73 @@ def test_enriched_features_die_with_the_incident():
         assert "rightward" not in rationale
 
 
+# --------------------- GIF follow-up (phase 5) ----------------------------- #
+
+def _moving_frames(n: int = 12) -> list[list[int]]:
+    """Rows with 13 joints drifting across the frame — enough to draw."""
+    rows = []
+    for i in range(n):
+        row = [i * 100]
+        for _j in range(13):
+            row += [300 + i * 20, 400 + i * 10, 90]
+        rows.append(row)
+    return rows
+
+
+def test_render_replay_gif_produces_an_animated_gif():
+    from app.alerts import replay_render
+    gif = replay_render.render_replay_gif(_moving_frames(), 1000)
+    assert gif is not None
+    assert gif[:6] in (b"GIF87a", b"GIF89a")
+    assert len(gif) > 500  # more than a single trivial frame
+
+
+def test_render_replay_gif_refuses_undrawable_buffers():
+    from app.alerts import replay_render
+    assert replay_render.render_replay_gif([[0], [100]], 1000) is None  # all gaps
+    assert replay_render.render_replay_gif(_moving_frames(1), 1000) is None  # 1 frame
+
+
+def test_multipart_body_is_wellformed():
+    body, boundary = telegram._multipart_body(
+        {"chat_id": "999", "caption": "hi"},
+        "animation", "fall-replay.gif", b"GIFDATA", "image/gif",
+    )
+    assert boundary.encode() in body
+    assert b'name="chat_id"' in body and b"999" in body
+    assert b'filename="fall-replay.gif"' in body
+    assert b"Content-Type: image/gif" in body
+    assert b"GIFDATA" in body
+    assert body.endswith(f"--{boundary}--\r\n".encode())
+
+
+def test_send_replay_animation_noop_unconfigured(monkeypatch):
+    monkeypatch.delenv("SHINEHACKATHON_TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("SHINEHACKATHON_TELEGRAM_CHAT_ID", raising=False)
+    assert telegram.send_replay_animation(b"GIF89a....", "cap") is False
+
+
+def test_upload_dispatches_animation_when_configured(monkeypatch):
+    """The follow-up fires off-thread after a stored upload — assert the
+    render+send path is invoked with the stored frames, without a network."""
+    sent: dict = {}
+    monkeypatch.setenv("SHINEHACKATHON_TELEGRAM_BOT_TOKEN", "TESTTOKEN123")
+    monkeypatch.setenv("SHINEHACKATHON_TELEGRAM_CHAT_ID", "999")
+    monkeypatch.setattr(
+        telegram, "send_replay_animation",
+        lambda gif, caption: sent.update(gif=gif, caption=caption) or True,
+    )
+    with TestClient(app) as c:
+        iid = _fire_cv(c)
+        assert _upload(c, iid, frames=_moving_frames()).status_code == 200
+        deadline = __import__("time").monotonic() + 5
+        while not sent and __import__("time").monotonic() < deadline:
+            __import__("time").sleep(0.05)
+    assert sent, "animation follow-up never dispatched"
+    assert sent["gif"][:6] in (b"GIF87a", b"GIF89a")
+    assert "no pixels" in sent["caption"]
+
+
 # --------------------------- orthogonal paths ------------------------------ #
 
 def test_replay_follows_incident_not_the_name():
