@@ -8,6 +8,7 @@ import {
   buildFallAnnouncement,
   loadAudioEnabled,
   saveAudioEnabled,
+  sirenElsewhere,
   speakAlert,
 } from "@/lib/audio/alerts";
 import { useRespeak } from "@/lib/audio/useRespeak";
@@ -37,14 +38,17 @@ export function Dashboard() {
 
   // Voice alerts (ADR 0015/0016) on the dashboard too — a Simulate incident
   // arrives over SSE, not through /watch, and must still sound. Same
-  // persisted toggle as the watch station; this page additionally stays
-  // quiet while its tab is hidden (an open /watch tab is the room siren).
+  // persisted toggle as the watch station. Siren ownership: a live /watch
+  // page heartbeats and owns the voice (its speakers are this machine's, even
+  // from a hidden tab) — this page speaks only when no station is alive AND
+  // its own tab is visible, so the two surfaces never talk over each other.
   const [audioOn, setAudioOn] = useState(true);
   const audioOnRef = useRef(audioOn);
   audioOnRef.current = audioOn;
   useEffect(() => setAudioOn(loadAudioEnabled()), []);
   const speakIfVisible = useCallback((text: string) => {
-    if (audioOnRef.current && !document.hidden) speakAlert(text);
+    if (audioOnRef.current && !document.hidden && !sirenElsewhere())
+      speakAlert(text);
   }, []);
   const { startRespeak, stopRespeak } = useRespeak(speakIfVisible, setAlerts);
 
@@ -71,6 +75,20 @@ export function Dashboard() {
     const id = setInterval(() => {
       dataClient.getAlertStatus().then(setAlerts).catch(() => undefined);
     }, 5000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Belt-and-braces resync (gap check 2026-07-29): the SSE stream has no
+  // replay — an incident fired during a sleep/Wi-Fi blip is missed until
+  // refresh. A periodic caseload refetch realigns within 30 s; idempotent,
+  // rank() just recomputes from server truth.
+  useEffect(() => {
+    const id = setInterval(() => {
+      dataClient
+        .getRankedCaseload()
+        .then((c) => setEntries(rank(c.entries)))
+        .catch(() => undefined);
+    }, 30_000);
     return () => clearInterval(id);
   }, []);
 

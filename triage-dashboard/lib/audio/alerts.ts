@@ -47,6 +47,42 @@ export function respeakDecision(s: {
   return "speak";
 }
 
+/* --------------- siren ownership: watch station vs dashboard -------------- */
+// Both pages hear every incident over SSE; exactly one should voice it. The
+// /watch page (the room station) heartbeats while mounted; the dashboard
+// yields whenever a fresh heartbeat exists — even if the watch tab is hidden,
+// its speakers are the same machine's and it will speak.
+const SIREN_KEY = "watch-siren-heartbeat-v1";
+export const SIREN_TTL_MS = 3000;
+
+/** Pure freshness predicate for the heartbeat value (unit-tested). */
+export function heartbeatFresh(
+  raw: string | null,
+  now: number,
+  ttl: number = SIREN_TTL_MS,
+): boolean {
+  const ts = raw ? Number(raw) : NaN;
+  return Number.isFinite(ts) && now - ts >= 0 && now - ts < ttl;
+}
+
+/** The watch page calls this every second while mounted. */
+export function markSirenAlive(): void {
+  try {
+    window.localStorage.setItem(SIREN_KEY, String(Date.now()));
+  } catch {
+    /* storage unavailable — the dashboard will speak instead */
+  }
+}
+
+/** True when a live watch station owns the siren (dashboard yields). */
+export function sirenElsewhere(): boolean {
+  try {
+    return heartbeatFresh(window.localStorage.getItem(SIREN_KEY), Date.now());
+  } catch {
+    return false;
+  }
+}
+
 /* ------------------------- enabled flag (persisted) ----------------------- */
 const KEY = "watch-audio-alerts-v1";
 

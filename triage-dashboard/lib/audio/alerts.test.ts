@@ -4,6 +4,7 @@ import {
   buildAckAnnouncement,
   buildFallAnnouncement,
   buildStillDownAnnouncement,
+  heartbeatFresh,
   respeakDecision,
 } from "./alerts";
 
@@ -54,6 +55,20 @@ describe("respeakDecision", () => {
 
   it("stops silently at the repeat cap", () => {
     expect(respeakDecision({ ...live, repeats: MAX_RESPEAKS })).toBe("stop");
+  });
+});
+
+describe("heartbeatFresh", () => {
+  it("is fresh strictly within the TTL window", () => {
+    expect(heartbeatFresh("1000", 1000, 3000)).toBe(true);
+    expect(heartbeatFresh("1000", 3999, 3000)).toBe(true);
+    expect(heartbeatFresh("1000", 4000, 3000)).toBe(false);
+  });
+
+  it("rejects missing, garbage, and future values", () => {
+    expect(heartbeatFresh(null, 1000)).toBe(false);
+    expect(heartbeatFresh("not-a-number", 1000)).toBe(false);
+    expect(heartbeatFresh("2000", 1000)).toBe(false); // clock went backwards
   });
 });
 

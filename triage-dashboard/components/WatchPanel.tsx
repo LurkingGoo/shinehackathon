@@ -27,6 +27,7 @@ import {
   buildFallAnnouncement,
   buildStillDownAnnouncement,
   loadAudioEnabled,
+  markSirenAlive,
   saveAudioEnabled,
   speakAlert,
 } from "@/lib/audio/alerts";
@@ -167,6 +168,30 @@ export function WatchPanel() {
   );
   const { startRespeak } = useRespeak(speakIfOn, onAckStop);
 
+  // Siren ownership (spec 1.12.1): this page is the room station. It
+  // heartbeats while mounted (the dashboard yields to a fresh heartbeat) and
+  // voices EVERY incident — camera fall, test detection, dashboard Simulate —
+  // from the SSE event, so the announcement carries the server-resolved
+  // name + zone, identical to the Telegram alert.
+  useEffect(() => {
+    markSirenAlive();
+    const id = setInterval(markSirenAlive, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(
+    () =>
+      dataClient.subscribeToIncidents((event) => {
+        const announcement = buildFallAnnouncement(
+          event.entry.name,
+          event.entry.zone,
+        );
+        speakIfOn(announcement);
+        startRespeak(announcement);
+      }),
+    [speakIfOn, startRespeak],
+  );
+
   const report = useCallback(
     async (payload?: { stillnessS?: number; confidence?: number; note?: string }) => {
       setSending(true);
@@ -184,12 +209,9 @@ export function WatchPanel() {
             galleryRef.current.find((p) => p.residentId === rid)?.label ??
             rid
           : null;
-        // Spoken call-out (ADR 0015) the moment the dispatch leg starts —
-        // same identity + zone facts the Telegram alert carries — then the
-        // re-speak loop (ADR 0016) repeats it until someone owns the alert.
-        const announcement = buildFallAnnouncement(who, roster?.zone);
-        if (audioOnRef.current) speakAlert(announcement);
-        startRespeak(announcement);
+        // Audio fires from the SSE event (siren ownership above), with the
+        // server-resolved identity — deliberately not from this POST path,
+        // or a watch-originated fall would speak twice.
         const asWho = who ? ` as ${who}` : "";
         pushLog(
           payload
@@ -222,7 +244,7 @@ export function WatchPanel() {
         setSending(false);
       }
     },
-    [pushLog, residents, startRespeak],
+    [pushLog, residents],
   );
 
   // Long-lie escalation (ADR 0012): the state machine saw no recovery

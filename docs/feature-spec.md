@@ -3,7 +3,7 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.12.0
+spec_version: 1.12.1
 last_updated: 2026-07-29
 tags: [features, scoring, reference]
 ---
@@ -284,10 +284,16 @@ rationale → recommendedAction` and cannot affect any resident's score:
   the browser: four named fields, never video/images/embeddings).
   **1.12.0:** the dashboard sounds too — an incident arriving over SSE (e.g.
   Simulate, which never passes through /watch) speaks + re-speaks via the
-  shared `useRespeak` hook, named from the event entry. The dashboard speaks
-  only while its tab is visible (an open /watch tab is the room siren) and
-  shares the persisted sound toggle; its stop-alert button silences
-  immediately and Reset demo kills the loop.
+  shared `useRespeak` hook, named from the event entry; shared persisted
+  sound toggle, stop-alert silences immediately, Reset demo kills the loop.
+  **1.12.1 (gap check):** siren OWNERSHIP is explicit — /watch heartbeats to
+  localStorage while mounted and voices every incident from the SSE event
+  (server-resolved name + zone, identical to the Telegram text; no longer
+  spoken from its own POST path, which double-spoke). The dashboard yields
+  to a fresh heartbeat (< 3 s) and otherwise speaks only while visible, so
+  exactly one surface talks. The dashboard also refetches the caseload every
+  30 s — the SSE stream has no replay, so an incident fired during a
+  sleep/Wi-Fi blip now surfaces without a manual refresh.
 - **Enrollment capture gating (spec 1.10.0)** — the capture control sits
   directly under the camera feed and enables only when: camera running, face
   models ready, a target chosen, no capture in flight, under the 5-angle cap,
