@@ -233,6 +233,26 @@ def alerts_status() -> dict:
     }
 
 
+class AckRequest(BaseModel):
+    """Body for the dashboard's stop-alert button (ADR 0016)."""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    by: str = "Dashboard"
+
+
+@app.post("/alerts/ack")
+def acknowledge_alert(body: AckRequest | None = None) -> dict:
+    """Second acknowledgement source (ADR 0016): the dashboard's own
+    'I am responding' button. Identical first-responder-wins rule as the
+    Telegram tap — whoever acks first owns the response, later sources get
+    `already: true` and the existing owner. 404 while the caseload is calm
+    (nothing to acknowledge), mirroring /incidents/escalate."""
+    if not fixtures.incident_active():
+        raise HTTPException(status_code=404, detail="no active incident")
+    b = body or AckRequest()
+    ack, created = telegram.record_ack(b.by.strip() or "Dashboard")
+    return {"ok": True, "acknowledged": ack, "already": not created}
+
+
 class CvDetectedRequest(BaseModel):
     """Body the browser pose heuristic POSTs when it sees a fall. All optional —
     an empty body fires with sensible defaults so a bare click still demos.

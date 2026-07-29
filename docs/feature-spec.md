@@ -3,7 +3,7 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.10.0
+spec_version: 1.11.0
 last_updated: 2026-07-29
 tags: [features, scoring, reference]
 ---
@@ -269,6 +269,18 @@ rationale → recommendedAction` and cannot affect any resident's score:
   long-lie escalation (ADR 0012) speaks a sharper "still down" line. Persisted
   stage-bar toggle, default ON; playback is best-effort and can never delay or
   break the incident path. Outside the scoring path — presentation only.
+- **Acknowledgement from the dashboard + re-speak loop (spec 1.11.0,
+  [[0016-dashboard-ack-and-respeak]])** — `POST /alerts/ack` (`{by}`, default
+  "Dashboard"): a second ack source with the SAME first-responder-wins rule as
+  the Telegram tap (`already: true` when owned; 404 while calm). The watch
+  station re-speaks the fall call-out every 20 s until an ack lands (then
+  announces the responder once), the incident clears, or 15 repeats pass;
+  the sound toggle mutes ticks without killing the loop. Dashboard shows a
+  stop-alert button only while acute + unacknowledged. The ack endpoint never
+  touches incident state, so Simulate / Reset are unaffected. A dashboard ack
+  is mirrored into the Telegram chat (button stripped + quiet reply) when
+  configured. `/watch` also gains the privacy acknowledgment box (what leaves
+  the browser: four named fields, never video/images/embeddings).
 - **Enrollment capture gating (spec 1.10.0)** — the capture control sits
   directly under the camera feed and enables only when: camera running, face
   models ready, a target chosen, no capture in flight, under the 5-angle cap,

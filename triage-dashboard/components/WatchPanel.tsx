@@ -24,9 +24,12 @@ import {
   captureGate,
 } from "@/lib/face/enrollUi";
 import {
+  RESPEAK_INTERVAL_MS,
+  buildAckAnnouncement,
   buildFallAnnouncement,
   buildStillDownAnnouncement,
   loadAudioEnabled,
+  respeakDecision,
   saveAudioEnabled,
   speakAlert,
 } from "@/lib/audio/alerts";
@@ -151,6 +154,57 @@ export function WatchPanel() {
     setLog((l) => [{ at, text }, ...l].slice(0, 8));
   }, []);
 
+  // Re-speak until acknowledged (ADR 0016): after a fall dispatches, repeat
+  // the call-out every RESPEAK_INTERVAL_MS until the "I am responding" ack
+  // lands (Telegram tap or dashboard button), the incident clears, or the
+  // cap trips. The toggle MUTES a tick without killing the loop, so turning
+  // sound back on resumes mid-incident.
+  const respeakTimerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const respeakCountRef = useRef(0);
+
+  const stopRespeak = useCallback(() => {
+    clearInterval(respeakTimerRef.current);
+    respeakTimerRef.current = undefined;
+  }, []);
+
+  const startRespeak = useCallback(
+    (announcement: string) => {
+      stopRespeak();
+      respeakCountRef.current = 0;
+      respeakTimerRef.current = setInterval(async () => {
+        const status = await dataClient.getAlertStatus().catch(() => null);
+        if (!status) return; // service unreachable — try again next tick
+        let acuteActive = true;
+        if (!status.acknowledged) {
+          const caseload = await dataClient.getRankedCaseload().catch(() => null);
+          if (caseload)
+            acuteActive = caseload.entries.some((e) => e.score.track === "acute");
+        }
+        const action = respeakDecision({
+          acknowledged: Boolean(status.acknowledged),
+          acuteActive,
+          repeats: respeakCountRef.current,
+        });
+        if (action === "announce-ack") {
+          stopRespeak();
+          setAlerts(status);
+          if (audioOnRef.current && status.acknowledged)
+            speakAlert(buildAckAnnouncement(status.acknowledged.by));
+          if (status.acknowledged)
+            pushLog(`${status.acknowledged.by} is responding — voice alert stopped`);
+        } else if (action === "stop") {
+          stopRespeak();
+        } else {
+          respeakCountRef.current += 1;
+          if (audioOnRef.current) speakAlert(announcement);
+        }
+      }, RESPEAK_INTERVAL_MS);
+    },
+    [stopRespeak, pushLog],
+  );
+
+  useEffect(() => () => stopRespeak(), [stopRespeak]);
+
   const report = useCallback(
     async (payload?: { stillnessS?: number; confidence?: number; note?: string }) => {
       setSending(true);
@@ -169,9 +223,11 @@ export function WatchPanel() {
             rid
           : null;
         // Spoken call-out (ADR 0015) the moment the dispatch leg starts —
-        // same identity + zone facts the Telegram alert carries.
-        if (audioOnRef.current)
-          speakAlert(buildFallAnnouncement(who, roster?.zone));
+        // same identity + zone facts the Telegram alert carries — then the
+        // re-speak loop (ADR 0016) repeats it until someone owns the alert.
+        const announcement = buildFallAnnouncement(who, roster?.zone);
+        if (audioOnRef.current) speakAlert(announcement);
+        startRespeak(announcement);
         const asWho = who ? ` as ${who}` : "";
         pushLog(
           payload
@@ -204,7 +260,7 @@ export function WatchPanel() {
         setSending(false);
       }
     },
-    [pushLog, residents],
+    [pushLog, residents, startRespeak],
   );
 
   // Long-lie escalation (ADR 0012): the state machine saw no recovery
@@ -671,6 +727,17 @@ export function WatchPanel() {
               {errorMsg}
             </div>
           )}
+          <div className={styles.privacyNote} role="note">
+            <b>What leaves this browser.</b> The camera feed does not. Pose
+            detection and face matching run inside this page, and no video,
+            image, or face crop is ever uploaded, recorded, or streamed. When a
+            fall is confirmed we send one POST request to the scoring service,
+            and it carries four fields: the fall timing, the seconds of
+            stillness, a confidence estimate, and the matched resident id. The
+            Telegram alert the caregiver receives is written from those fields
+            alone. Face enrollment is stored in this browser as number
+            embeddings, never as images, and the forget button removes them.
+          </div>
         </section>
 
         <aside className={styles.side}>

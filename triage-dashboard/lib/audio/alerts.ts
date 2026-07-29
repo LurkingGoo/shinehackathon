@@ -22,6 +22,31 @@ export function buildStillDownAnnouncement(name?: string | null): string {
   return `${name ?? "The patient"} is still down! Please respond now.`;
 }
 
+/** Spoken once when the re-speak loop sees the ack land (ADR 0016). */
+export function buildAckAnnouncement(by: string): string {
+  return `Alert acknowledged. ${by} is responding.`;
+}
+
+/* --------------------- re-speak until acknowledged ------------------------ */
+export const RESPEAK_INTERVAL_MS = 20_000;
+/** ≈5 minutes of repeats — anything longer is the escalation path's job. */
+export const MAX_RESPEAKS = 15;
+
+export type RespeakAction = "speak" | "announce-ack" | "stop";
+
+/** One tick of the re-speak loop (ADR 0016), pure so every branch is
+ * testable: ack wins (announce it, once), a cleared incident or the repeat
+ * cap stops silently, otherwise speak again. */
+export function respeakDecision(s: {
+  acknowledged: boolean;
+  acuteActive: boolean;
+  repeats: number;
+}): RespeakAction {
+  if (s.acknowledged) return "announce-ack";
+  if (!s.acuteActive || s.repeats >= MAX_RESPEAKS) return "stop";
+  return "speak";
+}
+
 /* ------------------------- enabled flag (persisted) ----------------------- */
 const KEY = "watch-audio-alerts-v1";
 

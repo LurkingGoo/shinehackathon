@@ -106,6 +106,17 @@ try {
   step("dashboard shows the acute row for the generic default resident");
   await page.screenshot({ path: `${SHOTS}/e2e-dashboard.png`, fullPage: true });
 
+  // — stop alert from the dashboard (ADR 0016): ack lands, badge appears,
+  // the button retires (first responder owns the response)
+  await page.getByRole("button", { name: /I am responding/ }).click();
+  await page.getByText("✓ Dashboard responding").waitFor({ timeout: 10_000 });
+  await page
+    .getByRole("button", { name: /I am responding/ })
+    .waitFor({ state: "detached", timeout: 10_000 });
+  const acked = await (await page.request.get(`${API}/alerts/status`)).json();
+  assert.equal(acked.acknowledged?.by, "Dashboard", "ack missing from /alerts/status");
+  step("dashboard stop-alert acked the incident (badge up, button retired)");
+
   // — resident lifecycle (ADR 0014): delete the registrant through the UI.
   // Capture the target id first so the 404 re-delete check hits the right row.
   const before = (await (await page.request.get(`${API}/caseload`)).json()).entries;
@@ -140,14 +151,18 @@ try {
     );
   }
 
-  // — UI agrees after its refetch: gone from the Report-as roster
-  await page
-    .getByLabel("Report as")
-    .locator("option", { hasText: TEST_NAME })
-    .waitFor({ state: "detached", timeout: 10_000 });
+  // — UI agrees: reload (the API sweep bypassed the page), roster is clean
+  await page.reload({ waitUntil: "domcontentloaded" });
+  const reportAs2 = page.getByLabel("Report as");
+  await reportAs2.locator("option").nth(1).waitFor({ state: "attached", timeout: 15_000 });
+  assert.equal(
+    await reportAs2.locator("option", { hasText: TEST_NAME }).count(),
+    0,
+    "deleted person still in the Report-as roster",
+  );
   step("deleted person left the Report-as roster");
 
-  console.log("\nPASS — register → generic detection → alert → dashboard → delete all held.");
+  console.log("\nPASS — register → detection → alert → dashboard ack → delete all held.");
 } catch (err) {
   await page.screenshot({ path: `${SHOTS}/e2e-failure.png`, fullPage: true }).catch(() => {});
   console.error("\nFAIL —", err.message);

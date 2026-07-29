@@ -100,6 +100,19 @@ export function Dashboard() {
     setSelectedId(null);
   }, []);
 
+  // Stop alert (ADR 0016): the dashboard's own "I am responding". Acks the
+  // active alert (first responder wins — a Telegram tap that landed first
+  // keeps ownership) which also stops the watch station's voice loop. It
+  // never touches the incident itself, so Simulate / Reset demo are unaffected.
+  const ackAlert = useCallback(async () => {
+    try {
+      await dataClient.acknowledgeAlert("Dashboard");
+    } catch {
+      /* 404 = the incident just cleared under us — the poll realigns */
+    }
+    dataClient.getAlertStatus().then(setAlerts).catch(() => undefined);
+  }, []);
+
   // Alert-leg badge: configuration state, upgraded by the latest dispatch
   // outcome so the caregiver-ping leg is never silently unverifiable.
   const tgBadge = (() => {
@@ -176,6 +189,11 @@ export function Dashboard() {
             <span className={styles.pulse} />
             Live · replaying data
           </span>
+          {hasAcute && alerts && !alerts.acknowledged && (
+            <button className={`${styles.btn} ${styles.btnCalm}`} onClick={() => void ackAlert()}>
+              🔕 I am responding — stop alert
+            </button>
+          )}
           {!hasAcute && (
             <button className={`${styles.btn} ${styles.btnCalm}`} onClick={simulateNearMiss}>
               Simulate near-miss

@@ -24,6 +24,7 @@ const nextConfig = {
       { source: "/api/incidents/escalate", destination: `${SCORING_SERVICE}/incidents/escalate` },
       { source: "/api/training-stats", destination: `${SCORING_SERVICE}/training-stats` },
       { source: "/api/alerts/status", destination: `${SCORING_SERVICE}/alerts/status` },
+      { source: "/api/alerts/ack", destination: `${SCORING_SERVICE}/alerts/ack` },
     ];
   },
 };

@@ -66,6 +66,14 @@
 .btnDanger:hover { transform: translateY(-1px); }
 .btnDanger:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
+/* privacy acknowledgment — warning-toned, always visible under the stage */
+.privacyNote {
+  margin-top: 14px; padding: 12px 14px; border-radius: var(--radius-sm);
+  background: var(--sun-soft); border: 1px solid var(--sun);
+  font-size: 13.5px; line-height: 1.5; color: var(--ink);
+}
+.privacyNote b { color: var(--sun); }
+
 /* stillness countdown */
 .stillMeter { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
 .stillTrack { flex: 1; height: 10px; border-radius: 999px; background: var(--red-soft); overflow: hidden; }

@@ -102,6 +102,12 @@ export interface DataClient {
    * status badge so the caregiver-ping leg is never silently unverifiable.
    */
   getAlertStatus(): Promise<AlertStatus>;
+  /**
+   * Second ack source (ADR 0016): the dashboard's own stop-alert button.
+   * First responder wins — same rule as the Telegram tap; resolves with the
+   * owning ack either way. Rejects (404) while the caseload is calm.
+   */
+  acknowledgeAlert(by?: string): Promise<{ by: string; at: string }>;
 }
 
 /* ------------------------------- base url -------------------------------- */
@@ -229,6 +235,19 @@ export const dataClient: DataClient = {
 
   getAlertStatus() {
     return getJSON<AlertStatus>("/api/alerts/status");
+  },
+
+  async acknowledgeAlert(by = "Dashboard") {
+    const res = await fetch(`${BASE}/api/alerts/ack`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ by }),
+    });
+    if (!res.ok) throw new Error(`/api/alerts/ack -> ${res.status}`);
+    const body = (await res.json()) as {
+      acknowledged: { by: string; at: string };
+    };
+    return body.acknowledged;
   },
 
   async reportCameraFall(payload) {

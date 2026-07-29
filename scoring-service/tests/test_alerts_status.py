@@ -15,6 +15,7 @@ import time
 from fastapi.testclient import TestClient
 
 import app.main as main
+from app.alerts import telegram
 from app.data import fixtures
 from app.main import app
 
@@ -77,6 +78,51 @@ def test_configured_delivered_records_sent(monkeypatch):
             assert body["lastDispatch"]["outcome"] == "sent"
         finally:
             fixtures.clear_incident()
+
+
+# ------------------- dashboard acknowledgement (ADR 0016) ------------------ #
+
+def test_ack_requires_active_incident(monkeypatch):
+    _reset(monkeypatch)
+    telegram.clear_ack()
+    fixtures.clear_incident()
+    with _client() as c:
+        assert c.post("/alerts/ack").status_code == 404
+
+
+def test_dashboard_ack_first_responder_wins(monkeypatch):
+    _reset(monkeypatch)  # unconfigured → zero network side effects
+    with _client() as c:
+        try:
+            c.post("/incidents/simulate")
+            r1 = c.post("/alerts/ack", json={"by": "Dashboard"}).json()
+            assert r1["acknowledged"]["by"] == "Dashboard"
+            assert r1["already"] is False
+            # a second source does NOT steal the ack — same rule as Telegram
+            r2 = c.post("/alerts/ack", json={"by": "Second Screen"}).json()
+            assert r2["already"] is True
+            assert r2["acknowledged"]["by"] == "Dashboard"
+            assert c.get("/alerts/status").json()["acknowledged"]["by"] == "Dashboard"
+        finally:
+            fixtures.clear_incident()
+            telegram.clear_ack()
+
+
+def test_new_incident_starts_unacknowledged_after_dashboard_ack(monkeypatch):
+    """The Simulate beat must never inherit a stale ack: ack → new incident →
+    /alerts/status shows unacknowledged again (so the stop-alert button and
+    the watch-station re-speak loop both re-arm)."""
+    _reset(monkeypatch)
+    with _client() as c:
+        try:
+            c.post("/incidents/simulate")
+            c.post("/alerts/ack")
+            assert c.get("/alerts/status").json()["acknowledged"]
+            c.post("/incidents/simulate")
+            assert c.get("/alerts/status").json()["acknowledged"] is None
+        finally:
+            fixtures.clear_incident()
+            telegram.clear_ack()
 
 
 def test_configured_failed_send_records_failed(monkeypatch):

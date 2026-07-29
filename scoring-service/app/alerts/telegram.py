@@ -154,6 +154,42 @@ def clear_ack() -> None:
     _ack = None
 
 
+def _set_ack(by: str) -> tuple[dict, bool]:
+    """First responder wins — the ONE state rule both ack sources (Telegram
+    tap, dashboard button) share. Returns (ack, created)."""
+    global _ack
+    if _ack is not None:
+        return _ack, False
+    _ack = {"by": by, "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    return _ack, True
+
+
+def record_ack(by: str) -> tuple[dict, bool]:
+    """Acknowledge from the dashboard (ADR 0016). Same first-wins rule as the
+    Telegram button; when Telegram is configured and a fall alert is known,
+    the chat gets the same visibility as a tap — the alert loses its button
+    and a quiet reply names who took it. Off-thread, best-effort."""
+    ack, created = _set_ack(by)
+    if created and is_configured() and _last_alert_msg_id:
+        msg_id = _last_alert_msg_id
+
+        def _notify() -> None:
+            _api_call("editMessageReplyMarkup", {
+                "chat_id": os.environ.get(_CHAT_ENV),
+                "message_id": msg_id,
+                "reply_markup": {"inline_keyboard": []},
+            })
+            _api_call("sendMessage", {
+                "chat_id": os.environ.get(_CHAT_ENV),
+                "reply_to_message_id": msg_id,
+                "text": f"✅ {by} is responding (acknowledged from the dashboard).",
+                "disable_notification": True,
+            })
+
+        threading.Thread(target=_notify, daemon=True).start()
+    return ack, created
+
+
 def _handle_update(update: dict) -> bool:
     """Process one getUpdates entry. Pure enough to test without a network:
     the Bot API side effects (answer/edit/reply) go through _api_call, which
@@ -161,20 +197,18 @@ def _handle_update(update: dict) -> bool:
 
     First responder wins: a second tap is answered with who already has it
     and changes nothing — the caregivers see ONE owner, not the last tap."""
-    global _ack
     cq = update.get("callback_query")
     if not cq or cq.get("data") != "ack":
         return False
     who = (cq.get("from") or {}).get("first_name") or "caregiver"
 
-    if _ack is not None:
+    ack, created = _set_ack(who)
+    if not created:
         _api_call("answerCallbackQuery", {
             "callback_query_id": cq.get("id"),
-            "text": f"Already acknowledged by {_ack['by']}.",
+            "text": f"Already acknowledged by {ack['by']}.",
         })
         return False
-
-    _ack = {"by": who, "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     # Confirm the tap privately, then make the ack VISIBLE in the chat: the
     # alert itself gains a status line (edit also drops the button), and a
     # quiet reply pins who took it under the alert for the whole group.
