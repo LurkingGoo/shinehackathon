@@ -3,6 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AlertStatus, CaseloadEntry, ResidentDetail } from "@/lib/types";
 import { dataClient } from "@/lib/data/client";
+import {
+  buildAckAnnouncement,
+  buildFallAnnouncement,
+  loadAudioEnabled,
+  saveAudioEnabled,
+  speakAlert,
+} from "@/lib/audio/alerts";
+import { useRespeak } from "@/lib/audio/useRespeak";
 import { CaseloadCard } from "./CaseloadCard";
 import { DrilldownPanel } from "./DrilldownPanel";
 import styles from "./dashboard.module.css";
@@ -26,6 +34,19 @@ export function Dashboard() {
   const [alerts, setAlerts] = useState<AlertStatus | null>(null);
   const acuteRef = useRef<HTMLDivElement>(null);
   const nearMissTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  // Voice alerts (ADR 0015/0016) on the dashboard too — a Simulate incident
+  // arrives over SSE, not through /watch, and must still sound. Same
+  // persisted toggle as the watch station; this page additionally stays
+  // quiet while its tab is hidden (an open /watch tab is the room siren).
+  const [audioOn, setAudioOn] = useState(true);
+  const audioOnRef = useRef(audioOn);
+  audioOnRef.current = audioOn;
+  useEffect(() => setAudioOn(loadAudioEnabled()), []);
+  const speakIfVisible = useCallback((text: string) => {
+    if (audioOnRef.current && !document.hidden) speakAlert(text);
+  }, []);
+  const { startRespeak, stopRespeak } = useRespeak(speakIfVisible, setAlerts);
 
   // initial load — ALL data via dataClient, never fixtures/api directly
   useEffect(() => {
@@ -62,11 +83,16 @@ export function Dashboard() {
       setFlashId(event.entry.id);
       setTimeout(() => setFlashId(null), 1100);
       refreshAlerts();
+      // Sound the alert here too (ADR 0016): the fix for Simulate incidents,
+      // which never pass through /watch. Named from the event itself.
+      const announcement = buildFallAnnouncement(event.entry.name, event.entry.zone);
+      speakIfVisible(announcement);
+      startRespeak(announcement);
       requestAnimationFrame(() =>
         acuteRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
       );
     });
-  }, [refreshAlerts]);
+  }, [refreshAlerts, speakIfVisible, startRespeak]);
 
   const select = useCallback(async (id: string) => {
     setSelectedId(id);
@@ -93,12 +119,13 @@ export function Dashboard() {
   // Demo reset: clear the incident server-side (it persists in /caseload with
   // a TTL), then re-pull the calm ranking so the beat can be re-run.
   const reset = useCallback(async () => {
+    stopRespeak(); // the demo beat is over — no lingering voice loop
     await dataClient.clearIncident();
     const c = await dataClient.getRankedCaseload();
     setEntries(rank(c.entries));
     setDetail(null);
     setSelectedId(null);
-  }, []);
+  }, [stopRespeak]);
 
   // Stop alert (ADR 0016): the dashboard's own "I am responding". Acks the
   // active alert (first responder wins — a Telegram tap that landed first
@@ -106,12 +133,14 @@ export function Dashboard() {
   // never touches the incident itself, so Simulate / Reset demo are unaffected.
   const ackAlert = useCallback(async () => {
     try {
-      await dataClient.acknowledgeAlert("Dashboard");
+      const ack = await dataClient.acknowledgeAlert("Dashboard");
+      stopRespeak(); // silence immediately — do not wait for the next tick
+      speakIfVisible(buildAckAnnouncement(ack.by));
     } catch {
       /* 404 = the incident just cleared under us — the poll realigns */
     }
     dataClient.getAlertStatus().then(setAlerts).catch(() => undefined);
-  }, []);
+  }, [stopRespeak, speakIfVisible]);
 
   // Alert-leg badge: configuration state, upgraded by the latest dispatch
   // outcome so the caregiver-ping leg is never silently unverifiable.
@@ -189,6 +218,19 @@ export function Dashboard() {
             <span className={styles.pulse} />
             Live · replaying data
           </span>
+          <button
+            className={`${styles.btn} ${styles.btnCalm}`}
+            onClick={() => {
+              setAudioOn((on) => {
+                saveAudioEnabled(!on);
+                return !on;
+              });
+            }}
+            aria-pressed={audioOn}
+            title="Voice alerts on this screen (shared with the camera watch page)"
+          >
+            {audioOn ? "🔊" : "🔇"}
+          </button>
           {hasAcute && alerts && !alerts.acknowledged && (
             <button className={`${styles.btn} ${styles.btnCalm}`} onClick={() => void ackAlert()}>
               🔕 I am responding — stop alert

@@ -24,15 +24,13 @@ import {
   captureGate,
 } from "@/lib/face/enrollUi";
 import {
-  RESPEAK_INTERVAL_MS,
-  buildAckAnnouncement,
   buildFallAnnouncement,
   buildStillDownAnnouncement,
   loadAudioEnabled,
-  respeakDecision,
   saveAudioEnabled,
   speakAlert,
 } from "@/lib/audio/alerts";
+import { useRespeak } from "@/lib/audio/useRespeak";
 import styles from "./watch.module.css";
 
 /**
@@ -154,56 +152,20 @@ export function WatchPanel() {
     setLog((l) => [{ at, text }, ...l].slice(0, 8));
   }, []);
 
-  // Re-speak until acknowledged (ADR 0016): after a fall dispatches, repeat
-  // the call-out every RESPEAK_INTERVAL_MS until the "I am responding" ack
-  // lands (Telegram tap or dashboard button), the incident clears, or the
-  // cap trips. The toggle MUTES a tick without killing the loop, so turning
-  // sound back on resumes mid-incident.
-  const respeakTimerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
-  const respeakCountRef = useRef(0);
-
-  const stopRespeak = useCallback(() => {
-    clearInterval(respeakTimerRef.current);
-    respeakTimerRef.current = undefined;
+  // Re-speak until acknowledged (ADR 0016): the shared loop, muted (not
+  // killed) by the sound toggle so turning sound back on resumes mid-incident.
+  const speakIfOn = useCallback((text: string) => {
+    if (audioOnRef.current) speakAlert(text);
   }, []);
-
-  const startRespeak = useCallback(
-    (announcement: string) => {
-      stopRespeak();
-      respeakCountRef.current = 0;
-      respeakTimerRef.current = setInterval(async () => {
-        const status = await dataClient.getAlertStatus().catch(() => null);
-        if (!status) return; // service unreachable — try again next tick
-        let acuteActive = true;
-        if (!status.acknowledged) {
-          const caseload = await dataClient.getRankedCaseload().catch(() => null);
-          if (caseload)
-            acuteActive = caseload.entries.some((e) => e.score.track === "acute");
-        }
-        const action = respeakDecision({
-          acknowledged: Boolean(status.acknowledged),
-          acuteActive,
-          repeats: respeakCountRef.current,
-        });
-        if (action === "announce-ack") {
-          stopRespeak();
-          setAlerts(status);
-          if (audioOnRef.current && status.acknowledged)
-            speakAlert(buildAckAnnouncement(status.acknowledged.by));
-          if (status.acknowledged)
-            pushLog(`${status.acknowledged.by} is responding — voice alert stopped`);
-        } else if (action === "stop") {
-          stopRespeak();
-        } else {
-          respeakCountRef.current += 1;
-          if (audioOnRef.current) speakAlert(announcement);
-        }
-      }, RESPEAK_INTERVAL_MS);
+  const onAckStop = useCallback(
+    (status: AlertStatus) => {
+      setAlerts(status);
+      if (status.acknowledged)
+        pushLog(`${status.acknowledged.by} is responding — voice alert stopped`);
     },
-    [stopRespeak, pushLog],
+    [pushLog],
   );
-
-  useEffect(() => () => stopRespeak(), [stopRespeak]);
+  const { startRespeak } = useRespeak(speakIfOn, onAckStop);
 
   const report = useCallback(
     async (payload?: { stillnessS?: number; confidence?: number; note?: string }) => {

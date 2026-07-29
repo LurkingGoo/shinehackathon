@@ -3,7 +3,7 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.11.1
+spec_version: 1.12.0
 last_updated: 2026-07-29
 tags: [features, scoring, reference]
 ---
@@ -282,6 +282,12 @@ rationale → recommendedAction` and cannot affect any resident's score:
   is mirrored into the Telegram chat (button stripped + quiet reply) when
   configured. `/watch` also gains the privacy acknowledgment box (what leaves
   the browser: four named fields, never video/images/embeddings).
+  **1.12.0:** the dashboard sounds too — an incident arriving over SSE (e.g.
+  Simulate, which never passes through /watch) speaks + re-speaks via the
+  shared `useRespeak` hook, named from the event entry. The dashboard speaks
+  only while its tab is visible (an open /watch tab is the room siren) and
+  shares the persisted sound toggle; its stop-alert button silences
+  immediately and Reset demo kills the loop.
 - **Enrollment capture gating (spec 1.10.0)** — the capture control sits
   directly under the camera feed and enables only when: camera running, face
   models ready, a target chosen, no capture in flight, under the 5-angle cap,
