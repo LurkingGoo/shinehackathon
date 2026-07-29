@@ -161,6 +161,22 @@ describe("FallStateMachine", () => {
     expect(confidence).toBeLessThan(0.65); // slow descent honestly scores low
   });
 
+  it("fires on a demo-pace descent (~3.3 s), just inside the 3.5 s window", () => {
+    // Widened 3000 → 3500 (2026-07-29): rehearsal falls padded with caution
+    // land in 3–3.5 s and were rejected by the 3 s window.
+    const sm = new FallStateMachine();
+    const frames = [
+      ...Array.from({ length: 5 }, () => M("upright")),
+      ...Array.from({ length: 32 }, () => M("transitional", 0.02)),
+      ...Array.from({ length: 35 }, () => M("horizontal", 0.001)),
+    ];
+    const { events } = drive(sm, 1_000, frames);
+    expect(events).toHaveLength(1);
+    const { confidence } = events[0].ev as FallEvent;
+    expect(confidence).toBeGreaterThanOrEqual(0.55);
+    expect(confidence).toBeLessThan(0.6); // near-window descent scores lowest
+  });
+
   it("never fires on a slow, deliberate lie-down", () => {
     const sm = new FallStateMachine();
     const frames = [

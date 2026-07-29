@@ -613,8 +613,8 @@ export function WatchPanel() {
         <div>
           <h1 className={styles.brandTitle}>A camera that knows a fall from a lie-down</h1>
           <p className={styles.brandSub}>
-            Pose estimation runs in this browser — upright, then horizontal within three
-            seconds, then three seconds of stillness. Only then does it alarm.
+            Pose estimation runs in this browser — upright, then horizontal within
+            3.5 seconds, then three seconds of stillness. Only then does it alarm.
           </p>
         </div>
         <a className={styles.backLink} href="/">
@@ -748,7 +748,7 @@ export function WatchPanel() {
                 <b>Upright.</b> A person is tracked standing or walking.
               </li>
               <li className={watchState === "fallen-still" ? styles.stepActive : undefined}>
-                <b>Down fast.</b> Horizontal within 3&nbsp;s of last standing —
+                <b>Down fast.</b> Horizontal within 3.5&nbsp;s of last standing —
                 slower means they lay down on purpose, and nothing alarms.
               </li>
               <li className={watchState === "fallen-still" ? styles.stepActive : undefined}>

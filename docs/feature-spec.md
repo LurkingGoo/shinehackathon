@@ -3,7 +3,7 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.11.0
+spec_version: 1.11.1
 last_updated: 2026-07-29
 tags: [features, scoring, reference]
 ---
@@ -126,9 +126,10 @@ dashboard page runs MediaPipe PoseLandmarker (lite) entirely in-browser —
 no frame leaves the device; assets are vendored by `npm run fetch-pose-assets`
 with a CDN fallback. Detection logic is the pure state machine
 `lib/pose/fallHeuristic.ts` (vitest-tested): upright → horizontal within
-**3.0 s** *(tune; widened from 1.8 s in 1.7.1 — a person mimicking a fall
-self-protects and reaches the floor in ~2–2.5 s, which the old window
-rejected as a lie-down; the slower descent honestly earns lower confidence)*
+**3.5 s** *(tune; widened 1.8 s → 3.0 s in 1.7.1, → 3.5 s in 1.11.1 — a
+person mimicking a fall self-protects and reaches the floor in ~2–2.5 s, and
+rehearsal falls padded with extra caution stretch to ~3–3.5 s; a near-window
+descent honestly earns the lowest confidence)*
 → continuous stillness (mean landmark motion < 0.012
 normalized units/frame *(tune)*) for **3.0 s** → fire, then a 10 s cooldown.
 Posture from torso lean vs vertical: upright < 35°, horizontal > 48° *(tune;
