@@ -41,6 +41,13 @@ describe("bestMatch", () => {
   it("returns null on an empty gallery", () => {
     expect(bestMatch(vec(1), [])).toBeNull();
   });
+
+  it("ignores a person with fewer than minAngles enrolled", () => {
+    const oneAngle: EnrolledPerson[] = [
+      { residentId: "r-solo", label: "Solo", embeddings: [vec(3)] },
+    ];
+    expect(bestMatch(vec(3, 0.02), oneAngle)).toBeNull();
+  });
 });
 
 describe("IdentityTracker", () => {
@@ -87,5 +94,37 @@ describe("IdentityTracker", () => {
     t.update(null, 1400);
     t.update(null, 2100);
     expect(t.current?.residentId).toBe("r-devi");
+  });
+
+  it("a visible face that matches nobody unbinds after unbindMisses ticks", () => {
+    const t = new IdentityTracker();
+    t.update({ residentId: "r-devi", distance: 0.3 }, 0);
+    t.update({ residentId: "r-devi", distance: 0.3 }, 700);
+    for (let i = 0; i < DEFAULT_MATCH_CONFIG.unbindMisses; i++) {
+      t.update(null, 1400 + i * 700, true);
+    }
+    expect(t.current).toBeNull();
+  });
+
+  it("a match resets the visible-miss count", () => {
+    const t = new IdentityTracker();
+    t.update({ residentId: "r-devi", distance: 0.3 }, 0);
+    t.update({ residentId: "r-devi", distance: 0.3 }, 700);
+    for (let i = 0; i < DEFAULT_MATCH_CONFIG.unbindMisses - 1; i++) {
+      t.update(null, 1400 + i * 700, true);
+    }
+    t.update({ residentId: "r-devi", distance: 0.3 }, 4200);
+    for (let i = 0; i < DEFAULT_MATCH_CONFIG.unbindMisses - 1; i++) {
+      t.update(null, 4900 + i * 700, true);
+    }
+    expect(t.current?.residentId).toBe("r-devi");
+  });
+
+  it("visible misses without a binding are harmless", () => {
+    const t = new IdentityTracker();
+    for (let i = 0; i < DEFAULT_MATCH_CONFIG.unbindMisses + 1; i++) {
+      t.update(null, i * 700, true);
+    }
+    expect(t.current).toBeNull();
   });
 });

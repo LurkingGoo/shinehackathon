@@ -13,6 +13,7 @@ import {
 import type { PoseEngine } from "@/lib/pose/engine";
 import type { FaceEngine } from "@/lib/face/engine";
 import {
+  DEFAULT_MATCH_CONFIG,
   IdentityTracker,
   bestMatch,
   type EnrolledPerson,
@@ -227,8 +228,10 @@ export function WatchPanel() {
           pushLog("Give the new person a name first");
           return;
         }
+        // Deliberately does NOT change the "Report as" selector: auto-binding
+        // detections to whoever was last registered silently misattributed
+        // strangers' falls. Pick them in "Report as" or enroll their face.
         const entry = await dataClient.registerResident({ name, ...loc });
-        setResidentId(entry.id); // detections now report as the new person
         setNewName("");
         pushLog(
           `${entry.name} registered — ${entry.unit}${entry.zone ? ` · ${entry.zone}` : ""}`,
@@ -376,8 +379,15 @@ export function WatchPanel() {
             faceBusyRef.current = true;
             fe.embed(v)
               .then((desc) => {
+                // faceSeen distinguishes "nobody's face in view" (binding
+                // holds through a fall) from "a face we can't match" (a few
+                // of those unbind — likely a different person).
                 const match = desc ? bestMatch(desc, galleryRef.current) : null;
-                const b = trackerRef.current.update(match, performance.now());
+                const b = trackerRef.current.update(
+                  match,
+                  performance.now(),
+                  desc !== null,
+                );
                 setBoundId(b?.residentId ?? null);
               })
               .catch(() => undefined)
@@ -734,6 +744,9 @@ export function WatchPanel() {
                   <li key={p.residentId} className={styles.logItem}>
                     <span className={styles.logAt}>{p.embeddings.length} angle{p.embeddings.length === 1 ? "" : "s"}</span>
                     {p.label}
+                    {p.embeddings.length < DEFAULT_MATCH_CONFIG.minAngles && (
+                      <em> — capture another angle to activate matching</em>
+                    )}
                     <button
                       className={styles.removeBtn}
                       onClick={() => removeEnrolled(p.residentId)}
