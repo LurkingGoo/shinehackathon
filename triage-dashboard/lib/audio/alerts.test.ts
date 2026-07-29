@@ -9,27 +9,28 @@ import {
 } from "./alerts";
 
 describe("buildFallAnnouncement", () => {
-  it("speaks the mandated phrase exactly twice when identity is unknown", () => {
+  it("speaks name and zone inline, twice", () => {
+    expect(buildFallAnnouncement("Rajoo Subramaniam", "Bedroom")).toBe(
+      "Patient Rajoo Subramaniam has fallen at Bedroom! " +
+        "Patient Rajoo Subramaniam has fallen at Bedroom!",
+    );
+  });
+
+  it("degrades to the bare phrase, still twice, when identity is unknown", () => {
     const text = buildFallAnnouncement();
     expect(text.match(/Patient has fallen!/g)).toHaveLength(2);
     expect(text).toBe("Patient has fallen! Patient has fallen!");
   });
 
-  it("appends name and zone when the identity is bound", () => {
-    expect(buildFallAnnouncement("Rajoo Subramaniam", "Bedroom")).toBe(
-      "Patient has fallen! Patient has fallen! Rajoo Subramaniam, Bedroom.",
-    );
-  });
-
-  it("appends name alone when no zone is known", () => {
+  it("speaks the name alone when no zone is known", () => {
     expect(buildFallAnnouncement("Rajoo Subramaniam")).toBe(
-      "Patient has fallen! Patient has fallen! Rajoo Subramaniam.",
+      "Patient Rajoo Subramaniam has fallen! Patient Rajoo Subramaniam has fallen!",
     );
   });
 
-  it("never leaks a zone without a name to anchor it", () => {
+  it("speaks the zone even without a name", () => {
     expect(buildFallAnnouncement(null, "Bedroom")).toBe(
-      "Patient has fallen! Patient has fallen!",
+      "Patient has fallen at Bedroom! Patient has fallen at Bedroom!",
     );
   });
 });

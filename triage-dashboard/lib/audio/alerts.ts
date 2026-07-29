@@ -5,16 +5,17 @@
  * machine that saw the fall), which is also where anyone in earshot is.
  */
 
-const PHRASE = "Patient has fallen!";
-
-/** The mandated call-out, twice, then whatever identity + zone the Telegram
- * alert carries — a bystander hears the same facts the caregiver is pinged. */
+/** The call-out, twice, carrying the same identity + zone facts as the
+ * Telegram alert: "Patient <name> has fallen at <zone>!" — name and zone
+ * degrade gracefully when unknown (fail-open, never blocks the alert). */
 export function buildFallAnnouncement(
   name?: string | null,
   zone?: string | null,
 ): string {
-  const context = name ? ` ${name}${zone ? `, ${zone}` : ""}.` : "";
-  return `${PHRASE} ${PHRASE}${context}`;
+  const phrase = `Patient${name ? ` ${name}` : ""} has fallen${
+    zone ? ` at ${zone}` : ""
+  }!`;
+  return `${phrase} ${phrase}`;
 }
 
 /** Long-lie escalation (ADR 0012) gets a sharper spoken line. */
