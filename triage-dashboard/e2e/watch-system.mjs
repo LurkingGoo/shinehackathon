@@ -117,6 +117,42 @@ try {
   assert.equal(acked.acknowledged?.by, "Dashboard", "ack missing from /alerts/status");
   step("dashboard stop-alert acked the incident (badge up, button retired)");
 
+  // — skeleton replay (ADR 0017): fire a camera incident via the API,
+  // upload a synthetic landmark trace + facts, and the drilldown must show
+  // the player with the enriched deterministic rationale.
+  const cvRes = await page.request.post(`${API}/incidents/cv-detected`, {
+    data: { stillnessS: 8 },
+  });
+  const iid = cvRes.headers()["x-incident-id"];
+  assert.ok(iid, "cv-detected did not return X-Incident-Id");
+  const frames = Array.from({ length: 30 }, (_, i) => [i * 100, ...Array(39).fill(500)]);
+  const up = await page.request.post(`${API}/incidents/replay`, {
+    data: {
+      incidentId: iid, fps: 10, quantScale: 1000, frames,
+      facts: { descentDurationMs: 1900, direction: "right", protectiveArm: false,
+               postImpactMovement: "none" },
+    },
+  });
+  assert.equal(up.status(), 200, "replay upload failed");
+  assert.equal((await page.request.get(`${API}/incidents/replay`)).status(), 200);
+  step("camera incident + landmark trace uploaded (nonce accepted)");
+
+  await page.goto(DASH, { waitUntil: "domcontentloaded" });
+  await page.getByText("Someone needs help right now").waitFor({ timeout: 10_000 });
+  await page.getByText("Tan Ah Moi").first().click();
+  await page.getByText("How the fall happened").waitFor({ timeout: 10_000 });
+  await page.getByText(/fell rightward/).first().waitFor({ timeout: 5_000 });
+  step("drilldown shows the skeleton replay + enriched rationale");
+  await page.screenshot({ path: `${SHOTS}/e2e-replay.png`, fullPage: true });
+
+  // reset the beat: the replay must die with the incident
+  await page.request.post(`${API}/incidents/clear`);
+  assert.equal(
+    (await page.request.get(`${API}/incidents/replay`)).status(), 404,
+    "replay outlived the incident",
+  );
+  step("Reset demo dropped the replay (retention claim held)");
+
   // — resident lifecycle (ADR 0014): delete the registrant through the UI.
   // Capture the target id first so the 404 re-delete check hits the right row.
   const before = (await (await page.request.get(`${API}/caseload`)).json()).entries;
@@ -162,7 +198,7 @@ try {
   );
   step("deleted person left the Report-as roster");
 
-  console.log("\nPASS — register → detection → alert → dashboard ack → delete all held.");
+  console.log("\nPASS — register → detection → alert → ack → replay → delete all held.");
 } catch (err) {
   await page.screenshot({ path: `${SHOTS}/e2e-failure.png`, fullPage: true }).catch(() => {});
   console.error("\nFAIL —", err.message);

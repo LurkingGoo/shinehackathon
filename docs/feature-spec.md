@@ -3,7 +3,7 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.13.0
+spec_version: 1.14.0
 last_updated: 2026-07-29
 tags: [features, scoring, reference]
 ---
@@ -309,8 +309,21 @@ rationale → recommendedAction` and cannot affect any resident's score:
   any superseding incident, dead on TTL; never persisted, logged, or
   dispatched. `/incidents/trace` still 404s for camera incidents — each
   sensor drills into its own raw signal. Replay shapes live outside the
-  score contract (IncidentTrace precedent). Facts + player follow in
-  phases 2–3.
+  score contract (IncidentTrace precedent).
+  **1.14.0 (phases 2–3):** browser-computed facts ship inside the upload —
+  descent duration, fall direction (screen-coords drift; toward-camera via
+  torso apparent-size growth), protective arm response (wrist below the hip
+  line DURING descent; null when wrists were never visible), post-impact
+  movement — and fold into the incident's deterministic rationale ("Camera:
+  fell rightward, 1.9s descent, no arm protection; still 8s after impact")
+  with every stated number entering a `RiskFeature` row (Descent / Fall
+  direction / Protective response — the §0/§3 determinism guarantee).
+  Unknown facts leave the default template standing. No SSE republish. The
+  drilldown gains the "How the fall happened" player: canvas stick figure,
+  play / ¼× slow-mo / scrubber with descent (sun) and ground (sage) bands
+  in the waveform's color language, low-visibility joints faded, null
+  frames shown as "person not tracked" — the replay shows what the model
+  saw. Facts render as the caption (never color-only).
 - **Enrollment capture gating (spec 1.10.0)** — the capture control sits
   directly under the camera feed and enables only when: camera running, face
   models ready, a target chosen, no capture in flight, under the 5-angle cap,

@@ -1,5 +1,6 @@
 import type { ResidentDetail } from "@/lib/types";
 import { avatarColor, initials, pct, riskColor } from "@/lib/ui";
+import { ReplayPlayer } from "./ReplayPlayer";
 import { TraceChart } from "./TraceChart";
 import styles from "./dashboard.module.css";
 
@@ -58,7 +59,12 @@ export function DrilldownPanel({ detail }: { detail: ResidentDetail | null }) {
         </div>
       </div>
 
-      {acute && <TraceChart />}
+      {/* Each sensor drills into its own raw signal: the accelerometer's
+          waveform, or the camera's skeleton replay (ADR 0017). Both are
+          self-hiding (404 → null); keyed so switching drilldowns refetches
+          instead of showing a stale panel for the wrong resident. */}
+      {acute && <TraceChart key={`trace-${detail.id}`} />}
+      {acute && <ReplayPlayer key={`replay-${detail.id}`} />}
 
       <h4 className={styles.sec}>Why she&apos;s ranked here</h4>
       {detail.features.map((f, i) => (
