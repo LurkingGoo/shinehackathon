@@ -255,14 +255,22 @@ export function WatchPanel() {
       const rid = boundIdRef.current || residentIdRef.current || undefined;
       try {
         await dataClient.reportStillDown({ stillDownS, residentId: rid });
-        if (audioOnRef.current)
+        if (audioOnRef.current) {
+          // Always NAME the person at risk: the acute caseload row is the
+          // authority on who the incident belongs to (a generic incident
+          // resolves to the default resident server-side — the same name
+          // the Telegram message and dashboard carry).
+          const caseload = await dataClient.getRankedCaseload().catch(() => null);
+          const acute = caseload?.entries.find((e) => e.score.track === "acute");
           speakAlert(
             buildStillDownAnnouncement(
-              rid
-                ? galleryRef.current.find((p) => p.residentId === rid)?.label
-                : null,
+              acute?.name ??
+                (rid
+                  ? galleryRef.current.find((p) => p.residentId === rid)?.label
+                  : null),
             ),
           );
+        }
         pushLog(
           `Still down ${stillDownS.toFixed(0)}s after the alert — escalation sent`,
         );
