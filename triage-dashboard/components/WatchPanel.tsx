@@ -39,7 +39,7 @@ import {
   type RingFrame,
 } from "@/lib/pose/replayBuffer";
 import { computeReplayFacts } from "@/lib/pose/replayFacts";
-import { announceRosterChange } from "@/lib/sync/rosterSync";
+import { announceRosterChange, onRosterChange } from "@/lib/sync/rosterSync";
 import styles from "./watch.module.css";
 
 /**
@@ -137,7 +137,16 @@ export function WatchPanel() {
     () =>
       dataClient
         .getRankedCaseload()
-        .then((c) => setResidents(c.entries))
+        .then((c) => {
+          setResidents(c.entries);
+          // Prune selections whose resident vanished — a stale "Report as"
+          // id fails open to the generic identity server-side, but the
+          // operator must never BELIEVE a named report is going out.
+          const ids = new Set(c.entries.map((r) => r.id));
+          setResidentId((v) => (v && !ids.has(v) ? "" : v));
+          setEnrollTarget((v) => (v && !ids.has(v) ? "" : v));
+          setLocTarget((v) => (v !== "new" && !ids.has(v) ? "new" : v));
+        })
         .catch(() => undefined),
     [],
   );
@@ -146,6 +155,29 @@ export function WatchPanel() {
     dataClient.getAlertStatus().then(setAlerts).catch(() => setAlerts(null));
     void refreshResidents();
   }, [refreshResidents]);
+
+  // Roster sync is TWO-WAY (gap check 2026-07-30): another tab's register /
+  // delete must refresh this tab's dropdowns and — critically — its
+  // in-memory face gallery. Without this, a second open /watch tab kept a
+  // deleted person's embeddings and could still produce a NAMED match until
+  // reload, breaking the ADR 0014 "no stale reference can ever produce a
+  // match" cascade. A binding to a vanished person resets to generic.
+  useEffect(
+    () =>
+      onRosterChange(() => {
+        void refreshResidents();
+        const fresh = loadGallery();
+        setGallery(fresh);
+        if (
+          boundIdRef.current &&
+          !fresh.some((p) => p.residentId === boundIdRef.current)
+        ) {
+          trackerRef.current.reset();
+          setBoundId(null);
+        }
+      }),
+    [refreshResidents],
+  );
 
   const pushLog = useCallback((text: string) => {
     const at = new Date().toLocaleTimeString([], {

@@ -258,7 +258,7 @@ The system ranks and explains.
 
 - **A camera catches the fall the bangle misses**: left on the nightstand, or never worn. Pose estimation runs entirely in the browser on `/watch`; upright, then horizontal within **3.5 s**, then **3 s** of stillness fires the same alert as the bangle. A slower transition is a deliberate lie-down and never alarms.
 - Camera incidents carry the label **Camera (pose)** and the heuristic's own 0.55 to 0.85 confidence band. The 96.2% figure belongs to the accelerometer track alone.
-- Enrolled face identity is opt-in and on-device, so the caseload row and the alert are **named** and say where to look: *last motion: Bedroom*. Unmatched people fire the generic alert; no video leaves the browser. A fall sends a **stick-figure joint trace**, and the drilldown replays how the fall happened: *fell rightward, 1.9 s descent, no arm protection*.
+- Enrolled face identity is opt-in and on-device, so the caseload row and the alert are **named** and say where to look: *last motion: Bedroom*. Unmatched people fire the generic alert; no video leaves the browser. A fall sends a **stick-figure joint trace**, and the drilldown replays how the fall happened: *fell rightward, 1.9 s descent, hard impact, no arm protection*.
 
 <!--
 The camera is the second acute source, and it is opt-in. MediaPipe pose runs entirely in
@@ -266,7 +266,7 @@ the browser; no frame leaves the device. Upright, then horizontal within 3.5 sec
 3 seconds of stillness fires the same incident path as the bangle. A slower transition is
 a deliberate lie-down and never alarms. After a confirmed fall the browser also sends a
 fifteen-second stick-figure trace, joint coordinates and never pixels, and the drilldown
-replays it: descent time, fall direction, whether the arms came out. The honesty rules
+replays it: descent time, fall direction, impact severity, whether the arms came out. The honesty rules
 hold: the incident is labelled
 Camera (pose) with the heuristic's own confidence band, never the 96.2 percent, which
 belongs to the accelerometer track. Identity is enrolled on-device: front, left and right

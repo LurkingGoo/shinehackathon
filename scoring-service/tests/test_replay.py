@@ -358,6 +358,84 @@ def test_animation_caption_is_captured_before_the_thread_runs(monkeypatch):
     assert "free-fall" not in sent["caption"]
 
 
+def test_animation_threads_under_this_incidents_alert(monkeypatch):
+    """Reply threading (gap check 2026-07-31): the GIF replies to the message
+    id recorded for THIS incident's dispatch — matched by nonce, with no 5 s
+    stall when the alert settled before the upload (the normal fast path)."""
+    import time as _time
+
+    from app import main
+
+    sent: dict = {}
+    monkeypatch.setenv("SHINEHACKATHON_TELEGRAM_BOT_TOKEN", "TESTTOKEN123")
+    monkeypatch.setenv("SHINEHACKATHON_TELEGRAM_CHAT_ID", "999")
+    monkeypatch.setattr(telegram, "_last_alert_msg_id", None)
+
+    def alert_stub(ev):
+        telegram._last_alert_msg_id = 777
+        return True
+
+    monkeypatch.setattr(telegram, "send_incident_alert", alert_stub)
+    monkeypatch.setattr(
+        telegram, "send_replay_animation",
+        lambda gif, caption, reply_to=None: sent.update(reply_to=reply_to) or True,
+    )
+    with TestClient(app) as c:
+        iid = _fire_cv(c)
+        deadline = _time.monotonic() + 3
+        while _time.monotonic() < deadline:  # let the alert dispatch settle
+            d = main._last_dispatch
+            if d and d.get("incidentId") == iid:
+                break
+            _time.sleep(0.02)
+        t0 = _time.monotonic()
+        assert _upload(c, iid, frames=_moving_frames()).status_code == 200
+        while "reply_to" not in sent and _time.monotonic() < t0 + 8:
+            _time.sleep(0.05)
+    assert sent.get("reply_to") == 777
+    # the old identity heuristic burned the full 5 s here and un-threaded
+    assert _time.monotonic() - t0 < 4.0
+
+
+def test_animation_never_threads_under_another_incidents_alert(monkeypatch):
+    """If a DIFFERENT incident's dispatch owns the record (a Simulate racing
+    the render), the GIF degrades to un-threaded — never a reply under the
+    wrong alert."""
+    import time as _time
+
+    from app import main
+
+    sent: dict = {}
+    monkeypatch.setenv("SHINEHACKATHON_TELEGRAM_BOT_TOKEN", "TESTTOKEN123")
+    monkeypatch.setenv("SHINEHACKATHON_TELEGRAM_CHAT_ID", "999")
+    monkeypatch.setattr(telegram, "_last_alert_msg_id", None)
+    monkeypatch.setattr(telegram, "send_incident_alert", lambda ev: True)
+    monkeypatch.setattr(
+        telegram, "send_replay_animation",
+        lambda gif, caption, reply_to=None: sent.update(reply_to=reply_to) or True,
+    )
+    with TestClient(app) as c:
+        iid = _fire_cv(c)
+        deadline = _time.monotonic() + 3
+        while _time.monotonic() < deadline:  # let OUR dispatch settle first
+            d = main._last_dispatch
+            if d and d.get("incidentId") == iid:
+                break
+            _time.sleep(0.02)
+        # another incident's alert now owns the record, message id 888
+        monkeypatch.setattr(main, "_last_dispatch", {
+            "outcome": "sent", "residentId": "r-other",
+            "at": "2026-07-31T00:00:00Z", "incidentId": "cv-other",
+            "messageId": 888,
+        })
+        assert _upload(c, iid, frames=_moving_frames()).status_code == 200
+        deadline = _time.monotonic() + 10
+        while "reply_to" not in sent and _time.monotonic() < deadline:
+            _time.sleep(0.05)
+    assert "reply_to" in sent, "animation follow-up never dispatched"
+    assert sent["reply_to"] is None  # un-threaded, never 888
+
+
 def test_gif_bone_graph_matches_frontend_subset():
     """The renderer's hand-mirrored bone graph must equal skeleton.ts's
     REPLAY_BONES (parity guard — a drift draws arms attached to knees)."""

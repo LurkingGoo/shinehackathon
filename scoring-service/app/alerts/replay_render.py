@@ -32,6 +32,12 @@ _FADE = (222, 168, 160)  # low-visibility joints, drawn honestly faded
 _MUTED = (138, 124, 109)
 
 
+def pillow_available() -> bool:
+    """Whether the Pillow leg exists at all — lets the dispatcher name WHICH
+    cause produced a None render ("skipped" is otherwise undiagnosable)."""
+    return _PIL
+
+
 def _decode(row: list[int], quant: int) -> tuple[int, list[tuple[float, float, float]] | None]:
     """Wire row → (tMs, [(x, y, visibility)...] | None). 1-length row = gap."""
     if len(row) <= 1:

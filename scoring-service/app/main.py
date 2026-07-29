@@ -199,12 +199,19 @@ def simulate() -> IncidentEvent:
 _last_dispatch: dict | None = None
 
 
-def _record_dispatch(event: IncidentEvent, outcome: str) -> None:
+def _record_dispatch(event: IncidentEvent, outcome: str,
+                     incident_id: str | None = None,
+                     message_id: int | None = None) -> None:
     global _last_dispatch
     _last_dispatch = {
         "outcome": outcome,
         "residentId": event.entry.id,
         "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        # Gap check 2026-07-31: the replay GIF threads by matching THIS pair —
+        # the camera nonce scopes the record to one incident, and the message
+        # id rides with it so a later alert can never lend its id to our GIF.
+        "incidentId": incident_id,
+        "messageId": message_id,
     }
 
 
@@ -214,13 +221,19 @@ def _dispatch_alert(event: IncidentEvent) -> None:
     slow/failed send never delays or breaks the incident response. Every path
     records its outcome for /alerts/status — silence stays out of the UI."""
     telegram.clear_ack()  # a new incident starts an unacknowledged alert leg
+    # Captured on the request thread: None for simulate/accelerometer, the
+    # nonce for camera incidents — the replay follow-up threads against it.
+    iid = fixtures.current_cv_incident_id()
     if not telegram.is_configured():
-        _record_dispatch(event, "not-configured")
+        _record_dispatch(event, "not-configured", iid)
         return
 
     def _send() -> None:
         ok = telegram.send_incident_alert(event)
-        _record_dispatch(event, "sent" if ok else "failed")
+        _record_dispatch(
+            event, "sent" if ok else "failed", iid,
+            telegram.last_alert_message_id() if ok else None,
+        )
 
     threading.Thread(target=_send, daemon=True).start()
 
@@ -269,7 +282,9 @@ class CvDetectedRequest(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     stillness_s: float = 8.0
     confidence: float = 0.7
-    note: str | None = None
+    # Capped well under Telegram's 1024-char sendAnimation caption limit —
+    # an unbounded note became the GIF caption and 400'd the whole leg.
+    note: str | None = Field(None, max_length=280)
     # Enrolled identity (ADR 0011): which caseload resident this fall belongs
     # to. Optional and fail-open — absent/unknown keeps the default identity.
     resident_id: str | None = None
@@ -381,7 +396,7 @@ def _dispatch_replay_animation() -> None:
         _record_animation("no-replay")
         return
     caption_rationale = fixtures.build_incident_event().entry.score.rationale
-    dispatch_before = _last_dispatch  # identity snapshot, not a copy
+    replay_iid = payload["incidentId"]
 
     def _send() -> None:
         try:
@@ -391,16 +406,32 @@ def _dispatch_replay_animation() -> None:
                 payload["frames"], payload["quantScale"]
             )
             if not gif:
+                # Two distinct causes share the None return — name them so
+                # /alerts/status "skipped" is diagnosable without reading code.
+                print(
+                    "[replay] animation skipped: "
+                    + ("Pillow not installed"
+                       if not replay_render.pillow_available()
+                       else "fewer than 2 drawable frames")
+                )
                 _record_animation("skipped")
                 return
+            # Reply threading (gap check 2026-07-31): wait for THIS incident's
+            # alert record — matched by nonce, never by "the record changed".
+            # The old identity heuristic stalled 5 s and un-threaded when the
+            # alert settled before the upload (the normal fast path), and
+            # could thread under a DIFFERENT alert that settled mid-wait.
             deadline = time.monotonic() + 5.0
-            while time.monotonic() < deadline and _last_dispatch is dispatch_before:
+            settled = None
+            while time.monotonic() < deadline:
+                d = _last_dispatch
+                if d and d.get("incidentId") == replay_iid:
+                    settled = d
+                    break
                 time.sleep(0.2)
-            settled = _last_dispatch
             reply_to = (
-                telegram.last_alert_message_id()
-                if settled is not dispatch_before
-                and settled and settled.get("outcome") == "sent"
+                settled.get("messageId")
+                if settled and settled.get("outcome") == "sent"
                 else None
             )
             ok = telegram.send_replay_animation(

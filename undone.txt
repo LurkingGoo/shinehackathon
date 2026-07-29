@@ -1,0 +1,25 @@
+UNDONE — 2026-07-31 gap-check session (spec 1.16.x)
+====================================================
+
+Left deliberately unfinished when the operator called for the push:
+
+1. ADR 0018 not yet written. The impact-severity band design (gentle/moderate/
+   hard thresholds in FACTS_CONFIG) and the nonce-matched reply-threading fix
+   are documented in feature-spec 1.16.0 + code comments only; the desk rule
+   wants a proper ADR. Draft was about to start from the ADR 0017 template.
+2. ReplayFactsPayload (lib/types.ts) <-> ReplayFacts (app/main.py) is still a
+   hand-mirrored pair with no parity test or waiver comment (gap audit #7).
+3. telegram.send_replay_animation's real urlopen branch is untested, and an
+   HTTP-200 body with ok:false returns False without a log line (GIF audit #4).
+4. Retention wording: a Reset racing the render thread does not stop an
+   in-flight GIF send (accepted trade-off, test-asserted) — the privacy copy
+   should say retention covers STORAGE, not in-flight dispatch (GIF audit #7).
+5. slides.pdf is stale against deck.md (impact-severity line added); start.sh
+   re-renders it on next launch, or run marp manually.
+6. Vault-search reindex not run after the docs changes (session protocol).
+7. Pre-existing, unchanged: real on-camera rehearsal fall (tune severity
+   thresholds + recapture drilldown deck screenshots), leaked bot token
+   revoke, Render SCORING_SERVICE_URL gate, co-author-trailer operator call.
+
+Everything else from the two subagent audits is fixed and tested:
+pytest 148 / vitest 88 / tsc clean at commit time.

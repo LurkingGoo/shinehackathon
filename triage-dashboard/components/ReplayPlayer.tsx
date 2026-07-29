@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReplayFactsPayload } from "@/lib/types";
 import { dataClient } from "@/lib/data/client";
 import { decodeFrames, type RingFrame } from "@/lib/pose/replayBuffer";
+import { factsCaption } from "@/lib/pose/replayCaption";
 import { findPhases, type ReplayPhases } from "@/lib/pose/replayFacts";
 import {
   advancePlayhead,
@@ -25,26 +26,6 @@ import styles from "./dashboard.module.css";
 
 const W = 320;
 const H = 180;
-
-function factsCaption(facts: ReplayFactsPayload | null | undefined): string {
-  if (!facts) return "Replayed joint positions · no pixels were recorded";
-  const bits: string[] = [];
-  if (facts.direction && facts.direction !== "unknown")
-    bits.push(
-      facts.direction === "toward-camera"
-        ? "fell toward the camera"
-        : `fell ${facts.direction === "left" ? "leftward" : "rightward"}`,
-    );
-  if (facts.descentDurationMs)
-    bits.push(`${(facts.descentDurationMs / 1000).toFixed(1)}s descent`);
-  if (facts.protectiveArm === false) bits.push("no arm protection");
-  if (facts.protectiveArm === true) bits.push("arms broke the fall");
-  if (facts.postImpactMovement === "slight" || facts.postImpactMovement === "moving")
-    bits.push(`${facts.postImpactMovement} movement after impact`);
-  return bits.length
-    ? `${bits.join(" · ")} · joint positions only, no pixels`
-    : "Replayed joint positions · no pixels were recorded";
-}
 
 export function ReplayPlayer() {
   const [frames, setFrames] = useState<RingFrame[] | null>(null);
