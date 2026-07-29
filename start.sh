@@ -1,12 +1,36 @@
 #!/usr/bin/env bash
 # Kickstart Morning Triage: scoring service (:8000) + triage dashboard (:3000).
 #   ./start.sh          start both, stream logs, Ctrl-C stops both
+#   ./stop.sh           stop both (when this shell is gone)
 # Override the interpreter with PYTHON=/path/to/python ./start.sh
+# macOS/Linux entry point — Windows uses start.bat / stop.bat.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PY="${PYTHON:-$(command -v python3 || command -v python)}"
 CHROME="${CHROME_PATH:-C:/Program Files/Google/Chrome/Application/chrome.exe}"
+
+# --- Telegram config check (mirrors start.bat). On macOS the env vars live in
+# ~/.zshrc, which bash — and anything launched non-interactively, including an
+# AI agent running this script — never sources. So the service silently came
+# up unconfigured. Hydrate the two vars from the usual rc files when missing.
+# Values are never printed (vault rule 8).
+for RC in "$HOME/.zshrc" "$HOME/.zprofile" "$HOME/.bashrc" "$HOME/.bash_profile"; do
+  if [ -z "${SHINEHACKATHON_TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${SHINEHACKATHON_TELEGRAM_CHAT_ID:-}" ]; then
+    if [ -f "$RC" ]; then
+      eval "$(grep -hE '^[[:space:]]*(export[[:space:]]+)?SHINEHACKATHON_TELEGRAM_(BOT_TOKEN|CHAT_ID)=' "$RC" 2>/dev/null || true)"
+    fi
+  fi
+done
+export SHINEHACKATHON_TELEGRAM_BOT_TOKEN="${SHINEHACKATHON_TELEGRAM_BOT_TOKEN:-}"
+export SHINEHACKATHON_TELEGRAM_CHAT_ID="${SHINEHACKATHON_TELEGRAM_CHAT_ID:-}"
+if [ -n "$SHINEHACKATHON_TELEGRAM_BOT_TOKEN" ] && [ -n "$SHINEHACKATHON_TELEGRAM_CHAT_ID" ]; then
+  echo "[telegram] configured — falls will send REAL Telegram pings"
+elif [ -n "$SHINEHACKATHON_TELEGRAM_BOT_TOKEN$SHINEHACKATHON_TELEGRAM_CHAT_ID" ]; then
+  echo "[telegram] PARTIAL config — need BOTH SHINEHACKATHON_TELEGRAM_BOT_TOKEN and _CHAT_ID; alerts will NOT send"
+else
+  echo "[telegram] not configured — dashboard-only, no Telegram alerts"
+fi
 
 # Re-render slides.pdf from the Marp source when it's stale (never blocks startup).
 DECK="$ROOT/docs/slides/deck.md"
@@ -26,11 +50,18 @@ else
   echo "✓ slides.pdf up to date."
 fi
 
-echo "▶ scoring service — installing deps (quiet) + starting on :8000 ..."
+echo "▶ scoring service — venv + deps (quiet) + starting on :8000 ..."
 (
   cd "$ROOT/scoring-service"
-  "$PY" -m pip install -q -r requirements.txt
-  exec "$PY" -m uvicorn app.main:app --port 8000
+  # Project venv: Homebrew/system python is PEP-668 externally-managed, so a
+  # bare `pip install` dies (the long-standing start.sh failure). A venv makes
+  # the install legal AND survives on any machine profile.
+  if [ ! -x ".venv/bin/python" ]; then
+    echo "  creating scoring-service/.venv ..."
+    "$PY" -m venv .venv
+  fi
+  ".venv/bin/python" -m pip install -q -r requirements.txt
+  exec ".venv/bin/python" -m uvicorn app.main:app --port 8000
 ) &
 SVC_PID=$!
 
