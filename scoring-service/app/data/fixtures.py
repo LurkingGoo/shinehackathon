@@ -328,6 +328,16 @@ def _apply_replay_facts(facts: dict | None) -> None:
         s = dur / 1000.0
         frags.append(f"{s:.1f}s descent")
         feats.append(("Descent", f"{s:.1f}s", 0.15))
+    sev = facts.get("impactSeverity")
+    if sev in ("gentle", "moderate", "hard"):
+        frags.append(f"{sev} impact")
+        speed = facts.get("impactSpeed")
+        detail = (
+            f"{sev} ({speed:.2f} heights/s)"
+            if isinstance(speed, (int, float)) and speed > 0
+            else sev
+        )
+        feats.append(("Impact severity", detail, 0.2))
     pa = facts.get("protectiveArm")
     if pa is True:
         frags.append("arms broke the fall")

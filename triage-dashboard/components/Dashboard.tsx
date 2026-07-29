@@ -12,6 +12,7 @@ import {
   speakAlert,
 } from "@/lib/audio/alerts";
 import { useRespeak } from "@/lib/audio/useRespeak";
+import { onRosterChange } from "@/lib/sync/rosterSync";
 import { CaseloadCard } from "./CaseloadCard";
 import { DrilldownPanel } from "./DrilldownPanel";
 import styles from "./dashboard.module.css";
@@ -91,6 +92,31 @@ export function Dashboard() {
     }, 30_000);
     return () => clearInterval(id);
   }, []);
+
+  // Instant roster sync (gap check 2026-07-30): a register / location save /
+  // delete on an open /watch tab nudges this tab to refetch NOW — a deleted
+  // resident must never linger on screen for the 30 s poll above. The
+  // drilldown closes if it belonged to a row that vanished.
+  useEffect(
+    () =>
+      onRosterChange(() => {
+        dataClient
+          .getRankedCaseload()
+          .then((c) => {
+            const ranked = rank(c.entries);
+            setEntries(ranked);
+            setSelectedId((sel) => {
+              if (sel && !ranked.some((e) => e.id === sel)) {
+                setDetail(null);
+                return null;
+              }
+              return sel;
+            });
+          })
+          .catch(() => undefined);
+      }),
+    [],
+  );
 
   // live incident channel (mock pub/sub now; SSE/WS later — same handler)
   useEffect(() => {

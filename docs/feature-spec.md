@@ -3,7 +3,7 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.15.1
+spec_version: 1.16.0
 last_updated: 2026-07-30
 tags: [features, scoring, reference]
 ---
@@ -346,6 +346,22 @@ rationale → recommendedAction` and cannot affect any resident's score:
   offline by construction (it was sending real alerts from any machine with
   the demo env). Privacy copy names the chat as the trace's second,
   persistent recipient.
+  **1.16.0 (joint-based impact cue + roster sync):** the facts gain
+  `impactSpeed` (peak downward torso-midpoint velocity across the descent
+  window, normalized frame-heights/s) and its band `impactSeverity`
+  (gentle < 0.5 ≤ moderate < 1.0 ≤ hard — rehearsal-tunable in
+  `FACTS_CONFIG`, like the direction/stillness thresholds). The server folds
+  a recognized band into the rationale ("hard impact") with a matching
+  `Impact severity` feature row carrying the speed ("hard (1.42
+  heights/s)"); an unrecognized band is ignored, honestly. `protectiveArm`
+  now requires the wrist below the hip line in ≥ 2 descent frames
+  (`protectiveMinFrames`) — one frame is landmark noise, not a reach.
+  Separately, roster mutations on /watch (register / location save /
+  delete) nudge every same-origin tab via BroadcastChannel + a localStorage
+  bump (`lib/sync/rosterSync.ts`); an open dashboard refetches its caseload
+  immediately instead of waiting for the 30 s poll, and closes the
+  drilldown if its row vanished. Carrier is a data-free "refetch" nudge —
+  server truth stays single-sourced; the poll remains the backstop.
 - **Enrollment capture gating (spec 1.10.0)** — the capture control sits
   directly under the camera feed and enables only when: camera running, face
   models ready, a target chosen, no capture in flight, under the 5-angle cap,

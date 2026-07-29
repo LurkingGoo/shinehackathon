@@ -23,7 +23,10 @@ const TEST_NAME = "E2E Check";
 
 const startedAt = new Date();
 const browser = await chromium.launch();
-const page = await browser.newPage();
+// Explicit context: the cross-tab sync check opens a second page in the SAME
+// context (BroadcastChannel scope); an owned context refuses extra pages.
+const context = await browser.newContext();
+const page = await context.newPage();
 const step = (msg) => console.log(`  ✓ ${msg}`);
 
 try {
@@ -37,6 +40,19 @@ try {
   const reportAs = page.getByLabel("Report as");
   await reportAs.locator("option").nth(1).waitFor({ state: "attached", timeout: 15_000 });
   step("/watch page loads, roster fetched");
+
+  // Sweep litter from earlier FAILED runs before registering our own — a
+  // second "E2E Check" makes every later name-keyed assertion ambiguous.
+  const pre = (await (await page.request.get(`${API}/caseload`)).json()).entries;
+  for (const e of pre.filter((x) => x.name === TEST_NAME && x.registered)) {
+    await page.request.delete(`${API}/residents/${e.id}`);
+  }
+  if (pre.some((x) => x.name === TEST_NAME && x.registered)) {
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByLabel("Report as").locator("option").nth(1)
+      .waitFor({ state: "attached", timeout: 15_000 });
+    step("swept litter registrants from an earlier failed run");
+  }
 
   assert.equal(await reportAs.inputValue(), "", "Report as should start generic");
 
@@ -169,6 +185,14 @@ try {
   const target = before.find((e) => e.name === TEST_NAME && e.registered);
   assert.ok(target, "registrant missing from /caseload before deletion");
 
+  // Cross-tab sync (gap check 2026-07-30): a dashboard tab already open in
+  // the SAME browser must drop the row the moment the deletion lands — via
+  // the BroadcastChannel nudge, not its 30 s poll and not a reload.
+  const dashPage = await context.newPage();
+  await dashPage.goto(DASH, { waitUntil: "domcontentloaded" });
+  await dashPage.getByText(TEST_NAME).first().waitFor({ timeout: 10_000 });
+  step("second dashboard tab open, registrant row visible");
+
   await page.goto(`${DASH}/watch`, { waitUntil: "domcontentloaded" });
   const who = page.getByLabel("Who");
   await who.locator("option", { hasText: TEST_NAME }).first()
@@ -178,6 +202,14 @@ try {
   await page.getByRole("button", { name: /Tap again to confirm/ }).click();
   await page.getByText(`${TEST_NAME} removed`).waitFor({ timeout: 10_000 });
   step(`deleted "${TEST_NAME}" via the two-step confirm`);
+
+  // — the open dashboard tab loses the row promptly, with no reload
+  await dashPage
+    .getByText(TEST_NAME)
+    .first()
+    .waitFor({ state: "detached", timeout: 5_000 });
+  step("open dashboard tab dropped the deleted row instantly (cross-tab sync)");
+  await dashPage.close();
 
   // — backend cascade: out of /caseload, and a re-delete hard-404s
   const after = (await (await page.request.get(`${API}/caseload`)).json()).entries;

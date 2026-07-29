@@ -306,6 +306,10 @@ class ReplayFacts(BaseModel):
     direction: str | None = None
     protective_arm: bool | None = None
     post_impact_movement: str | None = None
+    # Joint-based impact cue (spec 1.16.0): peak descent velocity in
+    # normalized frame-heights/s + the browser's severity band.
+    impact_speed: float | None = None
+    impact_severity: str | None = None
 
 
 class ReplayUploadRequest(BaseModel):

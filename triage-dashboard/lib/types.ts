@@ -162,6 +162,10 @@ export interface ReplayFactsPayload {
   direction: "left" | "right" | "toward-camera" | "unknown";
   protectiveArm: boolean | null;
   postImpactMovement: "none" | "slight" | "moving" | "unknown";
+  /** Peak descent velocity (normalized frame-heights/s) + its severity band
+   * — the joint-based impact cue (spec 1.16.0). Optional/fail-open. */
+  impactSpeed?: number | null;
+  impactSeverity?: "gentle" | "moderate" | "hard" | null;
 }
 
 export interface ReplayUploadPayload {

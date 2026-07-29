@@ -181,6 +181,40 @@ def test_facts_enrich_rationale_and_features():
         assert by_label["Protective response"] == "none seen"
 
 
+def test_impact_severity_folds_into_rationale_and_features():
+    with TestClient(app) as c:
+        iid = _fire_cv(c)
+        r = _upload_with_facts(c, iid, {
+            "direction": "right", "impactSpeed": 1.42, "impactSeverity": "hard",
+        })
+        assert r.status_code == 200
+        top = c.get("/caseload").json()["entries"][0]
+        assert "hard impact" in top["score"]["rationale"]
+        detail = c.get(f"/residents/{top['id']}").json()
+        by_label = {f["label"]: f["value"] for f in detail["features"]}
+        assert by_label["Impact severity"] == "hard (1.42 heights/s)"
+
+
+def test_bogus_severity_is_ignored():
+    with TestClient(app) as c:
+        iid = _fire_cv(c)
+        before = c.get("/caseload").json()["entries"][0]["score"]["rationale"]
+        _upload_with_facts(c, iid, {"impactSeverity": "catastrophic"})
+        after = c.get("/caseload").json()["entries"][0]["score"]["rationale"]
+        assert after == before  # unrecognized band → the honest default stands
+
+
+def test_severity_without_speed_stays_wordy_only():
+    with TestClient(app) as c:
+        iid = _fire_cv(c)
+        _upload_with_facts(c, iid, {"impactSeverity": "moderate"})
+        top = c.get("/caseload").json()["entries"][0]
+        assert "moderate impact" in top["score"]["rationale"]
+        detail = c.get(f"/residents/{top['id']}").json()
+        by_label = {f["label"]: f["value"] for f in detail["features"]}
+        assert by_label["Impact severity"] == "moderate"
+
+
 def test_partial_facts_compose_partially():
     with TestClient(app) as c:
         iid = _fire_cv(c)

@@ -39,6 +39,7 @@ import {
   type RingFrame,
 } from "@/lib/pose/replayBuffer";
 import { computeReplayFacts } from "@/lib/pose/replayFacts";
+import { announceRosterChange } from "@/lib/sync/rosterSync";
 import styles from "./watch.module.css";
 
 /**
@@ -349,6 +350,7 @@ export function WatchPanel() {
       }
       setCoords(null);
       await refreshResidents();
+      announceRosterChange(); // an open dashboard tab refetches NOW, not in 30 s
     } catch {
       pushLog("Could not reach the scoring service — location NOT saved");
     } finally {
@@ -383,6 +385,7 @@ export function WatchPanel() {
         setLocTarget("new");
         pushLog(`${who} removed — face data forgotten on this device`);
         await refreshResidents();
+        announceRosterChange(); // deletion cascade includes other open tabs
       } catch {
         pushLog(`Could not reach the scoring service — ${who} NOT removed`);
       } finally {
@@ -742,6 +745,39 @@ export function WatchPanel() {
               {errorMsg}
             </div>
           )}
+          {/* Enrollment lives ABOVE the warning box (operator feedback
+              2026-07-30): the capture button is already under the feed, so
+              its card sits with it — no scroll hunt past the privacy text. */}
+          <section className={styles.card}>
+            <h2 className={styles.cardTitle}>Face enrollment (on-device)</h2>
+            <p className={styles.testNote}>
+              Enroll front, left, and right angles per person. Embeddings stay in
+              this browser&apos;s storage — no face image is kept, nothing is
+              uploaded. An identified person makes their fall a named alert;
+              anyone unenrolled still fires the generic alert. The capture
+              control above lights up when a face is actually in view.
+            </p>
+            {gallery.length > 0 && (
+              <ul className={styles.logList} style={{ marginTop: 12 }}>
+                {gallery.map((p) => (
+                  <li key={p.residentId} className={styles.logItem}>
+                    <span className={styles.logAt}>{p.embeddings.length} angle{p.embeddings.length === 1 ? "" : "s"}</span>
+                    {p.label}
+                    {p.embeddings.length < DEFAULT_MATCH_CONFIG.minAngles && (
+                      <em> — capture another angle to activate matching</em>
+                    )}
+                    <button
+                      className={styles.removeBtn}
+                      onClick={() => removeEnrolled(p.residentId)}
+                      aria-label={`Forget ${p.label}`}
+                    >
+                      forget
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
           <div className={styles.privacyNote} role="note">
             <b>What leaves this browser.</b> The camera feed does not. Pose
             detection and face matching run inside this page, and no video,
@@ -927,40 +963,6 @@ export function WatchPanel() {
                     : `Remove ${residents.find((r) => r.id === locTarget)?.name}…`}
                 </button>
               )}
-          </section>
-
-          <section className={styles.card}>
-            <h2 className={styles.cardTitle}>Face enrollment (on-device)</h2>
-            <p className={styles.testNote}>
-              Enroll front, left, and right angles per person. Embeddings stay in
-              this browser&apos;s storage — no face image is kept, nothing is
-              uploaded. An identified person makes their fall a named alert;
-              anyone unenrolled still fires the generic alert.
-            </p>
-            <p className={styles.testNote}>
-              The capture control sits under the camera feed — it lights up
-              when a face is actually in view.
-            </p>
-            {gallery.length > 0 && (
-              <ul className={styles.logList} style={{ marginTop: 12 }}>
-                {gallery.map((p) => (
-                  <li key={p.residentId} className={styles.logItem}>
-                    <span className={styles.logAt}>{p.embeddings.length} angle{p.embeddings.length === 1 ? "" : "s"}</span>
-                    {p.label}
-                    {p.embeddings.length < DEFAULT_MATCH_CONFIG.minAngles && (
-                      <em> — capture another angle to activate matching</em>
-                    )}
-                    <button
-                      className={styles.removeBtn}
-                      onClick={() => removeEnrolled(p.residentId)}
-                      aria-label={`Forget ${p.label}`}
-                    >
-                      forget
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
           </section>
 
           <section className={`${styles.card} ${styles.honesty}`}>

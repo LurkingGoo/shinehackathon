@@ -16,6 +16,10 @@ export interface ReplayFactsData {
   direction: "left" | "right" | "toward-camera" | "unknown";
   protectiveArm: boolean | null;
   postImpactMovement: "none" | "slight" | "moving" | "unknown";
+  /** Peak downward torso velocity during descent, normalized frame-heights/s. */
+  impactSpeed: number | null;
+  /** Severity band derived from impactSpeed — a triage cue, not a diagnosis. */
+  impactSeverity: "gentle" | "moderate" | "hard" | null;
 }
 
 export interface ReplayPhases {
@@ -44,6 +48,12 @@ export const FACTS_CONFIG = {
   slightEps: 0.03,
   /** Facts need at least this many valid frames per phase, else "unknown". */
   minValidFrames: 3,
+  /** protectiveArm=true needs the wrist below the hip line in at least this
+   * many descent frames — one frame is landmark noise, not a reach. */
+  protectiveMinFrames: 2,
+  /** Impact severity bands over peak descent velocity (frame-heights/s). */
+  moderateMinSpeed: 0.5,
+  hardMinSpeed: 1.0,
 };
 
 type Posture = "upright" | "transitional" | "horizontal" | null;
@@ -136,18 +146,55 @@ function protectiveArm(
 ): boolean | null {
   if (phases.descentStartMs === null || phases.impactMs === null) return null;
   let sawVisibleWrist = false;
+  let reachFrames = 0;
   for (const f of frames) {
     // exclusive of impact: the protective response happens DURING descent
     if (f.tMs < phases.descentStartMs || f.tMs >= phases.impactMs || !f.pts) continue;
     const hipY = (f.pts[HIP_L].y + f.pts[HIP_R].y) / 2;
+    let reachedThisFrame = false;
     for (const w of [WRI_L, WRI_R]) {
       const wrist = f.pts[w];
       if ((wrist.visibility ?? 0) < cfg.wristVisibility) continue;
       sawVisibleWrist = true;
-      if (wrist.y > hipY) return true; // y grows downward
+      if (wrist.y > hipY) reachedThisFrame = true; // y grows downward
     }
+    if (reachedThisFrame && ++reachFrames >= cfg.protectiveMinFrames) return true;
   }
   return sawVisibleWrist ? false : null;
+}
+
+/** Peak downward torso-midpoint velocity across the descent window
+ * (frame-heights per second). Null when the window or its frames are
+ * missing — like every fact, absence is reported, never guessed. */
+function impactSpeed(
+  frames: RingFrame[],
+  phases: ReplayPhases,
+): number | null {
+  if (phases.descentStartMs === null || phases.impactMs === null) return null;
+  const window = frames.filter(
+    (f) =>
+      f.tMs >= phases.descentStartMs! && f.tMs <= phases.impactMs! && f.pts &&
+      f.pts.length > Math.max(...TORSO),
+  );
+  let peak: number | null = null;
+  for (let i = 1; i < window.length; i++) {
+    const dt = window[i].tMs - window[i - 1].tMs;
+    if (dt <= 0) continue;
+    const dy = torsoMid(window[i].pts!)[1] - torsoMid(window[i - 1].pts!)[1];
+    const v = (dy / dt) * 1000; // per second; positive = downward
+    if (v > (peak ?? -Infinity)) peak = v;
+  }
+  return peak === null ? null : Math.round(peak * 100) / 100;
+}
+
+function severityOf(
+  speed: number | null,
+  cfg = FACTS_CONFIG,
+): ReplayFactsData["impactSeverity"] {
+  if (speed === null || speed <= 0) return null;
+  if (speed >= cfg.hardMinSpeed) return "hard";
+  if (speed >= cfg.moderateMinSpeed) return "moderate";
+  return "gentle";
 }
 
 function postImpactMovement(
@@ -183,6 +230,7 @@ export function computeReplayFacts(
   cfg = FACTS_CONFIG,
 ): ReplayFactsData {
   const phases = findPhases(frames, cfg);
+  const speed = impactSpeed(frames, phases);
   return {
     descentDurationMs:
       phases.descentStartMs !== null && phases.impactMs !== null
@@ -191,5 +239,7 @@ export function computeReplayFacts(
     direction: fallDirection(frames, phases, cfg),
     protectiveArm: protectiveArm(frames, phases, cfg),
     postImpactMovement: postImpactMovement(frames, phases, cfg),
+    impactSpeed: speed,
+    impactSeverity: severityOf(speed, cfg),
   };
 }

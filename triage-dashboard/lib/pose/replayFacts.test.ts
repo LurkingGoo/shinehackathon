@@ -40,14 +40,17 @@ function midFall(cx: number, opts: { wristY?: number; wristVis?: number } = {}):
   return p;
 }
 
-/** On the ground, torso mid at cx; halfSpan controls apparent size. */
+/** On the ground, torso mid at cx; halfSpan controls apparent size. Jitter
+ * is a DETERMINISTIC per-frame translation (alternating sign) — Math.random
+ * here made the crawling test a coin flip. */
+let jitterTick = 0;
 function lying(cx: number, halfSpan = 0.2, jitter = 0): LandmarkPoint[] {
-  const j = () => (jitter ? (Math.random() - 0.5) * jitter : 0);
+  const o = jitter ? (jitterTick++ % 2 ? 1 : -1) * (jitter / 2) : 0;
   const p = base();
-  p[1] = { x: cx + halfSpan + j(), y: 0.8 + j(), visibility: 0.9 };
-  p[2] = { x: cx + halfSpan + j(), y: 0.8 + j(), visibility: 0.9 };
-  p[7] = { x: cx - halfSpan + j(), y: 0.8 + j(), visibility: 0.9 };
-  p[8] = { x: cx - halfSpan + j(), y: 0.8 + j(), visibility: 0.9 };
+  p[1] = { x: cx + halfSpan + o, y: 0.8 + o, visibility: 0.9 };
+  p[2] = { x: cx + halfSpan + o, y: 0.8 + o, visibility: 0.9 };
+  p[7] = { x: cx - halfSpan + o, y: 0.8 + o, visibility: 0.9 };
+  p[8] = { x: cx - halfSpan + o, y: 0.8 + o, visibility: 0.9 };
   return p;
 }
 
@@ -156,7 +159,54 @@ describe("computeReplayFacts", () => {
       direction: "unknown",
       protectiveArm: null,
       postImpactMovement: "unknown",
+      impactSpeed: null,
+      impactSeverity: null,
     });
+  });
+
+  it("protective arm: a single noisy reach frame is NOT a protective response", () => {
+    let dropped = 0;
+    const frames = seq(
+      [5, () => standing(0.4, { wristY: 0.2 })],
+      // exactly one descent frame with the wrist below the hips
+      [3, () => midFall(0.4, { wristY: dropped++ === 0 ? 0.75 : 0.2 })],
+      [10, () => lying(0.6)],
+    );
+    expect(computeReplayFacts(frames).protectiveArm).toBe(false);
+  });
+
+  it("impact severity: a fast synthetic drop reads as hard, with a speed", () => {
+    const f = computeReplayFacts(
+      seq([5, () => standing(0.4)], [3, () => midFall(0.4)], [10, () => lying(0.6)]),
+    );
+    expect(f.impactSpeed).toBeGreaterThan(1.0);
+    expect(f.impactSeverity).toBe("hard");
+  });
+
+  it("impact severity: a slow eased descent reads below hard", () => {
+    // interpolate torso-mid from standing to lying over 2.4 s — ~0.15 u/s
+    const steps = 24;
+    let i = 0;
+    const glide = (): LandmarkPoint[] => {
+      const t = Math.min(1, i++ / steps);
+      const p = base();
+      const shoY = 0.3 + t * 0.5;
+      const hipY = 0.6 + t * 0.2;
+      p[1] = { x: 0.4 + t * 0.2, y: shoY, visibility: 0.9 };
+      p[2] = { x: 0.4 + t * 0.2, y: shoY, visibility: 0.9 };
+      p[7] = { x: 0.4, y: hipY, visibility: 0.9 };
+      p[8] = { x: 0.4, y: hipY, visibility: 0.9 };
+      return p;
+    };
+    const f = computeReplayFacts(seq([3, () => standing(0.4)], [steps, glide], [8, () => lying(0.6)]));
+    expect(f.impactSeverity === "hard").toBe(false);
+    if (f.impactSpeed !== null) expect(f.impactSpeed).toBeLessThan(1.0);
+  });
+
+  it("impact severity: null when the fall was not captured", () => {
+    const f = computeReplayFacts(seq([10, () => standing(0.4)]));
+    expect(f.impactSpeed).toBeNull();
+    expect(f.impactSeverity).toBeNull();
   });
 
   it("is deterministic for identical frames", () => {
