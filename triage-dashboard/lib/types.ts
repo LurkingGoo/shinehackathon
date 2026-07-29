@@ -72,6 +72,11 @@ export interface CaseloadEntry extends Resident {
    * context, not a camera localization claim (ADR 0012). Optional: additive.
    */
   zone?: string;
+  /**
+   * True for runtime registrants (ADR 0013/0014) — the only rows the UI may
+   * offer to delete. Fixture roster rows omit it. Optional: additive.
+   */
+  registered?: boolean;
 }
 
 /** ---- Ranked-list payload (GET /api/caseload) ---- */

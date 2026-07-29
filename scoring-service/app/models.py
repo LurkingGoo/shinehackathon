@@ -51,6 +51,9 @@ class CaseloadEntry(Resident):
     # context, not a camera localization claim (ADR 0012). Optional: additive
     # to the contract, absent for consumers that predate it.
     zone: str | None = None
+    # True for runtime registrants (ADR 0013/0014) — the only rows the UI may
+    # offer to delete. Fixture roster rows omit it. Optional: additive.
+    registered: bool | None = None
 
 
 class RankedCaseload(_Base):

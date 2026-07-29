@@ -125,6 +125,56 @@ def test_detail_carries_zone():
     assert detail["zone"] == "Balcony"
 
 
+# -------------------------------- deletion --------------------------------- #
+
+def test_delete_registered_resident_cascades_to_caseload_and_registry():
+    with TestClient(app) as client:
+        rid = client.post("/residents", json={"name": "Judge Judy"}).json()["id"]
+        res = client.delete(f"/residents/{rid}")
+        assert res.status_code == 200
+        assert res.json() == {"ok": True, "id": rid}
+        entries = client.get("/caseload").json()["entries"]
+    assert all(e["id"] != rid for e in entries)
+    saved = json.loads(fixtures.REGISTRY_PATH.read_text(encoding="utf-8"))
+    assert all(p["id"] != rid for p in saved["registered"])
+
+
+def test_builtin_residents_cannot_be_deleted():
+    with TestClient(app) as client:
+        assert client.delete("/residents/r-rajoo").status_code == 409
+        assert client.delete("/residents/r-tan").status_code == 409  # acute default
+
+
+def test_delete_unknown_resident_404s():
+    with TestClient(app) as client:
+        assert client.delete("/residents/r-nobody").status_code == 404
+
+
+def test_caseload_flags_registrants_as_registered():
+    with TestClient(app) as client:
+        rid = client.post("/residents", json={"name": "Judge Judy"}).json()["id"]
+        entries = client.get("/caseload").json()["entries"]
+    by_id = {e["id"]: e for e in entries}
+    assert by_id[rid]["registered"] is True
+    # fixture rows never claim the flag — the UI must not offer to delete them
+    assert not by_id["r-rajoo"].get("registered")
+
+
+def test_deleting_active_camera_identity_falls_back_to_generic():
+    """Deletion mid-incident must never leave a dangling name: the incident
+    stays active, but its identity reverts to the generic default (fail-open,
+    same rule as an unknown residentId)."""
+    r = fixtures.register_resident("Judge Judy", zone="Study")
+    fixtures.set_cv_incident(8.0, 0.7, None, r.id)
+    fixtures.mark_incident()
+    assert fixtures.delete_resident(r.id) == "deleted"
+    assert fixtures.incident_active()
+    event = fixtures.build_incident_event()
+    assert event.entry.id == fixtures.ACUTE.id
+    msg = telegram.format_incident_message(event)
+    assert "Judge Judy" not in msg
+
+
 # ------------------------------ persistence -------------------------------- #
 
 def test_registry_survives_reload():

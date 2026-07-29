@@ -37,7 +37,7 @@ HEARTBEAT_SECONDS = 15.0
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -125,6 +125,21 @@ def set_resident_location(rid: str, body: LocationRequest | None = None) -> dict
     if r is None:
         raise HTTPException(status_code=404, detail=f"unknown resident: {rid}")
     return {"ok": True, "id": r.id, "zone": r.zone, "unit": r.unit}
+
+
+@app.delete("/residents/{rid}")
+def delete_resident(rid: str) -> dict:
+    """Remove a runtime registrant (ADR 0014). Only registered people are
+    deletable — the fixture roster is demo narrative (409). An active incident
+    named for the deleted person keeps running under the generic identity."""
+    outcome = fixtures.delete_resident(rid)
+    if outcome == "unknown":
+        raise HTTPException(status_code=404, detail=f"unknown resident: {rid}")
+    if outcome == "builtin":
+        raise HTTPException(
+            status_code=409, detail=f"built-in resident cannot be deleted: {rid}"
+        )
+    return {"ok": True, "id": rid}
 
 
 # Server-side rotation cursor: each POST /incidents/simulate advances it so the

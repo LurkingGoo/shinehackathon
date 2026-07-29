@@ -10,8 +10,8 @@
  * and asserts the alert stays GENERIC end to end (UI log, /alerts/status,
  * dashboard acute row). Sends one real Telegram message if configured.
  *
- * NOTE: leaves "E2E Check" in the runtime registry (data/residents.json) —
- * clean up via reset or by removing the entry and restarting the service.
+ * Ends by deleting "E2E Check" through the UI (ADR 0014): two-step confirm,
+ * roster + registry cascade asserted — the test cleans up its own registrant.
  */
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
@@ -106,7 +106,48 @@ try {
   step("dashboard shows the acute row for the generic default resident");
   await page.screenshot({ path: `${SHOTS}/e2e-dashboard.png`, fullPage: true });
 
-  console.log("\nPASS — register → generic detection → alert → dashboard all held.");
+  // — resident lifecycle (ADR 0014): delete the registrant through the UI.
+  // Capture the target id first so the 404 re-delete check hits the right row.
+  const before = (await (await page.request.get(`${API}/caseload`)).json()).entries;
+  const target = before.find((e) => e.name === TEST_NAME && e.registered);
+  assert.ok(target, "registrant missing from /caseload before deletion");
+
+  await page.goto(`${DASH}/watch`, { waitUntil: "domcontentloaded" });
+  const who = page.getByLabel("Who");
+  await who.locator("option", { hasText: TEST_NAME }).first()
+    .waitFor({ state: "attached", timeout: 15_000 });
+  await who.selectOption(target.id);
+  await page.getByRole("button", { name: `Remove ${TEST_NAME}` }).click();
+  await page.getByRole("button", { name: /Tap again to confirm/ }).click();
+  await page.getByText(`${TEST_NAME} removed`).waitFor({ timeout: 10_000 });
+  step(`deleted "${TEST_NAME}" via the two-step confirm`);
+
+  // — backend cascade: out of /caseload, and a re-delete hard-404s
+  const after = (await (await page.request.get(`${API}/caseload`)).json()).entries;
+  assert.ok(after.every((e) => e.id !== target.id), "deleted person still in /caseload");
+  assert.equal(
+    (await page.request.delete(`${API}/residents/${target.id}`)).status(),
+    404,
+    "second delete should 404 (already gone)",
+  );
+  step("backend cascade held: /caseload clean, re-delete 404s");
+
+  // — sweep litter older runs may have left, keeping the registry pristine
+  for (const e of after.filter((x) => x.name === TEST_NAME && x.registered)) {
+    assert.equal(
+      (await page.request.delete(`${API}/residents/${e.id}`)).status(), 200,
+      `litter sweep failed for ${e.id}`,
+    );
+  }
+
+  // — UI agrees after its refetch: gone from the Report-as roster
+  await page
+    .getByLabel("Report as")
+    .locator("option", { hasText: TEST_NAME })
+    .waitFor({ state: "detached", timeout: 10_000 });
+  step("deleted person left the Report-as roster");
+
+  console.log("\nPASS — register → generic detection → alert → dashboard → delete all held.");
 } catch (err) {
   await page.screenshot({ path: `${SHOTS}/e2e-failure.png`, fullPage: true }).catch(() => {});
   console.error("\nFAIL —", err.message);

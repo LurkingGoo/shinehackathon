@@ -91,6 +91,12 @@ export interface DataClient {
    */
   setResidentLocation(id: string, payload: LocationPayload): Promise<void>;
   /**
+   * Resident lifecycle (ADR 0014): delete a runtime registrant. Rejects for
+   * built-in roster residents (409) and unknown ids (404). The caller owns
+   * the on-device cascade (face gallery, tracker binding, selectors).
+   */
+  deleteResident(id: string): Promise<void>;
+  /**
    * Alert-leg visibility: whether Telegram is configured and the outcome of
    * the most recent dispatch (sent / failed / not-configured). Backs the
    * status badge so the caregiver-ping leg is never silently unverifiable.
@@ -208,6 +214,13 @@ export const dataClient: DataClient = {
       },
     );
     if (!res.ok) throw new Error(`/api/residents/${id}/location -> ${res.status}`);
+  },
+
+  async deleteResident(id) {
+    const res = await fetch(`${BASE}/api/residents/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error(`/api/residents/${id} -> ${res.status}`);
   },
 
   getTrainingStats() {

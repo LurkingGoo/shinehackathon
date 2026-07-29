@@ -421,6 +421,27 @@ def set_resident_location(rid: str, zone: str | None = None, unit: str | None = 
     return None
 
 
+def is_registered(rid: str) -> bool:
+    return rid in _registered_ids
+
+
+def delete_resident(rid: str) -> str:
+    """Remove a runtime registrant (ADR 0014). Returns 'deleted', 'builtin'
+    (fixture roster rows are demo narrative — not deletable) or 'unknown'.
+    Cascade: roster, persistence artifact, and — if they are the active
+    camera-named acute identity — the incident KEEPS running but reverts to
+    the generic default, so no alert surface ever carries a deleted name."""
+    global _cv_resident
+    if rid not in _registered_ids:
+        return "builtin" if any(r.id == rid for r in _roster()) else "unknown"
+    CHRONIC[:] = [r for r in CHRONIC if r.id != rid]
+    _registered_ids.remove(rid)
+    if _cv_resident is not None and _cv_resident.id == rid:
+        _cv_resident = None
+    _save_registry()
+    return "deleted"
+
+
 def reset_registry() -> None:
     """Back to the stock roster: drop registrants, restore fixture locations,
     remove the persistence artifact. Deliberately NOT part of /incidents/clear
@@ -512,7 +533,8 @@ def _acute_score() -> tuple[RiskScore, list, str, str]:
 def _chronic_entry(r: ChronicResident, rank: int) -> CaseloadEntry:
     score, _f, _a, _r = _chronic_score(r)
     return CaseloadEntry(id=r.id, name=r.name, age=r.age, unit=r.unit,
-                         rank=rank, score=score, zone=r.zone)
+                         rank=rank, score=score, zone=r.zone,
+                         registered=is_registered(r.id) or None)
 
 
 def _chronic_detail(r: ChronicResident) -> ResidentDetail:

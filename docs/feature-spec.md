@@ -3,8 +3,8 @@ type: doc
 diataxis: reference
 title: Feature Specification (concrete)
 status: solidified
-spec_version: 1.9.0
-last_updated: 2026-07-28
+spec_version: 1.10.0
+last_updated: 2026-07-29
 tags: [features, scoring, reference]
 ---
 
@@ -253,3 +253,26 @@ rationale → recommendedAction` and cannot affect any resident's score:
   `data/residents.json` (demo state, gitignored) across service restarts.
   No scoring rule changed — the registry only edits who is on the roster and
   where they are.
+- **Resident deletion (spec 1.10.0, [[0014-resident-deletion-cascade]])** —
+  `DELETE /residents/{id}`: 200 for a runtime registrant, 409 for the fixture
+  roster (demo narrative, never deletable), 404 unknown. `CaseloadEntry` gains
+  optional `registered?: boolean` (additive) so the UI gates the affordance.
+  Cascade: roster + `data/residents.json`; a deleted person who is the active
+  camera-named acute identity reverts the incident to the generic default
+  (fail-open — no alert surface ever carries a deleted name). Browser-side:
+  face embeddings forgotten, sticky binding reset if bound to the deleted id,
+  all selectors cleared.
+- **On-device audio fall alerts (spec 1.10.0, [[0015-on-device-audio-alerts]])**
+  — at dispatch time the watch station chimes and SPEAKS "Patient has fallen!
+  Patient has fallen!" (plus the bound name + zone — the same facts the
+  Telegram alert carries), via Web Speech + WebAudio, fully offline. The
+  long-lie escalation (ADR 0012) speaks a sharper "still down" line. Persisted
+  stage-bar toggle, default ON; playback is best-effort and can never delay or
+  break the incident path. Outside the scoring path — presentation only.
+- **Enrollment capture gating (spec 1.10.0)** — the capture control sits
+  directly under the camera feed and enables only when: camera running, face
+  models ready, a target chosen, no capture in flight, under the 5-angle cap,
+  and a face embed succeeded within the last 2 s (`FACE_SEEN_FRESH_MS`). Face
+  embeds now tick whenever the face engine is on; the IDENTITY tracker is
+  still fed only on upright ticks with a non-empty gallery (ADR 0011
+  semantics unchanged — nothing is recognized mid-fall).

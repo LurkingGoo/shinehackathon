@@ -19,6 +19,17 @@ import {
   type EnrolledPerson,
 } from "@/lib/face/matcher";
 import { addEmbedding, loadGallery, removePerson } from "@/lib/face/gallery";
+import {
+  FACE_SEEN_FRESH_MS,
+  captureGate,
+} from "@/lib/face/enrollUi";
+import {
+  buildFallAnnouncement,
+  buildStillDownAnnouncement,
+  loadAudioEnabled,
+  saveAudioEnabled,
+  speakAlert,
+} from "@/lib/audio/alerts";
 import styles from "./watch.module.css";
 
 /**
@@ -87,9 +98,21 @@ export function WatchPanel() {
   const faceBusyRef = useRef(false);
   const lastFaceTickRef = useRef(0);
   const postureRef = useRef<Posture>("no-person");
+  // Real-time "a face is in view" signal for the capture gate. The ref is
+  // stamped by the embed tick; the state is derived on the 150 ms UI push so
+  // the button reacts within a beat without extra renders per frame.
+  const faceSeenAtRef = useRef(0);
+  const [faceSeen, setFaceSeen] = useState(false);
+
+  // Voice alerts (ADR 0015): spoken call-out at the watch station when a fall
+  // dispatches. Ref-mirrored so camera-loop callbacks read the live value.
+  const [audioOn, setAudioOn] = useState(true);
+  const audioOnRef = useRef(audioOn);
+  audioOnRef.current = audioOn;
 
   useEffect(() => {
     setGallery(loadGallery());
+    setAudioOn(loadAudioEnabled());
   }, []);
 
   // People & locations (ADR 0013): key in a location for a roster resident,
@@ -101,6 +124,9 @@ export function WatchPanel() {
   const [unitNoInput, setUnitNoInput] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [locBusy, setLocBusy] = useState(false);
+  // Two-step inline confirm for deletion (ADR 0014) — deliberately not
+  // window.confirm: a native dialog blocks automation and the camera loop.
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const refreshResidents = useCallback(
     () =>
@@ -136,13 +162,17 @@ export function WatchPanel() {
         await dataClient.reportCameraFall(
           payload || rid ? { ...payload, residentId: rid } : undefined,
         );
-        const asWho = rid
-          ? ` as ${
-              residents.find((r) => r.id === rid)?.name ??
-              galleryRef.current.find((p) => p.residentId === rid)?.label ??
-              rid
-            }`
-          : "";
+        const roster = rid ? residents.find((r) => r.id === rid) : undefined;
+        const who = rid
+          ? roster?.name ??
+            galleryRef.current.find((p) => p.residentId === rid)?.label ??
+            rid
+          : null;
+        // Spoken call-out (ADR 0015) the moment the dispatch leg starts —
+        // same identity + zone facts the Telegram alert carries.
+        if (audioOnRef.current)
+          speakAlert(buildFallAnnouncement(who, roster?.zone));
+        const asWho = who ? ` as ${who}` : "";
         pushLog(
           payload
             ? `Fall detected${asWho} — sent to the dashboard (confidence ${Math.round(
@@ -185,6 +215,14 @@ export function WatchPanel() {
       const rid = boundIdRef.current || residentIdRef.current || undefined;
       try {
         await dataClient.reportStillDown({ stillDownS, residentId: rid });
+        if (audioOnRef.current)
+          speakAlert(
+            buildStillDownAnnouncement(
+              rid
+                ? galleryRef.current.find((p) => p.residentId === rid)?.label
+                : null,
+            ),
+          );
         pushLog(
           `Still down ${stillDownS.toFixed(0)}s after the alert — escalation sent`,
         );
@@ -257,6 +295,39 @@ export function WatchPanel() {
     residents, pushLog, refreshResidents,
   ]);
 
+  // Resident lifecycle (ADR 0014). First tap arms, second tap deletes; then
+  // the full on-device cascade so no stale reference can ever produce a match
+  // or a named alert for someone who no longer exists.
+  const deletePerson = useCallback(
+    async (rid: string) => {
+      if (confirmDelete !== rid) {
+        setConfirmDelete(rid);
+        return;
+      }
+      setConfirmDelete(null);
+      const who = residents.find((r) => r.id === rid)?.name ?? rid;
+      setLocBusy(true);
+      try {
+        await dataClient.deleteResident(rid);
+        setGallery(removePerson(rid)); // embeddings gone → can never match again
+        if (boundIdRef.current === rid) {
+          trackerRef.current.reset();
+          setBoundId(null);
+        }
+        setResidentId((v) => (v === rid ? "" : v));
+        setEnrollTarget((v) => (v === rid ? "" : v));
+        setLocTarget("new");
+        pushLog(`${who} removed — face data forgotten on this device`);
+        await refreshResidents();
+      } catch {
+        pushLog(`Could not reach the scoring service — ${who} NOT removed`);
+      } finally {
+        setLocBusy(false);
+      }
+    },
+    [confirmDelete, residents, pushLog, refreshResidents],
+  );
+
   const stop = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
     engineRef.current?.close();
@@ -265,6 +336,8 @@ export function WatchPanel() {
     trackerRef.current.reset();
     setBoundId(null);
     setFaceStatus("off");
+    faceSeenAtRef.current = 0;
+    setFaceSeen(false);
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     prevLandmarksRef.current = undefined;
@@ -364,21 +437,21 @@ export function WatchPanel() {
             if (event.kind === "still-down") void escalate(event.stillDownS);
             else void report(event);
           }
-          // Identity tick (ADR 0011): low cadence, ONLY while upright — the
-          // binding is what carries the name through the fall, so nothing is
-          // ever recognized mid-fall. Decay is handled by the tracker.
+          // Face tick: embeds run on cadence whenever the face engine is on —
+          // the capture gate needs a live "face in view" signal even before
+          // anyone is enrolled. The IDENTITY tracker keeps ADR 0011 semantics
+          // unchanged: fed ONLY on upright ticks with a non-empty gallery, so
+          // nothing is ever recognized mid-fall.
           const fe = faceEngineRef.current;
-          if (
-            fe &&
-            galleryRef.current.length > 0 &&
-            !faceBusyRef.current &&
-            now - lastFaceTickRef.current > 700 &&
-            m.posture === "upright"
-          ) {
+          if (fe && !faceBusyRef.current && now - lastFaceTickRef.current > 700) {
             lastFaceTickRef.current = now;
             faceBusyRef.current = true;
+            const identityTick =
+              m.posture === "upright" && galleryRef.current.length > 0;
             fe.embed(v)
               .then((desc) => {
+                if (desc) faceSeenAtRef.current = performance.now();
+                if (!identityTick) return;
                 // faceSeen distinguishes "nobody's face in view" (binding
                 // holds through a fall) from "a face we can't match" (a few
                 // of those unbind — likely a different person).
@@ -402,6 +475,7 @@ export function WatchPanel() {
             setPosture(m.posture);
             setWatchState(smRef.current.state);
             setStillnessMs(smRef.current.stillnessMs);
+            setFaceSeen(now - faceSeenAtRef.current < FACE_SEEN_FRESH_MS);
           }
         }
         rafRef.current = requestAnimationFrame(loop);
@@ -467,6 +541,16 @@ export function WatchPanel() {
 
   const stillPct = Math.min(100, (stillnessMs / STILL_TARGET_MS) * 100);
 
+  const enrollGate = captureGate({
+    engineRunning: engineStatus === "running",
+    faceStatus,
+    enrollTarget,
+    faceSeen,
+    angles:
+      gallery.find((p) => p.residentId === enrollTarget)?.embeddings.length ?? 0,
+    busy: enrollBusy,
+  });
+
   return (
     <div className={styles.app}>
       <header className={styles.top}>
@@ -518,20 +602,60 @@ export function WatchPanel() {
                 </span>
               )}
             </div>
-            {engineStatus === "running" ? (
-              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={stop}>
-                Stop camera
+            <div className={styles.btnRow}>
+              <button
+                className={`${styles.btn} ${styles.btnGhost}`}
+                onClick={() => {
+                  setAudioOn((on) => {
+                    saveAudioEnabled(!on);
+                    return !on;
+                  });
+                }}
+                aria-pressed={audioOn}
+              >
+                {audioOn ? "🔊 Voice alerts on" : "🔇 Voice alerts off"}
               </button>
-            ) : (
+              {engineStatus === "running" ? (
+                <button className={`${styles.btn} ${styles.btnGhost}`} onClick={stop}>
+                  Stop camera
+                </button>
+              ) : (
+                <button
+                  className={styles.btn}
+                  onClick={start}
+                  disabled={engineStatus === "loading"}
+                >
+                  {engineStatus === "loading" ? "Starting…" : "Start camera"}
+                </button>
+              )}
+            </div>
+          </div>
+          {engineStatus === "running" && (
+            <div className={styles.enrollStrip}>
+              <label className={styles.selLabel} style={{ marginTop: 0, flex: 1 }}>
+                Enroll as
+                <select
+                  className={styles.residentSelect}
+                  value={enrollTarget}
+                  onChange={(e) => setEnrollTarget(e.target.value)}
+                >
+                  <option value="">Choose a resident…</option>
+                  {residents.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <button
                 className={styles.btn}
-                onClick={start}
-                disabled={engineStatus === "loading"}
+                onClick={() => void captureAngle()}
+                disabled={enrollGate.disabled}
               >
-                {engineStatus === "loading" ? "Starting…" : "Start camera"}
+                {enrollGate.label}
               </button>
-            )}
-          </div>
+            </div>
+          )}
           {watchState === "fallen-still" && (
             <div className={styles.stillMeter} role="status" aria-label="Stillness countdown">
               <div className={styles.stillTrack}>
@@ -621,7 +745,10 @@ export function WatchPanel() {
               <select
                 className={styles.residentSelect}
                 value={locTarget}
-                onChange={(e) => setLocTarget(e.target.value)}
+                onChange={(e) => {
+                  setLocTarget(e.target.value);
+                  setConfirmDelete(null); // switching targets disarms the confirm
+                }}
               >
                 <option value="new">➕ Register a new person…</option>
                 {residents.map((r) => (
@@ -698,6 +825,20 @@ export function WatchPanel() {
                   ? "Register person"
                   : "Save location"}
             </button>
+            {locTarget !== "new" &&
+              residents.find((r) => r.id === locTarget)?.registered && (
+                <button
+                  className={`${styles.btnDanger} ${styles.btnTest}`}
+                  onClick={() => void deletePerson(locTarget)}
+                  disabled={locBusy}
+                >
+                  {confirmDelete === locTarget
+                    ? `Tap again to confirm — remove ${
+                        residents.find((r) => r.id === locTarget)?.name
+                      }`
+                    : `Remove ${residents.find((r) => r.id === locTarget)?.name}…`}
+                </button>
+              )}
           </section>
 
           <section className={styles.card}>
@@ -708,38 +849,10 @@ export function WatchPanel() {
               uploaded. An identified person makes their fall a named alert;
               anyone unenrolled still fires the generic alert.
             </p>
-            <label className={styles.selLabel}>
-              Enroll as
-              <select
-                className={styles.residentSelect}
-                value={enrollTarget}
-                onChange={(e) => setEnrollTarget(e.target.value)}
-              >
-                <option value="">Choose a resident…</option>
-                {residents.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              className={`${styles.btn} ${styles.btnTest}`}
-              onClick={() => void captureAngle()}
-              disabled={
-                enrollBusy || !enrollTarget || faceStatus !== "on" || engineStatus !== "running"
-              }
-            >
-              {faceStatus === "on"
-                ? enrollBusy
-                  ? "Capturing…"
-                  : "Capture this angle"
-                : engineStatus !== "running"
-                  ? "Start the camera to enroll"
-                  : faceStatus === "loading"
-                    ? "Face models loading…"
-                    : "Face identity unavailable"}
-            </button>
+            <p className={styles.testNote}>
+              The capture control sits under the camera feed — it lights up
+              when a face is actually in view.
+            </p>
             {gallery.length > 0 && (
               <ul className={styles.logList} style={{ marginTop: 12 }}>
                 {gallery.map((p) => (
