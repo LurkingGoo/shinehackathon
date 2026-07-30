@@ -60,13 +60,40 @@ Three deliberate moves in that framing:
 **No commercial video-analytics product on Earth modifies camera firmware.** The
 industry integration pattern, for two decades, has been:
 
-- **RTSP** (Real Time Streaming Protocol): virtually every consumer/pro IP camera
-  — Hikvision, Dahua, Reolink, TP-Link Tapo, Xiaomi (with standard mode) — serves
-  its live feed as an RTSP URL on the local network. It is a *published output*,
-  like HDMI on a laptop.
+- **RTSP** (Real Time Streaming Protocol): the mainstream consumer/pro IP cameras
+  sold here — **TP-Link Tapo (wired), Reolink (wired), Eufy (wired), Hikvision,
+  Dahua, Ezviz** — serve the live feed as an RTSP URL on the local network. It is
+  a *published output*, like HDMI on a laptop. On Tapo and Eufy the owner must
+  first enable it (Tapo: "Camera Account" in Advanced Settings; Eufy: Storage →
+  NAS/RTSP) — a two-tap owner action, which is the point: *the owner* grants it.
 - **ONVIF**: the industry interoperability standard (founded by Axis/Bosch/Sony
   precisely so third parties can consume streams and PTZ control without vendor
   permission). "ONVIF-conformant" is a checkbox on the camera's own spec sheet.
+  ONVIF is the better thing to name than raw RTSP: Profile S standardises
+  auto-discovery and stream-URI negotiation, so we never hardcode a per-brand
+  URL. **Target Profile T, not S, in any written plan** — ONVIF has Profile S in
+  deprecation with conformance submissions closing 31 Mar 2027.
+
+**Scope this claim honestly — the exclusions are specific and a judge may know
+them.** Cloud-only walled gardens with no local stream: **Ring, Arlo, Google
+Nest** (RTSP removed 2022), **TP-Link Kasa** (vendor states no RTSP, no plans).
+**Battery-powered cameras generally cannot** — including battery Tapo (C410/
+C420/C425), Reolink 4G/LTE and battery-WiFi models, and most eufyCam — because
+always-on streaming defeats sleep-based power management. **Do not cite Xiaomi
+or Aqara as RTSP examples**: Xiaomi's support page says the C300 supports
+neither RTSP nor ONVIF, and Aqara's own PM states the G3 and G2H Pro have no
+RTSP (several SEO sites claim otherwise and are wrong). Those need community
+firmware — which *is* the firmware modification we're disclaiming.
+
+**And concede the firmware-revocation risk, because it is documented.** Wyze
+pulled its RTSP firmware in April 2026, and its v4 authentication change broke
+every third-party bridge; Google removed Nest RTSP in 2022; Imilab signed its
+firmware to close the downgrade path. The answer is not "that won't happen" —
+it is: certify a short list where RTSP is a documented first-party feature,
+pin firmware, monitor stream health, and keep the detector sensor-agnostic so
+a dead brand is a config change. Operational gotcha worth knowing before any
+pilot install: **Tapo allows only 2 of 3 among Tapo Care cloud, SD-card
+recording, and ONVIF/RTSP** — an inserted SD card silently kills the stream.
 
 The camera vendor is not a stakeholder in this integration. The **customer owns
 the camera and its stream**; we are a consumer of a standard output, on the
@@ -159,10 +186,15 @@ adhesive mounts):
 
 Why the Pi is the right feasibility story:
 
-- **Compute is sufficient**: MoveNet-Lightning (the same pose model our `/watch`
-  page runs) executes at usable FPS on a Pi 5 CPU via TFLite; a US$30 Coral USB
-  accelerator makes it comfortable at full frame rate **[verify current FPS
-  numbers before claiming on stage]**. Fall detection needs ~10 FPS, not 60.
+- **Compute is sufficient**: fall detection needs ~10 FPS, not 60, and we run
+  inference on the camera's **substream** (`/stream2` on Tapo, `_sub` on
+  Reolink — roughly 640×360, well under 1 Mbps) rather than the 2–4 Mbps
+  1080p main stream. That one architectural choice cuts both bandwidth and
+  compute by about an order of magnitude. Where headroom is needed, the
+  current accelerator is the **Hailo-8L via the Pi 5 AI Kit** (13 TOPS,
+  ~S$100): published Frigate benchmarks put it at 4–5 concurrent real-time
+  streams with the Pi 5 CPU near 10%. *Prefer Hailo over Coral — Coral's
+  4-TOPS USB stick is effectively end-of-life.*
 - **Privacy is structural, not policy**: video is decoded and discarded *inside
   the flat*; only pose skeletons, events, and the 3-second skeleton-replay GIF
   (ADR 0017 — stick figure, no pixels of the person) ever leave the device.

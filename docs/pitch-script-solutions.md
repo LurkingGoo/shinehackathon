@@ -39,12 +39,13 @@ wellbeing coordinators). Total ~2 min. Stage directions in brackets.*
 > Second, the wall — and let me deal with the obvious objection head-on.
 >
 > We are **not** tapping into the firmware of anyone's camera. We don't need
-> to. Nearly every standalone IP camera on the market — the TP-Link Tapos,
-> the Xiaomis, the Hikvisions, exactly the cameras already sitting in
-> Singapore households today — publishes its live feed over **RTSP**, an open
-> streaming standard that's been the industry norm for twenty years. It's a
-> standard output, like HDMI on a laptop. The camera's owner points us at the
-> stream; the manufacturer is never in the conversation.
+> to. The volume seller in Singapore homes is the **TP-Link Tapo** — the C200
+> is on the shelf at Challenger — and every wired Tapo ships with a documented
+> **RTSP** and **ONVIF** output that the *owner* switches on in the app, in
+> two taps, under "Camera Account". RTSP is an open streaming standard that
+> has been the industry norm for twenty years. It's a published output, like
+> HDMI on a laptop. The owner enables it and points us at the stream; the
+> manufacturer is never in the conversation.
 >
 > That stream goes to a **Raspberry Pi** inside the flat — a hundred-and-
 > thirty-dollar computer, cheap enough to deploy one per household. The Pi
@@ -81,11 +82,27 @@ wellbeing coordinators). Total ~2 min. Stage directions in brackets.*
   answer it before a judge asks it; the dashcam analogy is the anchor.
 - "Not one frame of video ever leaves the flat" is the applause line — land
   it slowly, then move straight to the demo.
-- If asked about ecosystem cameras (Ring/Nest): "The closed cloud ecosystems
-  lock their streams — but those are the minority in local households, and
-  our default kit ships its own forty-dollar RTSP camera, so no existing
-  camera is even required."
+- If asked about ecosystem cameras (Ring/Nest/Arlo/Kasa): "Those are genuine
+  walled gardens — Nest dropped RTSP in 2022 and Ring never had it. We don't
+  fight them: either we go through the vendor's own cloud API — Google
+  publishes one — or the household swaps in a forty-dollar Tapo, which is
+  cheaper than the engineering. Our default kit ships its own RTSP camera, so
+  no existing camera is even required."
+- **Do not say "Xiaomi".** Xiaomi's own support page states the Smart Camera
+  C300 supports neither RTSP nor ONVIF, and Aqara's product manager has said
+  on their forum that the G3 and G2H Pro have no RTSP either. Stock-firmware
+  Xiaomi/Imilab needs community firmware — exactly the "you're modifying our
+  camera" accusation we're refusing. The safe brand list to name out loud:
+  **Tapo (wired), Reolink (wired), Eufy (wired), Hikvision, Dahua.**
 - If asked about firmware again: "RTSP and ONVIF exist precisely so third
   parties can consume the stream without vendor permission. Every commercial
   video-analytics company works this way; firmware modification isn't how
   this industry integrates."
+- **If a sharp judge asks "can't a firmware update just take RTSP away?" —
+  say yes.** "It happens. Wyze pulled their RTSP firmware in April this year;
+  Google removed it from Nest in 2022. That's why we certify a short hardware
+  list where RTSP is a documented first-party feature, and why the detector
+  never cares what the sensor is: the same pipeline takes an mmWave radar
+  feed. Losing a camera brand is a config change for us, not a rewrite."
+  Conceding a real risk and showing the architecture already absorbs it is
+  stronger than claiming the risk doesn't exist.
