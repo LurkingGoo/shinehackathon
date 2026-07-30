@@ -49,7 +49,7 @@ export function CaseloadCard({
 
       <div className={styles.body}>
         <div className={styles.nm}>
-          {entry.name} <span>· {entry.age}</span>
+          {entry.name} {entry.age != null && <span>· {entry.age}</span>}
         </div>
         <div className={styles.meta}>
           {entry.unit} · {entry.zone ? `${entry.zone} · ` : ""}

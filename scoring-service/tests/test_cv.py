@@ -124,15 +124,53 @@ def test_cv_named_resident_becomes_the_acute_row():
             fixtures.clear_incident()
 
 
-def test_cv_unknown_resident_falls_back_to_default():
-    """Fail-open rule: an unknown id can never block the alert — it produces
-    exactly the generic incident."""
+def test_cv_unknown_resident_is_honestly_unidentified():
+    """Fail-open rule, honest form: an unknown id can never block the alert,
+    and it must NOT misattribute the fall to a real resident's name."""
     with _client() as c:
         try:
             ev = c.post("/incidents/cv-detected",
                         json={"residentId": "r-nobody"}).json()
-            assert ev["entry"]["id"] == "r-tan"
+            assert ev["entry"]["id"] == "r-unidentified"
+            assert ev["entry"]["name"] == "Unidentified person"
+            assert ev["entry"]["age"] is None
             assert ev["entry"]["score"]["sensor"] == "Camera (pose)"
+        finally:
+            fixtures.clear_incident()
+
+
+def test_cv_no_resident_id_is_honestly_unidentified():
+    """A camera fall with NO id (face never bound) alerts as Unidentified —
+    never as the default resident (the 2026-07-30 misattribution gap)."""
+    from app.alerts import telegram
+    with _client() as c:
+        try:
+            ev = c.post("/incidents/cv-detected",
+                        json={"stillnessS": 8.0, "confidence": 0.7}).json()
+            assert ev["entry"]["id"] == "r-unidentified"
+            assert ev["entry"]["name"] == "Unidentified person"
+
+            entries = c.get("/caseload").json()["entries"]
+            assert entries[0]["id"] == "r-unidentified"
+            assert entries[0]["score"]["track"] == "acute"
+
+            msg = telegram.format_incident_message(fixtures.build_incident_event())
+            assert "Unidentified person" in msg
+            assert "Tan Ah Moi" not in msg
+            assert "(None)" not in msg  # ageless identity renders name-only
+        finally:
+            fixtures.clear_incident()
+
+
+def test_cv_explicit_default_id_still_names_tan_ah_moi():
+    """The escape hatch: explicitly reporting as r-tan keeps the old default
+    identity — only the ABSENCE of an id becomes Unidentified."""
+    with _client() as c:
+        try:
+            ev = c.post("/incidents/cv-detected",
+                        json={"residentId": "r-tan"}).json()
+            assert ev["entry"]["id"] == "r-tan"
+            assert ev["entry"]["name"] == "Tan Ah Moi"
         finally:
             fixtures.clear_incident()
 

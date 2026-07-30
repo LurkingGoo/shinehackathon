@@ -22,7 +22,9 @@ class _Base(BaseModel):
 class Resident(_Base):
     id: str
     name: str
-    age: int
+    # None for the honest UNIDENTIFIED camera identity — a fall whose person
+    # could not be recognized has no age to claim.
+    age: int | None
     unit: str
 
 

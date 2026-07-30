@@ -367,10 +367,12 @@ def replay_payload() -> dict | None:
 
 
 def _resolve_cv_resident(resident_id: str | None):
-    """Map an enrolled residentId onto the roster. Fail open: None or an
-    unknown id resolves to the default acute identity (ACUTE)."""
-    if not resident_id or resident_id == ACUTE.id:
-        return None
+    """Map an enrolled residentId onto the roster. Fail open — but honestly:
+    None or an unknown id resolves to UNIDENTIFIED, never to a real resident's
+    name (a recognition failure must not read as the default resident falling).
+    ACUTE.id explicitly names the default demo resident."""
+    if resident_id == ACUTE.id:
+        return None  # explicit default: acute_identity() serves ACUTE
     for r in CHRONIC:
         if r.id == resident_id:
             return AcuteResident(
@@ -378,7 +380,7 @@ def _resolve_cv_resident(resident_id: str | None):
                 sensor="Camera (pose)", sensor_class="Vision — browser pose heuristic",
                 updated_min_ago=0, recency="just now", zone=r.zone,
             )
-    return None
+    return UNIDENTIFIED
 
 
 def acute_identity():
@@ -423,18 +425,28 @@ def _cv_score() -> tuple[RiskScore, list, str, str]:
 class AcuteResident:
     id: str
     name: str
-    age: int
+    age: int | None
     unit: str
     sensor: str
     sensor_class: str
     updated_min_ago: int
     recency: str
-    zone: str = "Living room"
+    zone: str | None = "Living room"
 
 
 ACUTE = AcuteResident(
     "r-tan", "Tan Ah Moi", 82, "Blk 108 #04-210", "Accelerometer",
     "Wearable bangle", 0, "just now", zone="Living room",
+)
+
+# Honest fail-open identity: a camera fall with no (or an unknown) residentId
+# is a real person on the ground whose name we DON'T know. Naming the default
+# resident instead made every recognition failure indistinguishable from Tan
+# Ah Moi actually falling — the alert must be able to say "unidentified".
+UNIDENTIFIED = AcuteResident(
+    "r-unidentified", "Unidentified person", None,
+    "Location unknown — check the camera", "Camera (pose)",
+    "Vision — browser pose heuristic", 0, "just now", zone=None,
 )
 
 
@@ -541,14 +553,14 @@ def delete_resident(rid: str) -> str:
     (fixture roster rows are demo narrative — not deletable) or 'unknown'.
     Cascade: roster, persistence artifact, and — if they are the active
     camera-named acute identity — the incident KEEPS running but reverts to
-    the generic default, so no alert surface ever carries a deleted name."""
+    UNIDENTIFIED, so no alert surface ever carries a deleted name."""
     global _cv_resident
     if rid not in _registered_ids:
         return "builtin" if any(r.id == rid for r in _roster()) else "unknown"
     CHRONIC[:] = [r for r in CHRONIC if r.id != rid]
     _registered_ids.remove(rid)
     if _cv_resident is not None and _cv_resident.id == rid:
-        _cv_resident = None
+        _cv_resident = UNIDENTIFIED
     _save_registry()
     return "deleted"
 

@@ -160,19 +160,21 @@ def test_caseload_flags_registrants_as_registered():
     assert not by_id["r-rajoo"].get("registered")
 
 
-def test_deleting_active_camera_identity_falls_back_to_generic():
+def test_deleting_active_camera_identity_falls_back_to_unidentified():
     """Deletion mid-incident must never leave a dangling name: the incident
-    stays active, but its identity reverts to the generic default (fail-open,
-    same rule as an unknown residentId)."""
+    stays active, but its identity reverts to UNIDENTIFIED (fail-open — and
+    honest: it must not rename the fall to another real resident either)."""
     r = fixtures.register_resident("Judge Judy", zone="Study")
     fixtures.set_cv_incident(8.0, 0.7, None, r.id)
     fixtures.mark_incident()
     assert fixtures.delete_resident(r.id) == "deleted"
     assert fixtures.incident_active()
     event = fixtures.build_incident_event()
-    assert event.entry.id == fixtures.ACUTE.id
+    assert event.entry.id == fixtures.UNIDENTIFIED.id
     msg = telegram.format_incident_message(event)
     assert "Judge Judy" not in msg
+    assert "Tan Ah Moi" not in msg
+    assert "Unidentified person" in msg
 
 
 # ------------------------------ persistence -------------------------------- #

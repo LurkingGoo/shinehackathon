@@ -70,6 +70,13 @@ try {
     .waitFor({ state: "attached", timeout: 10_000 });
   step("new person appears in the Report-as roster");
 
+  // — the enrollment nudge appears (Fix 3, 2026-07-30): registering alone
+  // does not make a person recognizable, and the UI must say so.
+  await page
+    .getByText(`${TEST_NAME} is registered but NOT recognizable yet`)
+    .waitFor({ timeout: 10_000 });
+  step("post-registration enrollment nudge banner is up");
+
   // — …but registration must NOT hijack the selector (the fixed regression)
   assert.equal(
     await reportAs.inputValue(),
@@ -115,11 +122,13 @@ try {
   }
   await page.screenshot({ path: `${SHOTS}/e2e-watch.png`, fullPage: true });
 
-  // — dashboard shows the acute incident for the DEFAULT resident
+  // — dashboard shows the acute incident as honestly UNIDENTIFIED (Fix 1,
+  // 2026-07-30): a camera fall with no bound identity must never carry a
+  // real resident's name.
   await page.goto(DASH, { waitUntil: "domcontentloaded" });
   await page.getByText("Someone needs help right now").waitFor({ timeout: 10_000 });
-  await page.getByText("Tan Ah Moi").first().waitFor();
-  step("dashboard shows the acute row for the generic default resident");
+  await page.getByText("Unidentified person").first().waitFor();
+  step("dashboard shows the acute row as Unidentified person (honest fail-open)");
   await page.screenshot({ path: `${SHOTS}/e2e-dashboard.png`, fullPage: true });
 
   // — stop alert from the dashboard (ADR 0016): ack lands, badge appears,
@@ -148,7 +157,7 @@ try {
   // mount-time fetch.
   await page.goto(DASH, { waitUntil: "domcontentloaded" });
   await page.getByText("Someone needs help right now").waitFor({ timeout: 10_000 });
-  await page.getByText("Tan Ah Moi").first().click();
+  await page.getByText("Unidentified person").first().click();
   assert.equal(
     await page.getByText("How the fall happened").count(), 0,
     "player appeared before any trace existed",
@@ -202,6 +211,15 @@ try {
   await page.getByRole("button", { name: /Tap again to confirm/ }).click();
   await page.getByText(`${TEST_NAME} removed`).waitFor({ timeout: 10_000 });
   step(`deleted "${TEST_NAME}" via the two-step confirm`);
+
+  // — the enrollment nudge must not survive the deletion (page state was
+  // reset by the navigation above; the roster prune covers the same-page case)
+  assert.equal(
+    await page.getByText(`${TEST_NAME} is registered but NOT recognizable yet`).count(),
+    0,
+    "enrollment nudge outlived its deleted person",
+  );
+  step("no enrollment nudge left for the deleted person");
 
   // — the open dashboard tab loses the row promptly, with no reload
   await dashPage

@@ -34,6 +34,31 @@ export interface CaptureGate {
   label: string;
 }
 
+/** The person whose registration is awaiting face enrollment (Fix 3,
+ * 2026-07-30): registering adds them to the roster but does NOT make them
+ * recognizable — without this nudge the only hint was the capture button's
+ * "(1/2)" label, and their falls silently alerted as Unidentified. */
+export interface PendingEnrollee {
+  residentId: string;
+  name: string;
+}
+
+/** Banner text while a just-registered person is not yet matchable; null once
+ * they have enough angles (or nobody is pending). Pure for unit tests. */
+export function registrationNudge(
+  pending: PendingEnrollee | null,
+  angles: number,
+  minAngles: number = DEFAULT_MATCH_CONFIG.minAngles,
+): string | null {
+  if (!pending || angles >= minAngles) return null;
+  const left = minAngles - angles;
+  return (
+    `${pending.name} is registered but NOT recognizable yet — capture ` +
+    `${left} more face angle${left === 1 ? "" : "s"} below, or their falls ` +
+    `will alert as "Unidentified person".`
+  );
+}
+
 export function captureGate(s: CaptureGateInput): CaptureGate {
   if (!s.engineRunning) return { disabled: true, label: "Start the camera to enroll" };
   if (s.faceStatus === "loading") return { disabled: true, label: "Face models loading…" };

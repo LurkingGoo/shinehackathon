@@ -31,7 +31,8 @@ export function DrilldownPanel({ detail }: { detail: ResidentDetail | null }) {
         </div>
         <div>
           <h3 className={styles.panelTitle}>
-            {detail.name}, {detail.age}
+            {detail.name}
+            {detail.age != null ? `, ${detail.age}` : ""}
           </h3>
           <div className={styles.panelSub}>
             {detail.unit} · {detail.zone ? `${detail.zone} · ` : ""}

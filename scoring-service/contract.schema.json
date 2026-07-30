@@ -14,8 +14,15 @@
               "type": "string"
             },
             "age": {
-              "title": "Age",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Age"
             },
             "unit": {
               "title": "Unit",
@@ -230,8 +237,15 @@
           "type": "string"
         },
         "age": {
-          "title": "Age",
-          "type": "integer"
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Age"
         },
         "unit": {
           "title": "Unit",
@@ -294,8 +308,15 @@
               "type": "string"
             },
             "age": {
-              "title": "Age",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Age"
             },
             "unit": {
               "title": "Unit",
@@ -355,8 +376,15 @@
               "type": "string"
             },
             "age": {
-              "title": "Age",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Age"
             },
             "unit": {
               "title": "Unit",

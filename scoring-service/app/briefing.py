@@ -14,6 +14,11 @@ from app.models import ResidentDetail
 BRIEFING_LLM = os.getenv("SCORING_BRIEFING_LLM", "0") == "1"
 
 
+def _who(d: ResidentDetail) -> str:
+    """Name with age when known; the UNIDENTIFIED camera identity has none."""
+    return f"{d.name} ({d.age})" if d.age is not None else d.name
+
+
 def deterministic_briefing(d: ResidentDetail) -> str:
     top = d.features[0] if d.features else None
     conf = round(d.score.confidence * 100)
@@ -28,14 +33,14 @@ def deterministic_briefing(d: ResidentDetail) -> str:
             impact = top.value if top else "an impact"
             arc = f"a {impact} impact then {stillness} of no movement"
         return (
-            f"{d.name} ({d.age}) may have fallen — {arc}, {d.score.recency}. "
+            f"{_who(d)} may have fallen — {arc}, {d.score.recency}. "
             f"Please reach them first. Confidence {conf}%."
         )
     if not top:
-        return f"{d.name} ({d.age}) — no contributing signals. Confidence {conf}%."
+        return f"{_who(d)} — no contributing signals. Confidence {conf}%."
     tail = f", {top.baseline}" if top.baseline else ""
     return (
-        f"{d.name} ({d.age}) is on this list mostly because of "
+        f"{_who(d)} is on this list mostly because of "
         f"{top.label.lower()} ({top.value}{tail}). Worth a check this week — "
         f"not urgent. Confidence {conf}%."
     )

@@ -55,6 +55,11 @@ def is_configured() -> bool:
     return bool(os.environ.get(_TOKEN_ENV) and os.environ.get(_CHAT_ENV))
 
 
+def _who(entry) -> str:
+    """Name with age when known; the UNIDENTIFIED identity has no age."""
+    return f"{entry.name} ({entry.age})" if entry.age is not None else entry.name
+
+
 def _location_line(entry) -> str:
     """Unit plus the ambient last-motion area (ADR 0012). The zone is PIR
     context — where motion last was — never a camera localization claim."""
@@ -70,7 +75,7 @@ def format_incident_message(event: IncidentEvent) -> str:
     e = event.entry
     s = e.score
     return (
-        f"\U0001F6A8 FALL ALERT — {e.name} ({e.age})\n"
+        f"\U0001F6A8 FALL ALERT — {_who(e)}\n"
         f"{_location_line(e)}\n"
         f"{s.rationale}\n"
         f"Risk {s.risk:.2f} · confidence {s.confidence:.2f} · {s.recency}\n"
@@ -82,7 +87,7 @@ def format_escalation_message(event: IncidentEvent, still_down_s: float) -> str:
     """The long-lie second message (ADR 0012): the camera saw no recovery."""
     e = event.entry
     return (
-        f"⚠️ STILL DOWN — {e.name} ({e.age})\n"
+        f"⚠️ STILL DOWN — {_who(e)}\n"
         f"{_location_line(e)}\n"
         f"{e.score.rationale}\n"
         f"No movement for {still_down_s:.0f}s since the fall alert.\n"

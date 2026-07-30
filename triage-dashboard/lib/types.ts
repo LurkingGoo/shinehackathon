@@ -23,7 +23,8 @@ export type SensorClass = "Wearable bangle" | "CASAS ambient" | string;
 export interface Resident {
   id: string;
   name: string;
-  age: number;
+  /** null for the honest "Unidentified person" camera identity. */
+  age: number | null;
   /** HDB-style address, e.g. "Blk 112 #05-214". */
   unit: string;
 }

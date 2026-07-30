@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { MAX_ANGLES, captureGate, type CaptureGateInput } from "./enrollUi";
+import {
+  MAX_ANGLES,
+  captureGate,
+  registrationNudge,
+  type CaptureGateInput,
+} from "./enrollUi";
 
 const ready: CaptureGateInput = {
   engineRunning: true,
@@ -58,5 +63,30 @@ describe("captureGate", () => {
     expect(
       captureGate({ ...ready, faceSeen: false, angles: MAX_ANGLES }).label,
     ).toContain("Enough angles");
+  });
+});
+
+describe("registrationNudge", () => {
+  const raju = { residentId: "r-raju", name: "Raju" };
+
+  it("is silent when nobody was just registered", () => {
+    expect(registrationNudge(null, 0)).toBeNull();
+  });
+
+  it("warns by name until the matcher minimum is reached", () => {
+    const msg = registrationNudge(raju, 0);
+    expect(msg).toContain("Raju");
+    expect(msg).toContain("NOT recognizable");
+    expect(msg).toContain("Unidentified person");
+    expect(msg).toContain("2 more face angles");
+  });
+
+  it("counts down and pluralizes the remaining angles", () => {
+    expect(registrationNudge(raju, 1)).toContain("1 more face angle below");
+  });
+
+  it("clears itself once the person is matchable", () => {
+    expect(registrationNudge(raju, 2)).toBeNull();
+    expect(registrationNudge(raju, 5)).toBeNull();
   });
 });

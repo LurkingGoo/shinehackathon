@@ -22,6 +22,8 @@ import { addEmbedding, loadGallery, removePerson } from "@/lib/face/gallery";
 import {
   FACE_SEEN_FRESH_MS,
   captureGate,
+  registrationNudge,
+  type PendingEnrollee,
 } from "@/lib/face/enrollUi";
 import {
   buildFallAnnouncement,
@@ -97,6 +99,9 @@ export function WatchPanel() {
   const boundIdRef = useRef(boundId);
   boundIdRef.current = boundId;
   const [enrollTarget, setEnrollTarget] = useState<string>("");
+  // Just-registered person awaiting face capture (Fix 3, 2026-07-30): keeps
+  // a banner up until they have enough angles to actually be recognized.
+  const [pendingEnrollee, setPendingEnrollee] = useState<PendingEnrollee | null>(null);
   const [enrollBusy, setEnrollBusy] = useState(false);
   const faceEngineRef = useRef<FaceEngine | null>(null);
   const trackerRef = useRef(new IdentityTracker());
@@ -146,6 +151,7 @@ export function WatchPanel() {
           setResidentId((v) => (v && !ids.has(v) ? "" : v));
           setEnrollTarget((v) => (v && !ids.has(v) ? "" : v));
           setLocTarget((v) => (v !== "new" && !ids.has(v) ? "new" : v));
+          setPendingEnrollee((p) => (p && !ids.has(p.residentId) ? null : p));
         })
         .catch(() => undefined),
     [],
@@ -368,6 +374,11 @@ export function WatchPanel() {
         // strangers' falls. Pick them in "Report as" or enroll their face.
         const entry = await dataClient.registerResident({ name, ...loc });
         setNewName("");
+        // It DOES pre-select "Enroll as" and raise the nudge banner (Fix 3):
+        // enrolling is consent-neutral (capture still needs their face in
+        // frame) and without it the registration is not recognizable at all.
+        setEnrollTarget(entry.id);
+        setPendingEnrollee({ residentId: entry.id, name: entry.name });
         pushLog(
           `${entry.name} registered — ${entry.unit}${entry.zone ? ` · ${entry.zone}` : ""}`,
         );
@@ -647,6 +658,14 @@ export function WatchPanel() {
 
   const stillPct = Math.min(100, (stillnessMs / STILL_TARGET_MS) * 100);
 
+  // Nudge until the just-registered person is actually matchable — clears
+  // itself the moment their angle count reaches the matcher minimum.
+  const enrollNudge = registrationNudge(
+    pendingEnrollee,
+    gallery.find((p) => p.residentId === pendingEnrollee?.residentId)
+      ?.embeddings.length ?? 0,
+  );
+
   const enrollGate = captureGate({
     engineRunning: engineStatus === "running",
     faceStatus,
@@ -782,6 +801,18 @@ export function WatchPanel() {
               its card sits with it — no scroll hunt past the privacy text. */}
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>Face enrollment (on-device)</h2>
+            {enrollNudge && (
+              <p className={styles.nudgeNote} role="status">
+                <span>{enrollNudge}</span>
+                <button
+                  className={styles.removeBtn}
+                  onClick={() => setPendingEnrollee(null)}
+                  aria-label="Dismiss enrollment reminder"
+                >
+                  dismiss
+                </button>
+              </p>
+            )}
             <p className={styles.testNote}>
               Enroll front, left, and right angles per person. Embeddings stay in
               this browser&apos;s storage — no face image is kept, nothing is
@@ -868,7 +899,7 @@ export function WatchPanel() {
                 value={residentId}
                 onChange={(e) => setResidentId(e.target.value)}
               >
-                <option value="">Default resident (Tan Ah Moi)</option>
+                <option value="">No one selected — alerts as “Unidentified person”</option>
                 {residents.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name}

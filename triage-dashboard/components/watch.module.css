@@ -85,6 +85,15 @@
   background: var(--red-soft); color: var(--red); font-size: 13.5px; font-weight: 600;
 }
 
+/* post-registration enrollment nudge (Fix 3): amber, not red — it is a
+   to-do, not a failure */
+.nudgeNote {
+  margin: 0 0 12px; padding: 12px 14px; border-radius: var(--radius-sm);
+  background: var(--sun-soft); color: var(--ink); font-size: 13.5px;
+  font-weight: 600; display: flex; gap: 10px; align-items: baseline;
+}
+.nudgeNote b { color: var(--sun); }
+
 /* ---- side cards ---- */
 .side { display: grid; gap: 22px; }
 .card {
